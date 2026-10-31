@@ -10,7 +10,7 @@ export type ReplayState = {
   status: ReplayStatus
 }
 
-export const REPLAY_SPEEDS = Object.freeze([0.5, 1, 2, 4] as const)
+export const REPLAY_SPEEDS = Object.freeze([0.5, 1, 2, 4, 8, 16] as const)
 
 export type ReplaySeekOptions = {
   /** When false, move the playhead without stopping playback. Default true. */
@@ -20,10 +20,29 @@ export type ReplaySeekOptions = {
 const DEFAULT_SPEED = 1
 const DEFAULT_PREFETCH_THRESHOLD = 50
 
-function normalizeSpeed(value: number): number {
+/** Snap to the nearest allowed replay speed (ties prefer the slower chip). */
+export function normalizeSpeed(value: number): number {
   const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_SPEED
   if ((REPLAY_SPEEDS as readonly number[]).includes(n)) return n
-  return DEFAULT_SPEED
+  let best: number = DEFAULT_SPEED
+  let bestDist = Number.POSITIVE_INFINITY
+  for (const speed of REPLAY_SPEEDS) {
+    const dist = Math.abs(speed - n)
+    if (dist < bestDist) {
+      best = speed
+      bestDist = dist
+    }
+  }
+  return best
+}
+
+/** Step one chip up/down within REPLAY_SPEEDS. */
+export function stepReplaySpeed(current: number, direction: 1 | -1): number {
+  const cur = normalizeSpeed(current)
+  const idx = (REPLAY_SPEEDS as readonly number[]).indexOf(cur)
+  const next = Math.min(REPLAY_SPEEDS.length - 1, Math.max(0, (idx < 0 ? 1 : idx) + direction))
+  return REPLAY_SPEEDS[next]!
 }
 
 function normalizeCandles(candles: unknown): Candle[] {

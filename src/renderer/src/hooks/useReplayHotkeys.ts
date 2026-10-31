@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { stepReplaySpeed } from '@/lib/replayEngine'
 import { useReplayStore } from '@/store/replayStore'
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -16,6 +17,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * - Space → play/pause (toggles; steps are handled by arrow keys)
  * - ArrowRight → step forward one candle (hold to keep stepping)
  * - ArrowLeft → step backward one candle (hold to keep stepping)
+ * - + / = → faster playback
+ * - - / _ → slower playback
  * - Tab (split only) → toggle next-candle pane (left ↔ right)
  */
 export function useReplayHotkeys(): void {
@@ -24,6 +27,7 @@ export function useReplayHotkeys(): void {
   const pause = useReplayStore((s) => s.pause)
   const stepForward = useReplayStore((s) => s.stepForward)
   const stepBackward = useReplayStore((s) => s.stepBackward)
+  const setSpeed = useReplayStore((s) => s.setSpeed)
   const setDriverPane = useReplayStore((s) => s.setDriverPane)
 
   useEffect(() => {
@@ -81,6 +85,20 @@ export function useReplayHotkeys(): void {
         return
       }
 
+      if (event.key === '+' || event.key === '=') {
+        if (event.repeat) return
+        event.preventDefault()
+        setSpeed(stepReplaySpeed(state.speed, 1))
+        return
+      }
+
+      if (event.key === '-' || event.key === '_') {
+        if (event.repeat) return
+        event.preventDefault()
+        setSpeed(stepReplaySpeed(state.speed, -1))
+        return
+      }
+
       if (event.code !== 'Space' && event.key !== ' ') return
       if (event.repeat) return
       if (state.replayLoading || state.secondaryLoading) return
@@ -101,5 +119,5 @@ export function useReplayHotkeys(): void {
       window.removeEventListener('keydown', onKeyDown)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [mode, play, pause, stepForward, stepBackward, setDriverPane])
+  }, [mode, play, pause, stepForward, stepBackward, setSpeed, setDriverPane])
 }

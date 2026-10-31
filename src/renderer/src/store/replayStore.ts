@@ -343,7 +343,7 @@ function clearClock(): void {
 
 function tickMs(): number {
   const speed = engine.getState().speed || 1
-  return Math.max(50, BASE_TICK_MS / speed)
+  return Math.max(30, BASE_TICK_MS / speed)
 }
 
 function intervalSecondsFor(timeframe: string): number {

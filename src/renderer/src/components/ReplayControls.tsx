@@ -21,7 +21,7 @@ import {
   sessionUtcOffsetLabel,
   toSessionParts
 } from '@/lib/chartTimezone'
-import { REPLAY_SPEEDS } from '@/lib/replayEngine'
+import { REPLAY_SPEEDS, stepReplaySpeed } from '@/lib/replayEngine'
 import { coverageDaysFromMetas, isDayCovered } from '@shared/dateCoverage'
 import { TIMEFRAMES } from '@shared/timeframes'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
@@ -235,26 +235,62 @@ export default function ReplayControls() {
         </Tooltip>
       )}
 
-      <label className="flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-400">
-        <Gauge className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+      <div className="flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 text-xs text-zinc-400">
+        <Gauge className="ml-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
         <span className="sr-only">{t('replay.speed')}</span>
-        <select
-          value={String(speed)}
-          disabled={busy}
-          aria-label={t('replay.speedAria')}
-          onChange={(e) => {
-            setSpeed(Number(e.target.value))
-            e.currentTarget.blur()
+        <button
+          type="button"
+          disabled={busy || speed <= REPLAY_SPEEDS[0]!}
+          aria-label="Slower"
+          title="Slower (−)"
+          onClick={(event) => {
+            setSpeed(stepReplaySpeed(speed, -1))
+            event.currentTarget.blur()
           }}
-          className="rounded bg-zinc-900 text-zinc-100 outline-none disabled:opacity-60"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-zinc-300 transition-colors enabled:hover:bg-zinc-800 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {REPLAY_SPEEDS.map((value) => (
-            <option key={value} value={String(value)} className="bg-zinc-900 text-zinc-100">
-              {value}x
-            </option>
-          ))}
-        </select>
-      </label>
+          −
+        </button>
+        <label className="flex min-w-[6.5rem] flex-1 items-center gap-1.5 px-0.5">
+          <input
+            type="range"
+            min={0}
+            max={REPLAY_SPEEDS.length - 1}
+            step={1}
+            value={Math.max(
+              0,
+              (REPLAY_SPEEDS as readonly number[]).indexOf(speed) >= 0
+                ? (REPLAY_SPEEDS as readonly number[]).indexOf(speed)
+                : 1
+            )}
+            disabled={busy}
+            aria-label={t('replay.speedAria')}
+            aria-valuetext={`${speed}x`}
+            onChange={(e) => {
+              const idx = Number(e.target.value)
+              const next = REPLAY_SPEEDS[idx]
+              if (next != null) setSpeed(next)
+            }}
+            className="h-1.5 w-full cursor-pointer accent-primary-400 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-zinc-100">
+            {speed}x
+          </span>
+        </label>
+        <button
+          type="button"
+          disabled={busy || speed >= REPLAY_SPEEDS[REPLAY_SPEEDS.length - 1]!}
+          aria-label="Faster"
+          title="Faster (+)"
+          onClick={(event) => {
+            setSpeed(stepReplaySpeed(speed, 1))
+            event.currentTarget.blur()
+          }}
+          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-zinc-300 transition-colors enabled:hover:bg-zinc-800 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          +
+        </button>
+      </div>
 
       <IconButton
         tooltip={t('replay.pauseOnTpSl')}

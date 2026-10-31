@@ -159,12 +159,13 @@ describe("createReplayEngine", () => {
     expect(state.status).toBe("playing");
   });
 
-  it("setSpeed only accepts known speeds", () => {
+  it("setSpeed snaps to nearest known speed", () => {
     const engine = createReplayEngine();
     for (const speed of REPLAY_SPEEDS) {
       expect(engine.setSpeed(speed).speed).toBe(speed);
     }
-    expect(engine.setSpeed(3).speed).toBe(1);
+    expect(engine.setSpeed(3).speed).toBe(2);
+    expect(engine.setSpeed(12).speed).toBe(8);
     expect(engine.setSpeed(Number.NaN).speed).toBe(1);
   });
 

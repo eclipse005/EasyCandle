@@ -8,6 +8,8 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ['Space'], description: 'Play / pause replay' },
   { keys: ['ArrowRight'], description: 'Step forward one candle' },
   { keys: ['ArrowLeft'], description: 'Step backward one candle' },
+  { keys: ['+', '='], description: 'Faster playback' },
+  { keys: ['-', '_'], description: 'Slower playback' },
   { keys: ['Tab'], description: 'Toggle next-candle pane (split view)' },
   { keys: ['Alt+I'], description: 'Invert price scale' },
   { keys: ['Escape'], description: 'Cancel drawing / return to select tool' },
