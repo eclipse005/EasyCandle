@@ -122,12 +122,9 @@ export default function Dashboard(): ReactNode {
     <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
       <header className="flex shrink-0 items-center gap-3 border-b border-white/[0.05] px-5 py-4">
         <img src={iconUrl} alt="" className="h-8 w-8 rounded-lg" aria-hidden />
-        <div className="flex min-w-0 flex-col">
-          <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
-          <span className="text-[11px] text-zinc-500">Backtesting console</span>
-        </div>
+        <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
 
-        <nav className="ml-6 flex items-center gap-1" aria-label="Console sections">
+        <nav className="ml-6 flex items-center gap-1" aria-label="Main navigation">
           {TABS.map((tab) => (
             <TabButton
               key={tab.id}

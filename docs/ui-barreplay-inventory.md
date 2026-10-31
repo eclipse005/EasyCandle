@@ -25,7 +25,7 @@ Header nav (left → right): **Dashboard · Sessions · Datasets · Symbols · S
 - **Symbols**: symbol params (contract size / precision, etc.).
 - **Strategies**: strategy rollups.
 
-Dashboard chrome: full-height `bg-zinc-950`, header `border-b border-zinc-800 px-3 py-2.5`, brand “BarReplay” (`text-amber-400`), subtitle “Backtesting console”, GitHub link right. Content: `px-4 py-5`, centered `max-w-4xl`.
+Dashboard chrome: full-height `bg-zinc-950`, header `border-b border-white/[0.05] px-5 py-4`, brand “BarReplay” (`text-zinc-100`), tabs, GitHub link right. Content: `px-4 py-5`, centered `max-w-4xl`.
 
 Entering a session (create/load) sets `activeSessionId` → chart shell. Exiting: toolbar back / AppMenu “Sessions home” / ReplayControls logout → `closeActiveSession()`.
 
