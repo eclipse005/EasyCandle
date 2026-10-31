@@ -261,9 +261,9 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(3.25rem,1.1fr)_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
+                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(4.75rem,1.45fr)_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
                 >
-                  {/* Fixed ticker for meta align; meta nowrap (no ellipsis); inputs share leftover slightly tighter. */}
+                  {/* Fixed ticker for meta align; meta nowrap (no ellipsis); Contract slightly wider for 100000; Spread/Comm as-is. */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
