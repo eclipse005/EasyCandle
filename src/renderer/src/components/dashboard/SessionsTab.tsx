@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Info, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileText,
+  Info,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+  Trash2
+} from 'lucide-react'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
-import { SoftSelect, SoftTextarea } from '@/components/ui/SoftInput'
+import { SoftInput, SoftSelect, SoftTextarea } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { idbGet } from '@/lib/importIdb'
@@ -15,14 +27,16 @@ import {
   type PeriodBucket
 } from '@/lib/sessionAnalytics'
 import { clearSessionNote, getSessionNote, setSessionNote } from '@/lib/sessionNotes'
-import { formatPnl } from '@/lib/paperTrade'
+import { formatPnl, summarizeSession } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
-import { useSessionStore } from '@/store/sessionStore'
-import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
 
-/** Testing → Sessions: FXR-style picker, overview, charts, metric chips (local only). */
+type SortOrder = 'newest' | 'oldest'
+
+/** Testing → Sessions: FXR-style search, sort, expandable cards (local only). */
 export default function SessionsTab({
   onNewSession
 }: {
@@ -33,97 +47,50 @@ export default function SessionsTab({
   const sessions = useSessionStore((s) => s.sessions)
   const loadSession = useSessionStore((s) => s.loadSession)
   const deleteSession = useSessionStore((s) => s.deleteSession)
+  const duplicateSession = useSessionStore((s) => s.duplicateSession)
+  const renameSession = useSessionStore((s) => s.renameSession)
   const strategies = useStrategiesStore((s) => s.strategies)
   const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
+  const setPreviewSessionReport = useUiLayoutStore((s) => s.setPreviewSessionReport)
 
-  const ordered = useMemo(
-    () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
-    [sessions]
-  )
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortOrder>('newest')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selected =
-    ordered.find((s) => s.id === selectedId) ?? ordered[0] ?? null
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    let list = [...sessions]
+    if (q) {
+      list = list.filter((s) => {
+        const strat = s.strategyId
+          ? strategies.find((st) => st.id === s.strategyId)?.name ?? ''
+          : ''
+        return (
+          s.name.toLowerCase().includes(q) ||
+          s.symbol.toLowerCase().includes(q) ||
+          s.timeframe.toLowerCase().includes(q) ||
+          strat.toLowerCase().includes(q)
+        )
+      })
+    }
+    list.sort((a, b) =>
+      sort === 'newest' ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt
+    )
+    return list
+  }, [sessions, query, sort, strategies])
 
   useEffect(() => {
-    if (!selected) {
-      setSelectedId(null)
-      return
+    if (expandedId && !filtered.some((s) => s.id === expandedId)) {
+      setExpandedId(filtered[0]?.id ?? null)
+    } else if (!expandedId && filtered.length === 1) {
+      setExpandedId(filtered[0].id)
     }
-    if (selectedId !== selected.id) setSelectedId(selected.id)
-  }, [selected, selectedId])
+  }, [filtered, expandedId])
 
-  const [note, setNote] = useState('')
-  const [editingNote, setEditingNote] = useState(false)
-  const [datasetMeta, setDatasetMeta] = useState<ImportedDatasetMeta | null>(null)
-
-  useEffect(() => {
-    if (!selected) {
-      setNote('')
-      setEditingNote(false)
-      return
-    }
-    setNote(getSessionNote(selected.id))
-    setEditingNote(false)
-  }, [selected?.id])
-
-  useEffect(() => {
-    let cancelled = false
-    async function loadMeta(): Promise<void> {
-      if (!selected?.importId) {
-        if (!cancelled) setDatasetMeta(null)
-        return
-      }
-      const meta = await idbGet<ImportedDatasetMeta>('metas', selected.importId)
-      if (!cancelled) setDatasetMeta(meta)
-    }
-    void loadMeta()
-    return () => {
-      cancelled = true
-    }
-  }, [selected?.importId])
-
-  const analytics = useMemo(
-    () => computeSessionAnalytics(selected),
-    [selected]
-  )
-
-  const strategyName = selected?.strategyId
-    ? strategies.find((s) => s.id === selected.strategyId)?.name ?? null
-    : null
-
-  const remaining = daysRemaining(
-    selected?.replayTime,
-    datasetMeta?.lastTime ??
-      (selected?.timeframe
-        ? datasetMeta?.timeframes?.[selected.timeframe]?.lastTime
-        : undefined) ??
-      datasetMeta?.timeframes?.['1m']?.lastTime,
-    datasetMeta?.firstTime ??
-      (selected?.timeframe
-        ? datasetMeta?.timeframes?.[selected.timeframe]?.firstTime
-        : undefined) ??
-      datasetMeta?.timeframes?.['1m']?.firstTime
-  )
-
-  const rangeLabel = useMemo(() => {
-    if (!datasetMeta) return null
-    const tf = selected?.timeframe
-    const first =
-      (tf ? datasetMeta.timeframes?.[tf]?.firstTime : undefined) ??
-      datasetMeta.firstTime ??
-      datasetMeta.timeframes?.['1m']?.firstTime
-    const last =
-      (tf ? datasetMeta.timeframes?.[tf]?.lastTime : undefined) ??
-      datasetMeta.lastTime ??
-      datasetMeta.timeframes?.['1m']?.lastTime
-    if (first == null || last == null) return null
-    return `${formatShortDate(first)} – ${formatShortDate(last)}`
-  }, [datasetMeta, selected?.timeframe])
-
-  const quote = selected ? quoteCurrencyForSymbol(selected.symbol) : 'USD'
-
-  if (ordered.length === 0) {
+  if (sessions.length === 0) {
     return (
       <section className={softSpace.sectionGap}>
         <div className="flex items-center justify-between gap-3">
@@ -142,189 +109,366 @@ export default function SessionsTab({
 
   return (
     <section className={softSpace.sectionGap}>
-      {/* Picker + actions */}
       <div className="flex flex-wrap items-center gap-3">
+        <label className="relative min-w-[14rem] flex-1">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+            aria-hidden
+          />
+          <SoftInput
+            className="h-11 pl-10 text-body"
+            placeholder="Search sessions…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search sessions"
+          />
+        </label>
         <SoftSelect
-          aria-label="Select session"
-          className="h-11 min-w-[16rem] flex-1 text-body"
-          value={selected?.id ?? ''}
-          onChange={(e) => setSelectedId(e.target.value || null)}
+          className="h-11 min-w-[12rem] text-body"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortOrder)}
+          aria-label="Sort sessions"
         >
-          {ordered.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} · {s.symbol}
-            </option>
-          ))}
+          <option value="newest">Newest to oldest</option>
+          <option value="oldest">Oldest to newest</option>
         </SoftSelect>
         <SoftButton variant="primary" onClick={onNewSession}>
           <Plus className="h-5 w-5" aria-hidden />
           New session
         </SoftButton>
-        <SoftButton
-          variant="secondary"
-          onClick={() => setTestingTab('analytics')}
-        >
-          Analytics
-        </SoftButton>
-        {selected ? (
-          <SoftButton
-            variant="danger"
-            size="md"
-            aria-label={`Delete session ${selected.name}`}
-            onClick={() => {
-              if (
-                typeof window !== 'undefined' &&
-                !window.confirm(`Delete session “${selected.name}”? This cannot be undone.`)
-              ) {
-                return
-              }
-              clearSessionNote(selected.id)
-              deleteSession(selected.id)
-            }}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-            Delete session
-          </SoftButton>
-        ) : null}
       </div>
 
-      {selected ? (
-        <>
-          {/* Overview + Description */}
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-            <SoftCard elevated className={cn(softSpace.cardPad, 'flex flex-col gap-5')}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className={cn(softType.cardTitle, 'truncate text-zinc-50')}>
-                    {selected.name}
-                  </h2>
-                  <p className={cn('mt-1.5', softType.caption)}>
-                    {selected.symbol} · {selected.timeframe}
-                    {strategyName ? ` · ${strategyName}` : ''}
-                    {rangeLabel ? ` · ${rangeLabel}` : ''}
-                  </p>
-                </div>
-                {remaining != null ? (
-                  <span className="inline-flex items-center rounded-full bg-primary-500/15 px-3 py-1 text-caption font-medium text-primary-300">
-                    {remaining} day{remaining === 1 ? '' : 's'} remaining
-                  </span>
-                ) : null}
-              </div>
+      <p className={softType.caption}>
+        {filtered.length} of {sessions.length} session{sessions.length === 1 ? '' : 's'} · local
+        only
+      </p>
 
-              <div>
-                <p className={softType.caption}>Account balance</p>
-                <p className={cn('mt-2', softType.metric, 'text-zinc-50')}>
-                  {formatPnlCcy(analytics.balance, quote).replace(/^[+-]/, '')}
-                </p>
-              </div>
-
-              <SoftButton
-                variant="primary"
-                size="md"
-                className="self-start"
-                onClick={() => void loadSession(selected.id)}
-              >
-                <Play className="h-5 w-5 fill-current" aria-hidden />
-                Go to chart
-              </SoftButton>
-            </SoftCard>
-
-            <SoftCard elevated className={cn(softSpace.cardPad, 'flex min-h-[12rem] flex-col')}>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className={softType.cardTitle}>Description</h3>
-                <button
-                  type="button"
-                  className="rounded-xl p-2 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
-                  aria-label={editingNote ? 'Done editing description' : 'Edit description'}
-                  onClick={() => {
-                    if (editingNote) {
-                      setSessionNote(selected.id, note)
-                      setEditingNote(false)
-                    } else {
-                      setEditingNote(true)
-                    }
-                  }}
-                >
-                  <Pencil className="h-4 w-4" aria-hidden />
-                </button>
-              </div>
-              {editingNote ? (
-                <SoftTextarea
-                  className="min-h-[8rem] flex-1 text-body"
-                  value={note}
-                  placeholder="Notes for this session…"
-                  onChange={(e) => setNote(e.target.value)}
-                  onBlur={() => setSessionNote(selected.id, note)}
-                />
-              ) : (
-                <p
-                  className={cn(
-                    'flex-1 whitespace-pre-wrap',
-                    softType.body,
-                    note ? 'text-zinc-300' : 'text-zinc-600'
-                  )}
-                >
-                  {note || 'Add a short description for this session.'}
-                </p>
-              )}
-            </SoftCard>
-          </div>
-
-          {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            <ChartCard title="Equity">
-              <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
-            </ChartCard>
-            <ChartCard title="Monthly Performance">
-              <BarSparkline buckets={analytics.monthly} positiveClass="from-emerald-600 via-emerald-400 to-emerald-200" />
-            </ChartCard>
-            <ChartCard title="Daily Performance">
-              <BarSparkline
-                buckets={analytics.daily}
-                positiveClass="from-sky-600 via-sky-400 to-sky-200"
-                shortLabels
-              />
-            </ChartCard>
-          </div>
-
-          {/* Metric chips */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <MetricChip
-              label="Total PnL"
-              value={formatPnlCcy(analytics.totalPnl, quote)}
-              tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
-            />
-            <MetricChip
-              label="Win Rate"
-              value={
-                analytics.winRate == null
-                  ? '—'
-                  : `${Math.round(analytics.winRate * 1000) / 10}%`
+      {filtered.length === 0 ? (
+        <SoftEmpty>No sessions match “{query.trim()}”.</SoftEmpty>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((session) => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              expanded={expandedId === session.id}
+              onToggle={() =>
+                setExpandedId((id) => (id === session.id ? null : session.id))
               }
+              strategyName={
+                session.strategyId
+                  ? strategies.find((s) => s.id === session.strategyId)?.name ?? null
+                  : null
+              }
+              editingNotes={editingNotesId === session.id}
+              onToggleNotes={() =>
+                setEditingNotesId((id) => (id === session.id ? null : session.id))
+              }
+              renaming={renamingId === session.id}
+              renameDraft={renamingId === session.id ? renameDraft : session.name}
+              onStartRename={() => {
+                setRenamingId(session.id)
+                setRenameDraft(session.name)
+              }}
+              onRenameDraft={setRenameDraft}
+              onCommitRename={() => {
+                renameSession(session.id, renameDraft)
+                setRenamingId(null)
+              }}
+              onCancelRename={() => setRenamingId(null)}
+              onGoChart={() => void loadSession(session.id)}
+              onSummary={() => {
+                const trades = session.closedTrades ?? []
+                setPreviewSessionReport({
+                  symbol: session.symbol,
+                  timeframe: session.timeframe,
+                  trades,
+                  summary: summarizeSession(trades),
+                  closedOpenOnExit: false,
+                  startingBalance: session.startingBalance
+                })
+              }}
+              onAnalytics={() => setTestingTab('analytics')}
+              onDuplicate={() => {
+                const id = duplicateSession(session.id)
+                if (id) setExpandedId(id)
+              }}
+              onDelete={() => {
+                if (
+                  typeof window !== 'undefined' &&
+                  !window.confirm(`Delete session “${session.name}”? This cannot be undone.`)
+                ) {
+                  return
+                }
+                clearSessionNote(session.id)
+                deleteSession(session.id)
+              }}
             />
-            <MetricChip
-              label="Risk/Reward"
-              value={formatRiskRewardRatio(analytics.riskReward)}
-            />
-            <MetricChip
-              label="Month Gain/Loss"
-              value={formatPnl(analytics.monthPnl)}
-              tone={chipTone(analytics.monthPnl)}
-            />
-            <MetricChip
-              label="Week Gain/Loss"
-              value={formatPnl(analytics.weekPnl)}
-              tone={chipTone(analytics.weekPnl)}
-            />
-            <MetricChip
-              label="Daily Gain/Loss"
-              value={formatPnl(analytics.dayPnl)}
-              tone={chipTone(analytics.dayPnl)}
-            />
-          </div>
-        </>
-      ) : null}
+          ))}
+        </div>
+      )}
     </section>
+  )
+}
+
+function SessionCard({
+  session,
+  expanded,
+  onToggle,
+  strategyName,
+  editingNotes,
+  onToggleNotes,
+  renaming,
+  renameDraft,
+  onStartRename,
+  onRenameDraft,
+  onCommitRename,
+  onCancelRename,
+  onGoChart,
+  onSummary,
+  onAnalytics,
+  onDuplicate,
+  onDelete
+}: {
+  session: Session
+  expanded: boolean
+  onToggle: () => void
+  strategyName: string | null
+  editingNotes: boolean
+  onToggleNotes: () => void
+  renaming: boolean
+  renameDraft: string
+  onStartRename: () => void
+  onRenameDraft: (v: string) => void
+  onCommitRename: () => void
+  onCancelRename: () => void
+  onGoChart: () => void
+  onSummary: () => void
+  onAnalytics: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+}): ReactNode {
+  const [note, setNote] = useState(() => getSessionNote(session.id))
+  const [datasetMeta, setDatasetMeta] = useState<ImportedDatasetMeta | null>(null)
+
+  useEffect(() => {
+    setNote(getSessionNote(session.id))
+  }, [session.id])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadMeta(): Promise<void> {
+      if (!session.importId) {
+        if (!cancelled) setDatasetMeta(null)
+        return
+      }
+      const meta = await idbGet<ImportedDatasetMeta>('metas', session.importId)
+      if (!cancelled) setDatasetMeta(meta)
+    }
+    void loadMeta()
+    return () => {
+      cancelled = true
+    }
+  }, [session.importId])
+
+  const analytics = useMemo(() => computeSessionAnalytics(session), [session])
+  const quote = quoteCurrencyForSymbol(session.symbol)
+  const remaining = daysRemaining(
+    session.replayTime,
+    datasetMeta?.lastTime ??
+      (session.timeframe
+        ? datasetMeta?.timeframes?.[session.timeframe]?.lastTime
+        : undefined) ??
+      datasetMeta?.timeframes?.['1m']?.lastTime,
+    datasetMeta?.firstTime ??
+      (session.timeframe
+        ? datasetMeta?.timeframes?.[session.timeframe]?.firstTime
+        : undefined) ??
+      datasetMeta?.timeframes?.['1m']?.firstTime
+  )
+
+  const rangeLabel = useMemo(() => {
+    if (!datasetMeta) return null
+    const tf = session.timeframe
+    const first =
+      (tf ? datasetMeta.timeframes?.[tf]?.firstTime : undefined) ??
+      datasetMeta.firstTime ??
+      datasetMeta.timeframes?.['1m']?.firstTime
+    const last =
+      (tf ? datasetMeta.timeframes?.[tf]?.lastTime : undefined) ??
+      datasetMeta.lastTime ??
+      datasetMeta.timeframes?.['1m']?.lastTime
+    if (first == null || last == null) return null
+    return `${formatShortDate(first)} – ${formatShortDate(last)}`
+  }, [datasetMeta, session.timeframe])
+
+  return (
+    <SoftCard elevated className="overflow-hidden">
+      <div className={cn(softSpace.cardPadSm, 'flex flex-col gap-4')}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {renaming ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <SoftInput
+                  className="h-11 max-w-md flex-1 text-body"
+                  value={renameDraft}
+                  onChange={(e) => onRenameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onCommitRename()
+                    if (e.key === 'Escape') onCancelRename()
+                  }}
+                  aria-label="Session name"
+                  autoFocus
+                />
+                <SoftButton size="sm" variant="primary" onClick={onCommitRename}>
+                  Save
+                </SoftButton>
+                <SoftButton size="sm" variant="ghost" onClick={onCancelRename}>
+                  Cancel
+                </SoftButton>
+              </div>
+            ) : (
+              <h2 className={cn(softType.cardTitle, 'truncate text-zinc-50')}>{session.name}</h2>
+            )}
+            <p className={cn('mt-1.5', softType.caption)}>
+              {session.symbol} · {session.timeframe}
+              {strategyName ? ` · ${strategyName}` : ''}
+              {rangeLabel ? ` · ${rangeLabel}` : ''}
+              {remaining != null ? ` · ${remaining} day${remaining === 1 ? '' : 's'} remaining` : ''}
+            </p>
+            <p className={cn('mt-3', softType.caption)}>
+              Balance{' '}
+              <span className="text-body font-semibold tabular-nums text-zinc-100">
+                {formatPnlCcy(analytics.balance, quote).replace(/^[+-]/, '')}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <SoftButton
+              variant="primary"
+              size="sm"
+              aria-label={`Go to chart for ${session.name}`}
+              onClick={onGoChart}
+            >
+              <Play className="h-4 w-4 fill-current" aria-hidden />
+              Go to chart
+            </SoftButton>
+            <SoftButton size="sm" variant="secondary" onClick={onSummary} aria-label="Session summary">
+              <FileText className="h-4 w-4" aria-hidden />
+              Summary
+            </SoftButton>
+            <SoftButton size="sm" variant="secondary" onClick={onAnalytics} aria-label="Analytics">
+              <BarChart3 className="h-4 w-4" aria-hidden />
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              onClick={onStartRename}
+              aria-label="Rename session"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              onClick={onToggleNotes}
+              aria-label="Edit notes"
+            >
+              Notes
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              onClick={onDuplicate}
+              aria-label="Duplicate session"
+            >
+              <Copy className="h-4 w-4" aria-hidden />
+            </SoftButton>
+            <SoftButton size="sm" variant="danger" onClick={onDelete} aria-label="Delete session">
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="ghost"
+              onClick={onToggle}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse session' : 'Expand session'}
+            >
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" aria-hidden />
+              ) : (
+                <ChevronDown className="h-4 w-4" aria-hidden />
+              )}
+            </SoftButton>
+          </div>
+        </div>
+
+        {editingNotes ? (
+          <SoftTextarea
+            className="min-h-[6rem] text-body"
+            value={note}
+            placeholder="Notes for this session…"
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => setSessionNote(session.id, note)}
+          />
+        ) : null}
+
+        {expanded ? (
+          <div className="space-y-5 border-t border-white/[0.06] pt-5">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <MiniChartCard title="Equity">
+                <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
+              </MiniChartCard>
+              <MiniChartCard title="Monthly">
+                <BarSparkline
+                  buckets={analytics.monthly}
+                  positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
+                />
+              </MiniChartCard>
+              <MiniChartCard title="Daily">
+                <BarSparkline
+                  buckets={analytics.daily}
+                  positiveClass="from-sky-600 via-sky-400 to-sky-200"
+                  shortLabels
+                />
+              </MiniChartCard>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <MetricChip
+                label="Total PnL"
+                value={formatPnlCcy(analytics.totalPnl, quote)}
+                tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
+              />
+              <MetricChip
+                label="Win Rate"
+                value={
+                  analytics.winRate == null
+                    ? '—'
+                    : `${Math.round(analytics.winRate * 1000) / 10}%`
+                }
+              />
+              <MetricChip label="Risk/Reward" value={formatRiskRewardRatio(analytics.riskReward)} />
+              <MetricChip
+                label="Month"
+                value={formatPnl(analytics.monthPnl)}
+                tone={chipTone(analytics.monthPnl)}
+              />
+              <MetricChip
+                label="Week"
+                value={formatPnl(analytics.weekPnl)}
+                tone={chipTone(analytics.weekPnl)}
+              />
+              <MetricChip
+                label="Day"
+                value={formatPnl(analytics.dayPnl)}
+                tone={chipTone(analytics.dayPnl)}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </SoftCard>
   )
 }
 
@@ -334,12 +478,12 @@ function chipTone(n: number): 'up' | 'down' | 'neutral' {
   return 'neutral'
 }
 
-function ChartCard({ title, children }: { title: string; children: ReactNode }): ReactNode {
+function MiniChartCard({ title, children }: { title: string; children: ReactNode }): ReactNode {
   return (
-    <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[240px] flex-col')}>
-      <h3 className={cn(softType.cardTitle, 'mb-4')}>{title}</h3>
+    <div className="flex min-h-[200px] flex-col rounded-2xl border border-white/[0.05] bg-zinc-950/40 px-4 py-4">
+      <h3 className={cn(softType.caption, 'mb-3 text-zinc-400')}>{title}</h3>
       <div className="flex min-h-0 flex-1 flex-col justify-end">{children}</div>
-    </SoftCard>
+    </div>
   )
 }
 
@@ -353,14 +497,14 @@ function MetricChip({
   tone?: 'up' | 'down' | 'neutral'
 }): ReactNode {
   return (
-    <SoftCard elevated className={cn(softSpace.cardPadSm, 'min-w-0')}>
+    <div className="min-w-0 rounded-2xl border border-white/[0.05] bg-zinc-950/40 px-4 py-3">
       <div className={cn('flex items-center gap-1.5', softType.caption)}>
         {label}
         <Info className="h-3.5 w-3.5 opacity-50" aria-hidden />
       </div>
       <p
         className={cn(
-          'mt-3 truncate text-[1.375rem] font-semibold tabular-nums tracking-tight',
+          'mt-2 truncate text-[1.25rem] font-semibold tabular-nums tracking-tight',
           tone === 'up' && 'text-emerald-400',
           tone === 'down' && 'text-red-400',
           tone === 'neutral' && 'text-zinc-50'
@@ -368,7 +512,7 @@ function MetricChip({
       >
         {value}
       </p>
-    </SoftCard>
+    </div>
   )
 }
 
@@ -376,7 +520,7 @@ function EquitySparkline({ points }: { points: number[] }): ReactNode {
   if (points.length === 0) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Equity builds as you close trades in this session.
+        Equity builds as you close trades.
       </p>
     )
   }
@@ -384,7 +528,7 @@ function EquitySparkline({ points }: { points: number[] }): ReactNode {
   const max = Math.max(...points)
   const span = Math.max(1e-9, max - min)
   const w = 320
-  const h = 140
+  const h = 120
   const pad = 8
   const coords = points.map((v, i) => {
     const x = pad + (i / Math.max(1, points.length - 1)) * (w - pad * 2)
@@ -395,19 +539,6 @@ function EquitySparkline({ points }: { points: number[] }): ReactNode {
   const up = last >= (points[0] ?? 0)
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label="Equity curve">
-      {[0.25, 0.5, 0.75].map((t) => (
-        <line
-          key={t}
-          x1={pad}
-          x2={w - pad}
-          y1={pad + t * (h - pad * 2)}
-          y2={pad + t * (h - pad * 2)}
-          stroke="currentColor"
-          className="text-zinc-700"
-          strokeDasharray="4 6"
-          strokeWidth={1}
-        />
-      ))}
       <polyline
         fill="none"
         stroke={up ? '#34d399' : '#f87171'}
@@ -434,22 +565,22 @@ function BarSparkline({
   if (!hasData) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Bars fill from closed trades in this session.
+        Bars fill from closed trades.
       </p>
     )
   }
   return (
-    <div className="flex h-full min-h-[10rem] items-end gap-2 px-1 pb-1 pt-2">
+    <div className="flex h-full min-h-[8rem] items-end gap-1.5 px-0.5 pb-0.5 pt-1">
       {buckets.map((b) => {
         const height = Math.max(b.pnl === 0 ? 0 : 6, Math.round((Math.abs(b.pnl) / maxAbs) * 100))
         const label = shortLabels ? b.label.slice(0, 3) : b.label
         const up = b.pnl >= 0
         return (
-          <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <div className="flex h-36 w-full items-end justify-center">
+          <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div className="flex h-28 w-full items-end justify-center">
               <div
                 className={cn(
-                  'w-[70%] max-w-[2.75rem] rounded-t-lg bg-gradient-to-t shadow-[0_0_14px_rgba(0,0,0,0.25)]',
+                  'w-[70%] max-w-[2.5rem] rounded-t-lg bg-gradient-to-t',
                   up ? positiveClass : 'from-red-700 via-red-500 to-red-300'
                 )}
                 style={{ height: `${height}%` }}
@@ -463,4 +594,3 @@ function BarSparkline({
     </div>
   )
 }
-

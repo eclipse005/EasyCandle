@@ -95,4 +95,8 @@ Shipped on `main` / https://barreplay.pages.dev/:
 | Trades open/pending/closed + Type filter | **Have** (0.1.4) |
 | Sessions → Analytics jump | **Have** (0.1.4) |
 | Symbols Soft* spread/commission editors | **Have** (0.1.5) |
+| Sessions search/sort + expandable cards + duplicate/summary | **Have** (0.1.6) |
+| Trades Basic filters (side/outcome/type/asset/date) | **Have** (0.1.6) |
+| Analytics filters + Performance/Drawdown + expectancy/PF | **Have** (0.1.6) |
+| Theme toggle (Settings light/dark) | **Have** |
 | Live / Battles / Prop / Upgrade / cloud sync | **Skipped** (needs backend) |

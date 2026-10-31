@@ -24,10 +24,10 @@ export default function SettingsPanel(): ReactNode {
     <div className={`mx-auto w-full max-w-xl ${softSpace.stackGap}`}>
       <SoftCard className={softSpace.cardPad}>
         <h2 className={softType.section}>Appearance</h2>
-        <p className="mt-1 text-caption text-zinc-500">
+        <p className={`mt-2 ${softType.bodyMuted}`}>
           Soft dark canvas by default. Theme also applies inside chart sessions.
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-5 flex flex-wrap gap-3">
           <SoftButton
             variant={theme === 'dark' ? 'primary' : 'secondary'}
             onClick={() => setTheme('dark')}

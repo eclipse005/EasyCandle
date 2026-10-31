@@ -1,50 +1,184 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
+import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
-import { formatPnl } from '@/lib/paperTrade'
+import { formatPnl, type ClosedTrade } from '@/lib/paperTrade'
 import {
   averageRiskReward,
+  drawdownSeries,
+  expectancy,
   formatRiskRewardRatio,
   monthlyPnlBuckets,
+  profitFactor,
   weekdayPnlBuckets,
   type PeriodBucket
 } from '@/lib/sessionAnalytics'
 import { useSessionStore } from '@/store/sessionStore'
-import {
-  computeLocalPerformance,
-  formatWinRatePct
-} from '@/lib/localPerformance'
-import type { ClosedTrade } from '@/lib/paperTrade'
+import { useStrategiesStore } from '@/store/strategiesStore'
+import { useChartSettingsStore } from '@/store/chartSettingsStore'
+import { formatWinRatePct } from '@/lib/localPerformance'
+import { sideReport } from '@/lib/paperTrade'
 
-/** Local analytics from IndexedDB sessions — FXR free subset, no paywall. */
+type SideFilter = 'all' | 'long' | 'short'
+type OutcomeFilter = 'all' | 'win' | 'loss' | 'be'
+type EntryTypeFilter = 'all' | 'market' | 'limit' | 'stop-limit'
+type ViewMode = 'performance' | 'drawdown'
+type PnlChip = 'all' | 'day'
+
+type TradeWithMeta = ClosedTrade & {
+  sessionId: string
+  sessionName: string
+  symbol: string
+  strategyId?: string
+}
+
+function entryTypeOf(t: ClosedTrade): 'market' | 'limit' | 'stop-limit' {
+  if (t.pendingKind === 'limit') return 'limit'
+  if (t.pendingKind === 'stopLimit') return 'stop-limit'
+  return 'market'
+}
+
+function dayBounds(from: string, to: string): { fromSec: number | null; toSec: number | null } {
+  let fromSec: number | null = null
+  let toSec: number | null = null
+  if (from) {
+    const d = new Date(`${from}T00:00:00`)
+    if (!Number.isNaN(d.getTime())) fromSec = Math.floor(d.getTime() / 1000)
+  }
+  if (to) {
+    const d = new Date(`${to}T23:59:59.999`)
+    if (!Number.isNaN(d.getTime())) toSec = Math.floor(d.getTime() / 1000)
+  }
+  return { fromSec, toSec }
+}
+
+/** Local analytics from IndexedDB — FXR free subset with filters + drawdown. */
 export default function AnalyticsTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
-  const stats = useMemo(() => computeLocalPerformance(sessions), [sessions])
+  const strategies = useStrategiesStore((s) => s.strategies)
+  const timezone = useChartSettingsStore((s) => s.timezone)
+
+  const [sideFilter, setSideFilter] = useState<SideFilter>('all')
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all')
+  const [entryTypeFilter, setEntryTypeFilter] = useState<EntryTypeFilter>('all')
+  const [assetFilter, setAssetFilter] = useState('all')
+  const [sessionFilter, setSessionFilter] = useState('all')
+  const [strategyFilter, setStrategyFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [view, setView] = useState<ViewMode>('performance')
+  const [pnlChip, setPnlChip] = useState<PnlChip>('all')
 
   const allTrades = useMemo(() => {
-    const rows: ClosedTrade[] = []
+    const rows: TradeWithMeta[] = []
     for (const session of sessions) {
-      for (const t of session.closedTrades ?? []) rows.push(t)
+      for (const t of session.closedTrades ?? []) {
+        rows.push({
+          ...t,
+          sessionId: session.id,
+          sessionName: session.name,
+          symbol: session.symbol,
+          strategyId: session.strategyId
+        })
+      }
     }
     return rows
   }, [sessions])
 
-  const rr = useMemo(() => averageRiskReward(allTrades), [allTrades])
-  const monthly = useMemo(() => monthlyPnlBuckets(allTrades, 6), [allTrades])
-  const daily = useMemo(() => weekdayPnlBuckets(allTrades), [allTrades])
+  const assetOptions = useMemo(
+    () => [...new Set(sessions.map((s) => s.symbol))].sort(),
+    [sessions]
+  )
+  const sessionOptions = useMemo(
+    () =>
+      [...sessions]
+        .map((s) => [s.id, s.name] as const)
+        .sort((a, b) => a[1].localeCompare(b[1])),
+    [sessions]
+  )
+
+  const filtered = useMemo(() => {
+    const { fromSec, toSec } = dayBounds(dateFrom, dateTo)
+    const startOfDay = (() => {
+      const d = new Date()
+      d.setHours(0, 0, 0, 0)
+      return Math.floor(d.getTime() / 1000)
+    })()
+    return allTrades.filter((t) => {
+      if (sideFilter !== 'all' && t.side !== sideFilter) return false
+      if (outcomeFilter === 'win' && !(t.pnl > 0)) return false
+      if (outcomeFilter === 'loss' && !(t.pnl < 0)) return false
+      if (outcomeFilter === 'be' && t.pnl !== 0) return false
+      if (entryTypeFilter !== 'all' && entryTypeOf(t) !== entryTypeFilter) return false
+      if (assetFilter !== 'all' && t.symbol !== assetFilter) return false
+      if (sessionFilter !== 'all' && t.sessionId !== sessionFilter) return false
+      if (strategyFilter === 'none' && t.strategyId) return false
+      if (
+        strategyFilter !== 'all' &&
+        strategyFilter !== 'none' &&
+        t.strategyId !== strategyFilter
+      ) {
+        return false
+      }
+      if (fromSec != null && t.exitTime < fromSec) return false
+      if (toSec != null && t.exitTime > toSec) return false
+      if (pnlChip === 'day' && t.exitTime < startOfDay) return false
+      return true
+    })
+  }, [
+    allTrades,
+    sideFilter,
+    outcomeFilter,
+    entryTypeFilter,
+    assetFilter,
+    sessionFilter,
+    strategyFilter,
+    dateFrom,
+    dateTo,
+    pnlChip
+  ])
+
+  const report = useMemo(() => sideReport(filtered), [filtered])
+  const rr = useMemo(() => averageRiskReward(filtered), [filtered])
+  const exp = useMemo(() => expectancy(filtered), [filtered])
+  const pf = useMemo(() => profitFactor(filtered), [filtered])
+  const monthly = useMemo(() => monthlyPnlBuckets(filtered, 6), [filtered])
+  const daily = useMemo(() => weekdayPnlBuckets(filtered), [filtered])
+
+  const startingBalance = useMemo(() => {
+    if (sessionFilter !== 'all') {
+      const s = sessions.find((x) => x.id === sessionFilter)
+      if (s && Number.isFinite(s.startingBalance) && s.startingBalance > 0) {
+        return s.startingBalance
+      }
+    }
+    let sum = 0
+    let n = 0
+    for (const s of sessions) {
+      if (Number.isFinite(s.startingBalance) && s.startingBalance > 0) {
+        sum += s.startingBalance
+        n += 1
+      }
+    }
+    return n > 0 ? sum / n : 100000
+  }, [sessions, sessionFilter])
+
+  const dd = useMemo(
+    () => drawdownSeries(startingBalance, filtered),
+    [startingBalance, filtered]
+  )
 
   const bySymbol = useMemo(() => {
     const map = new Map<string, { trades: number; wins: number; pnl: number }>()
-    for (const session of sessions) {
-      const cur = map.get(session.symbol) ?? { trades: 0, wins: 0, pnl: 0 }
-      for (const t of session.closedTrades ?? []) {
-        cur.trades += 1
-        if (t.pnl > 0) cur.wins += 1
-        cur.pnl += t.pnl
-      }
-      map.set(session.symbol, cur)
+    for (const t of filtered) {
+      const cur = map.get(t.symbol) ?? { trades: 0, wins: 0, pnl: 0 }
+      cur.trades += 1
+      if (t.pnl > 0) cur.wins += 1
+      cur.pnl += t.pnl
+      map.set(t.symbol, cur)
     }
     return [...map.entries()]
       .map(([symbol, v]) => ({
@@ -53,21 +187,33 @@ export default function AnalyticsTab(): ReactNode {
         winRate: v.trades ? v.wins / v.trades : null
       }))
       .sort((a, b) => b.trades - a.trades)
-  }, [sessions])
+  }, [filtered])
 
   const bySide = useMemo(() => {
     let buy = { n: 0, wins: 0, pnl: 0 }
     let sell = { n: 0, wins: 0, pnl: 0 }
-    for (const t of allTrades) {
+    for (const t of filtered) {
       const bucket = t.side === 'long' ? buy : sell
       bucket.n += 1
       if (t.pnl > 0) bucket.wins += 1
       bucket.pnl += t.pnl
     }
     return { buy, sell }
-  }, [allTrades])
+  }, [filtered])
 
-  if (stats.tradesTaken === 0) {
+  function clearFilters(): void {
+    setSideFilter('all')
+    setOutcomeFilter('all')
+    setEntryTypeFilter('all')
+    setAssetFilter('all')
+    setSessionFilter('all')
+    setStrategyFilter('all')
+    setDateFrom('')
+    setDateTo('')
+    setPnlChip('all')
+  }
+
+  if (allTrades.length === 0) {
     return (
       <SoftEmpty>
         Analytics appear once you have closed trades in local sessions. No cloud lock —
@@ -80,96 +226,301 @@ export default function AnalyticsTab(): ReactNode {
 
   return (
     <div className={softSpace.sectionGap}>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Win rate"
-          value={formatWinRatePct(stats.winRate)}
-          hint={`${stats.wins}W / ${stats.losses}L · ${stats.tradesTaken} trades`}
-        />
-        <StatCard
-          label="Realized PnL"
-          value={formatPnl(stats.totalPnl)}
-          hint="Across all sessions (quote mix)"
-          tone={stats.totalPnl >= 0 ? 'up' : 'down'}
-        />
-        <StatCard
-          label="Risk / Reward"
-          value={formatRiskRewardRatio(rr)}
-          hint="Avg win ÷ |avg loss|"
-        />
-        <StatCard
-          label="Sessions"
-          value={String(stats.sessionCount)}
-          hint="Stored locally"
-        />
-      </div>
+      {/* Filter bar */}
+      <SoftCard className={cn(softSpace.cardPadSm, 'space-y-4')}>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="min-w-[8rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Type</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={entryTypeFilter}
+              onChange={(e) => setEntryTypeFilter(e.target.value as EntryTypeFilter)}
+            >
+              <option value="all">All</option>
+              <option value="market">Market</option>
+              <option value="limit">Limit</option>
+              <option value="stop-limit">Stop-limit</option>
+            </SoftSelect>
+          </label>
+          <label className="min-w-[8rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Assets</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={assetFilter}
+              onChange={(e) => setAssetFilter(e.target.value)}
+            >
+              <option value="all">All</option>
+              {assetOptions.map((sym) => (
+                <option key={sym} value={sym}>
+                  {sym}
+                </option>
+              ))}
+            </SoftSelect>
+          </label>
+          <label className="min-w-[8rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Side</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={sideFilter}
+              onChange={(e) => setSideFilter(e.target.value as SideFilter)}
+            >
+              <option value="all">All</option>
+              <option value="long">Buy</option>
+              <option value="short">Sell</option>
+            </SoftSelect>
+          </label>
+          <label className="min-w-[8rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Outcome</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={outcomeFilter}
+              onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)}
+            >
+              <option value="all">All</option>
+              <option value="win">Wins</option>
+              <option value="loss">Losses</option>
+              <option value="be">Break-even</option>
+            </SoftSelect>
+          </label>
+          <label className="min-w-[10rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Session</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={sessionFilter}
+              onChange={(e) => setSessionFilter(e.target.value)}
+            >
+              <option value="all">All sessions</option>
+              {sessionOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </SoftSelect>
+          </label>
+          <label className="min-w-[10rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Strategy</span>
+            <SoftSelect
+              className="h-11 text-body"
+              value={strategyFilter}
+              onChange={(e) => setStrategyFilter(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="none">No strategy</option>
+              {strategies.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </SoftSelect>
+          </label>
+          <label className="min-w-[9rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>From</span>
+            <SoftInput
+              type="date"
+              className="h-11 text-body"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </label>
+          <label className="min-w-[9rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>To</span>
+            <SoftInput
+              type="date"
+              className="h-11 text-body"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </label>
+          <div className="min-w-[8rem]">
+            <span className={cn('mb-1.5 block', softType.caption)}>Timezone</span>
+            <p className={cn('flex h-11 items-center', softType.bodyMuted)} title="Chart timezone">
+              {timezone}
+            </p>
+          </div>
+          <SoftButton size="sm" variant="ghost" onClick={clearFilters}>
+            Clear filters
+          </SoftButton>
+        </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
-          <h2 className={softType.section}>Monthly performance</h2>
-          <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by calendar month.</p>
-          <BarRow buckets={monthly} positiveClass="from-emerald-600 via-emerald-400 to-emerald-200" />
-        </SoftCard>
-        <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
-          <h2 className={softType.section}>Daily performance</h2>
-          <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by weekday.</p>
-          <BarRow
-            buckets={daily}
-            positiveClass="from-sky-600 via-sky-400 to-sky-200"
-            shortLabels
-          />
-        </SoftCard>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={softType.caption}>P&amp;L</span>
+          {(
+            [
+              ['all', 'All'],
+              ['day', 'Day']
+            ] as const
+          ).map(([id, label]) => (
+            <SoftButton
+              key={id}
+              size="sm"
+              variant={pnlChip === id ? 'primary' : 'secondary'}
+              onClick={() => setPnlChip(id)}
+              aria-pressed={pnlChip === id}
+            >
+              {label}
+            </SoftButton>
+          ))}
+          <span className="mx-2 h-5 w-px bg-white/10" aria-hidden />
+          <span className={softType.caption}>View</span>
+          {(
+            [
+              ['performance', 'Performance'],
+              ['drawdown', 'Drawdown']
+            ] as const
+          ).map(([id, label]) => (
+            <SoftButton
+              key={id}
+              size="sm"
+              variant={view === id ? 'primary' : 'secondary'}
+              onClick={() => setView(id)}
+              aria-pressed={view === id}
+            >
+              {label}
+            </SoftButton>
+          ))}
+          <span className={cn('ml-auto', softType.caption)}>
+            {filtered.length} of {allTrades.length} closed trades
+          </span>
+        </div>
+      </SoftCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SoftCard className={softSpace.cardPad}>
-          <h2 className={softType.section}>By side</h2>
-          <ul className="mt-4 space-y-4">
-            {(
-              [
-                ['Buy', bySide.buy],
-                ['Sell', bySide.sell]
-              ] as const
-            ).map(([label, row]) => (
-              <li key={label} className="flex items-baseline justify-between gap-3">
-                <span className={softType.cardTitle}>{label}</span>
-                <span className={softType.caption}>
-                  {row.n} trades · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
-                  <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    {formatPnl(row.pnl)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </SoftCard>
+      {filtered.length === 0 ? (
+        <SoftEmpty>
+          No trades match these filters. Clear filters or take more paper trades.
+        </SoftEmpty>
+      ) : view === 'performance' ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <StatCard
+              label="Win rate"
+              value={formatWinRatePct(report.winRate)}
+              hint={`${report.wins}W / ${report.losses}L · ${report.count} trades`}
+            />
+            <StatCard
+              label="Realized PnL"
+              value={formatPnl(report.totalPnl)}
+              hint="Filtered closes"
+              tone={report.totalPnl >= 0 ? 'up' : 'down'}
+            />
+            <StatCard label="Risk / Reward" value={formatRiskRewardRatio(rr)} hint="Avg win ÷ |avg loss|" />
+            <StatCard
+              label="Expectancy"
+              value={exp == null ? '—' : formatPnl(exp)}
+              hint="Avg PnL per trade"
+              tone={exp == null ? 'neutral' : exp >= 0 ? 'up' : 'down'}
+            />
+            <StatCard
+              label="Profit factor"
+              value={pf == null ? '—' : pf.toFixed(2)}
+              hint="Gross wins ÷ |gross losses|"
+            />
+          </div>
 
-        <SoftCard className={softSpace.cardPad}>
-          <h2 className={softType.section}>Trades by symbol</h2>
-          <p className={cn('mt-1', softType.caption)}>Win rate and realized PnL from local closes.</p>
-          <ul className="mt-4 space-y-3">
-            {bySymbol.map((row) => (
-              <li key={row.symbol}>
-                <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <span className={cn(softType.cardTitle, 'text-zinc-200')}>{row.symbol}</span>
-                  <span className={softType.caption}>
-                    {row.trades} trades · {formatWinRatePct(row.winRate)} ·{' '}
-                    <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                      {formatPnl(row.pnl)}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
+              <h2 className={softType.section}>Monthly performance</h2>
+              <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by calendar month.</p>
+              <BarRow buckets={monthly} positiveClass="from-emerald-600 via-emerald-400 to-emerald-200" />
+            </SoftCard>
+            <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
+              <h2 className={softType.section}>Daily performance</h2>
+              <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by weekday.</p>
+              <BarRow
+                buckets={daily}
+                positiveClass="from-sky-600 via-sky-400 to-sky-200"
+                shortLabels
+              />
+            </SoftCard>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SoftCard className={softSpace.cardPad}>
+              <h2 className={softType.section}>By side</h2>
+              <ul className="mt-4 space-y-4">
+                {(
+                  [
+                    ['Buy', bySide.buy],
+                    ['Sell', bySide.sell]
+                  ] as const
+                ).map(([label, row]) => (
+                  <li key={label} className="flex items-baseline justify-between gap-3">
+                    <span className={softType.cardTitle}>{label}</span>
+                    <span className={softType.caption}>
+                      {row.n} trades · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
+                      <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {formatPnl(row.pnl)}
+                      </span>
                     </span>
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                  <div
-                    className={`h-full rounded-full ${row.pnl >= 0 ? 'bg-emerald-400/80' : 'bg-red-400/80'}`}
-                    style={{ width: `${Math.max(6, (Math.abs(row.pnl) / maxAbsPnl) * 100)}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </SoftCard>
-      </div>
+                  </li>
+                ))}
+              </ul>
+            </SoftCard>
+
+            <SoftCard className={softSpace.cardPad}>
+              <h2 className={softType.section}>Trades by symbol</h2>
+              <p className={cn('mt-1', softType.caption)}>Win rate and realized PnL from filtered closes.</p>
+              <ul className="mt-4 space-y-3">
+                {bySymbol.map((row) => (
+                  <li key={row.symbol}>
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
+                      <span className={cn(softType.cardTitle, 'text-zinc-200')}>{row.symbol}</span>
+                      <span className={softType.caption}>
+                        {row.trades} trades · {formatWinRatePct(row.winRate)} ·{' '}
+                        <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                          {formatPnl(row.pnl)}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className={`h-full rounded-full ${row.pnl >= 0 ? 'bg-emerald-400/80' : 'bg-red-400/80'}`}
+                        style={{ width: `${Math.max(6, (Math.abs(row.pnl) / maxAbsPnl) * 100)}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SoftCard>
+          </div>
+        </>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[320px] flex-col')}>
+            <h2 className={softType.section}>Equity &amp; drawdown</h2>
+            <p className={cn('mt-1 mb-4', softType.caption)}>
+              Underwater from peak after each filtered close (start{' '}
+              {formatPnl(startingBalance).replace(/^[+-]/, '')}).
+            </p>
+            <DrawdownChart points={dd.points} />
+          </SoftCard>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <StatCard
+              label="Max drawdown"
+              value={formatPnl(dd.maxDrawdown)}
+              hint="Peak-to-trough on filtered equity"
+              tone={dd.maxDrawdown > 0 ? 'down' : 'neutral'}
+            />
+            <StatCard
+              label="Max drawdown %"
+              value={
+                dd.maxDrawdownPct == null
+                  ? '—'
+                  : `${(dd.maxDrawdownPct * 100).toFixed(2)}%`
+              }
+              hint="Vs peak equity"
+              tone={dd.maxDrawdownPct && dd.maxDrawdownPct > 0 ? 'down' : 'neutral'}
+            />
+            <StatCard
+              label="Ending equity"
+              value={formatPnl(dd.points[dd.points.length - 1]?.equity ?? startingBalance).replace(
+                /^[+-]/,
+                ''
+              )}
+              hint={`${dd.points.length - 1} closes applied`}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -245,5 +596,59 @@ function BarRow({
         )
       })}
     </div>
+  )
+}
+
+function DrawdownChart({
+  points
+}: {
+  points: { index: number; equity: number; drawdown: number }[]
+}): ReactNode {
+  if (points.length < 2) {
+    return (
+      <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
+        Drawdown appears after closed trades.
+      </p>
+    )
+  }
+  const w = 480
+  const h = 220
+  const pad = 12
+  const maxEq = Math.max(...points.map((p) => p.equity))
+  const minEq = Math.min(...points.map((p) => p.equity))
+  const span = Math.max(1e-9, maxEq - minEq)
+  const maxDd = Math.max(1e-9, ...points.map((p) => p.drawdown))
+  const eqLine = points
+    .map((p, i) => {
+      const x = pad + (i / Math.max(1, points.length - 1)) * (w - pad * 2)
+      const y = pad + (1 - (p.equity - minEq) / span) * (h - pad * 2) * 0.55
+      return `${x},${y}`
+    })
+    .join(' ')
+  const ddLine = points
+    .map((p, i) => {
+      const x = pad + (i / Math.max(1, points.length - 1)) * (w - pad * 2)
+      const y = h - pad - (p.drawdown / maxDd) * (h - pad * 2) * 0.4
+      return `${x},${y}`
+    })
+    .join(' ')
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label="Equity and drawdown">
+      <polyline
+        fill="none"
+        stroke="#34d399"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        points={eqLine}
+      />
+      <polyline
+        fill="none"
+        stroke="#f87171"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeDasharray="4 4"
+        points={ddLine}
+      />
+    </svg>
   )
 }

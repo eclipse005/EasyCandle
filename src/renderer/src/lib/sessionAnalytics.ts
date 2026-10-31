@@ -180,3 +180,59 @@ export function formatShortDate(unixSec: number | null | undefined): string {
   const d = new Date(unixSec * 1000)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
+
+/** Average PnL per closed trade (expectancy). */
+export function expectancy(trades: ClosedTrade[]): number | null {
+  const list = Array.isArray(trades) ? trades.filter((t) => Number.isFinite(t.pnl)) : []
+  if (list.length === 0) return null
+  let sum = 0
+  for (const t of list) sum += t.pnl
+  return sum / list.length
+}
+
+/** Gross wins ÷ |gross losses|; null when no losses. */
+export function profitFactor(trades: ClosedTrade[]): number | null {
+  const list = Array.isArray(trades) ? trades : []
+  let wins = 0
+  let losses = 0
+  for (const t of list) {
+    if (!Number.isFinite(t.pnl)) continue
+    if (t.pnl > 0) wins += t.pnl
+    else if (t.pnl < 0) losses += t.pnl
+  }
+  if (!(losses < 0)) return null
+  const absLoss = Math.abs(losses)
+  if (!(absLoss > 0)) return null
+  return wins / absLoss
+}
+
+export type DrawdownPoint = { index: number; equity: number; drawdown: number }
+
+/** Equity + underwater drawdown from starting balance + closed trades (exit order). */
+export function drawdownSeries(
+  startingBalance: number,
+  trades: ClosedTrade[]
+): { points: DrawdownPoint[]; maxDrawdown: number; maxDrawdownPct: number | null } {
+  const start =
+    Number.isFinite(startingBalance) && startingBalance > 0 ? startingBalance : 100000
+  const ordered = [...(Array.isArray(trades) ? trades : [])].sort(
+    (a, b) => a.exitTime - b.exitTime || a.entryTime - b.entryTime
+  )
+  const points: DrawdownPoint[] = [{ index: 0, equity: start, drawdown: 0 }]
+  let equity = start
+  let peak = start
+  let maxDd = 0
+  ordered.forEach((t, i) => {
+    if (!Number.isFinite(t.pnl)) return
+    equity += t.pnl
+    if (equity > peak) peak = equity
+    const dd = peak - equity
+    if (dd > maxDd) maxDd = dd
+    points.push({ index: i + 1, equity, drawdown: dd })
+  })
+  return {
+    points,
+    maxDrawdown: maxDd,
+    maxDrawdownPct: peak > 0 ? maxDd / peak : null
+  }
+}

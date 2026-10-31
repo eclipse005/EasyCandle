@@ -5,8 +5,11 @@ import {
   averageRiskReward,
   computeSessionAnalytics,
   daysRemaining,
+  drawdownSeries,
+  expectancy,
   formatRiskRewardRatio,
   monthlyPnlBuckets,
+  profitFactor,
   weekdayPnlBuckets
 } from './sessionAnalytics'
 
@@ -92,5 +95,29 @@ describe('sessionAnalytics', () => {
     expect(daysRemaining(null, 200, 100)).toBe(0) // 100 sec span → 0 days
     expect(daysRemaining(null, 100 + 2.5 * 86400, 100)).toBe(2)
     expect(averageRiskReward([])).toBeNull()
+  })
+})
+
+
+describe('analytics metrics', () => {
+  it('computes expectancy and profit factor', () => {
+    const trades = [
+      trade({ id: '1', side: 'long', pnl: 100 }),
+      trade({ id: '2', side: 'long', pnl: -50 }),
+      trade({ id: '3', side: 'long', pnl: 0 })
+    ]
+    expect(expectancy(trades)).toBeCloseTo(50 / 3)
+    expect(profitFactor(trades)).toBeCloseTo(2)
+  })
+
+  it('tracks max drawdown', () => {
+    const trades = [
+      trade({ id: '1', side: 'long', pnl: 100, exitTime: 10 }),
+      trade({ id: '2', side: 'long', pnl: -40, exitTime: 20 }),
+      trade({ id: '3', side: 'long', pnl: -30, exitTime: 30 })
+    ]
+    const dd = drawdownSeries(1000, trades)
+    expect(dd.maxDrawdown).toBeCloseTo(70)
+    expect(dd.points[dd.points.length - 1].equity).toBeCloseTo(1030)
   })
 })
