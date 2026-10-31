@@ -51,11 +51,8 @@ const en = {
   'settings.storageClearBacktestBody':
     'Deletes sessions, trades, strategies, and notes. Market data and settings stay. This cannot be undone.',
   'settings.storageClearAllTitle': 'Clear all local data?',
-  'settings.storageClearAllBodyKeep':
-    'Wipes market data, sessions, trades, and local prefs. Language, theme, and account timezone are kept. This cannot be undone.',
-  'settings.storageClearAllBodyReset':
+  'settings.storageClearAllBody':
     'Wipes market data, sessions, trades, prefs, language, theme, and account timezone. This cannot be undone.',
-  'settings.storageAlsoResetSettings': 'Also reset language, theme, and account timezone',
   'settings.storageConfirmClear': 'Clear',
 
   'dashboard.backtestingSession': 'Backtesting session',
@@ -435,11 +432,8 @@ const zh: Record<MessageKey, string> = {
   'settings.storageClearBacktestBody':
     '将删除会话、成交、策略与备注。行情数据与设置会保留。此操作不可撤销。',
   'settings.storageClearAllTitle': '清除全部本地数据？',
-  'settings.storageClearAllBodyKeep':
-    '将清除行情、会话、成交与本地偏好。语言、主题与账户时区默认保留。此操作不可撤销。',
-  'settings.storageClearAllBodyReset':
+  'settings.storageClearAllBody':
     '将清除行情、会话、成交、偏好，以及语言、主题与账户时区。此操作不可撤销。',
-  'settings.storageAlsoResetSettings': '同时重置语言、主题与账户时区',
   'settings.storageConfirmClear': '清除',
 
   'dashboard.backtestingSession': '回测会话',

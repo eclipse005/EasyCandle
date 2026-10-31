@@ -35,7 +35,6 @@ export default function SettingsPanel(): ReactNode {
   const [usageBusy, setUsageBusy] = useState(false)
   const [clearKind, setClearKind] = useState<ClearKind>(null)
   const [clearBusy, setClearBusy] = useState(false)
-  const [alsoResetSettings, setAlsoResetSettings] = useState(false)
 
   const refreshUsage = useCallback(async () => {
     setUsageBusy(true)
@@ -66,9 +65,8 @@ export default function SettingsPanel(): ReactNode {
     try {
       if (clearKind === 'market') await clearMarketDataOnly()
       else if (clearKind === 'backtest') await clearBacktestRecordsOnly()
-      else await clearAllLocalAppData({ resetSettings: alsoResetSettings })
+      else await clearAllLocalAppData()
       setClearKind(null)
-      setAlsoResetSettings(false)
       await refreshUsage()
     } finally {
       setClearBusy(false)
@@ -90,9 +88,7 @@ export default function SettingsPanel(): ReactNode {
       : clearKind === 'backtest'
         ? t('settings.storageClearBacktestBody')
         : clearKind === 'all'
-          ? alsoResetSettings
-            ? t('settings.storageClearAllBodyReset')
-            : t('settings.storageClearAllBodyKeep')
+          ? t('settings.storageClearAllBody')
           : undefined
 
   return (
@@ -210,7 +206,6 @@ export default function SettingsPanel(): ReactNode {
               variant="secondary"
               disabled={clearBusy}
               onClick={() => {
-                setAlsoResetSettings(false)
                 setClearKind('market')
               }}
             >
@@ -221,7 +216,6 @@ export default function SettingsPanel(): ReactNode {
               variant="secondary"
               disabled={clearBusy}
               onClick={() => {
-                setAlsoResetSettings(false)
                 setClearKind('backtest')
               }}
             >
@@ -232,7 +226,6 @@ export default function SettingsPanel(): ReactNode {
               variant="danger"
               disabled={clearBusy}
               onClick={() => {
-                setAlsoResetSettings(false)
                 setClearKind('all')
               }}
             >
@@ -245,33 +238,12 @@ export default function SettingsPanel(): ReactNode {
       <SoftConfirmDialog
         open={clearKind != null}
         title={confirmTitle}
-        description={
-          clearKind === 'all' ? (
-            <span className="flex flex-col gap-3">
-              <span>{confirmBody}</span>
-              <label className="flex cursor-pointer items-start gap-2 text-caption text-zinc-400">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 rounded border-zinc-600 bg-zinc-900"
-                  checked={alsoResetSettings}
-                  disabled={clearBusy}
-                  onChange={(e) => setAlsoResetSettings(e.target.checked)}
-                />
-                <span>{t('settings.storageAlsoResetSettings')}</span>
-              </label>
-            </span>
-          ) : (
-            confirmBody
-          )
-        }
+        description={confirmBody}
         confirmLabel={t('settings.storageConfirmClear')}
         cancelLabel={t('common.cancel')}
         busy={clearBusy}
         onCancel={() => {
-          if (!clearBusy) {
-            setClearKind(null)
-            setAlsoResetSettings(false)
-          }
+          if (!clearBusy) setClearKind(null)
         }}
         onConfirm={() => {
           void runClear()

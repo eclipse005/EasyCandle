@@ -207,23 +207,9 @@ export async function clearBacktestRecordsOnly(): Promise<void> {
 }
 
 /**
- * Wipe local app data. By default preserves Language / Appearance / Account TZ.
- * Pass resetSettings=true to also clear those three.
+ * Wipe all local app data including Language / Appearance / Account TZ.
  */
-export async function clearAllLocalAppData(opts?: { resetSettings?: boolean }): Promise<void> {
-  const resetSettings = opts?.resetSettings === true
-  const preserved: Record<string, string> = {}
-  if (!resetSettings) {
-    try {
-      for (const key of PRESERVED_SETTINGS_KEYS) {
-        const v = localStorage.getItem(key)
-        if (v != null) preserved[key] = v
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
+export async function clearAllLocalAppData(): Promise<void> {
   await clearMarketDataOnly()
   await clearBacktestRecordsOnly()
 
@@ -235,19 +221,9 @@ export async function clearAllLocalAppData(opts?: { resetSettings?: boolean }): 
     }
   }
 
-  if (resetSettings) {
-    for (const key of PRESERVED_SETTINGS_KEYS) {
-      try {
-        localStorage.removeItem(key)
-      } catch {
-        /* ignore */
-      }
-    }
-  } else {
+  for (const key of PRESERVED_SETTINGS_KEYS) {
     try {
-      for (const [key, value] of Object.entries(preserved)) {
-        localStorage.setItem(key, value)
-      }
+      localStorage.removeItem(key)
     } catch {
       /* ignore */
     }

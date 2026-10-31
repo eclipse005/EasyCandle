@@ -257,7 +257,7 @@ export default function SymbolsTab(): ReactNode {
               <SoftCard
                 key={key}
                 elevated
-                className="flex min-w-0 flex-nowrap items-center overflow-hidden px-3 py-1.5"
+                className="flex min-w-0 flex-nowrap items-center gap-3 overflow-hidden px-3 py-1.5"
               >
                 <div className="flex shrink-0 items-center gap-2">
                   <span
@@ -273,9 +273,8 @@ export default function SymbolsTab(): ReactNode {
                     {metaText}
                   </span>
                 </div>
-                <div className="min-w-0 flex-1" aria-hidden />
-                <div className="flex shrink-0 items-center gap-3">
-                  <label className="flex shrink-0 items-center justify-start gap-1.5">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <label className="flex min-w-0 flex-[1.35] items-center justify-start gap-1.5">
                     <span className={cn('shrink-0', softType.micro)}>{t('symbols.contract')}</span>
                     <SoftInput
                       type="number"
@@ -294,12 +293,12 @@ export default function SymbolsTab(): ReactNode {
                         setContractSize(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-[7.5rem] shrink-0 text-caption tabular-nums',
+                        'h-8 min-w-[6.75rem] w-full text-caption tabular-nums',
                         userSize != null ? filledField : emptyField
                       )}
                     />
                   </label>
-                  <label className="flex shrink-0 items-center justify-start gap-1.5">
+                  <label className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
                     <span className={cn('shrink-0', softType.micro)}>{t('symbols.spread')}</span>
                     <SoftInput
                       type="number"
@@ -318,12 +317,12 @@ export default function SymbolsTab(): ReactNode {
                         setSpread(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-[4.5rem] shrink-0 text-caption tabular-nums',
+                        'h-8 min-w-[4.5rem] w-full text-caption tabular-nums',
                         spec.spread != null ? filledField : emptyField
                       )}
                     />
                   </label>
-                  <label className="flex shrink-0 items-center justify-start gap-1.5">
+                  <label className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
                     <span className={cn('shrink-0', softType.micro)}>{t('symbols.comm')}</span>
                     <SoftInput
                       type="number"
@@ -342,21 +341,21 @@ export default function SymbolsTab(): ReactNode {
                         setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-[4.5rem] shrink-0 text-caption tabular-nums',
+                        'h-8 min-w-[4.5rem] w-full text-caption tabular-nums',
                         spec.commissionPerLot != null ? filledField : emptyField
                       )}
                     />
                   </label>
-                  <span
-                    className={cn(
-                      'w-[9.5rem] shrink-0 truncate text-right tabular-nums',
-                      softType.micro
-                    )}
-                    title={`${lotLabel} (base units, not ${quote})`}
-                  >
-                    {lotLabel}
-                  </span>
                 </div>
+                <span
+                  className={cn(
+                    'w-[9.5rem] shrink-0 truncate text-right tabular-nums',
+                    softType.micro
+                  )}
+                  title={`${lotLabel} (base units, not ${quote})`}
+                >
+                  {lotLabel}
+                </span>
               </SoftCard>
             )
           })}
