@@ -263,7 +263,7 @@ export default function SymbolsTab(): ReactNode {
                   elevated
                   className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_max-content_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
                 >
-                  {/* Fixed ticker + meta nowrap; Contract input fixed width (no fr) so 100000 fits; Spread/Comm stay compact. */}
+                  {/* Fixed ticker + meta nowrap; Contract 8ch + hidden steppers so 100000 fits; Spread/Comm stay compact. */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
@@ -298,8 +298,8 @@ export default function SymbolsTab(): ReactNode {
                         setContractSize(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        // Fixed width: 7ch (~6 digits headroom) + SoftInput px-2.5*2; !min-w beats FIELD_BASE min-w-0.
-                        'h-8 w-[calc(7ch+1.25rem)] !min-w-[calc(7ch+1.25rem)] shrink-0 text-caption tabular-nums',
+                        // 8ch + SoftInput px-2.5*2; steppers hidden via SoftInput number styles.
+                        'h-8 w-[calc(8ch+1.25rem)] !min-w-[calc(8ch+1.25rem)] shrink-0 text-caption tabular-nums',
                         userSize != null ? filledField : emptyField
                       )}
                     />

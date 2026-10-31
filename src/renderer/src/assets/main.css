@@ -398,3 +398,16 @@ select option {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* SoftInput type=number: hide steppers (trading UIs); frees width for 6-digit values. */
+input.soft-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input.soft-input[type='number']::-webkit-inner-spin-button,
+input.soft-input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  display: none;
+}

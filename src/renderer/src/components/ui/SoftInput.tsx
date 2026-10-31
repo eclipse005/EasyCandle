@@ -18,11 +18,22 @@ type SoftInputProps = InputHTMLAttributes<HTMLInputElement>
 type SoftSelectProps = SelectHTMLAttributes<HTMLSelectElement>
 type SoftTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>
 
+/** Hide number steppers — they steal ~15–20px and clip 6-digit contract sizes. */
+const NUMBER_NO_SPINNER =
+  'soft-input [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0'
+
 export const SoftInput = forwardRef<HTMLInputElement, SoftInputProps>(function SoftInput(
-  { className, ...rest },
+  { className, type, ...rest },
   ref
 ) {
-  return <input ref={ref} className={cn(fieldClass(className), className)} {...rest} />
+  return (
+    <input
+      ref={ref}
+      type={type}
+      className={cn(fieldClass(className), type === 'number' && NUMBER_NO_SPINNER, className)}
+      {...rest}
+    />
+  )
 })
 
 export function SoftSelect({ className, ...rest }: SoftSelectProps) {
