@@ -55,9 +55,11 @@ export function clientParseResult(
   parseToken?: string
 ): ImportParseResult {
   if (!result.ok) return result
+  const firstCandle = result.firstCandle ?? result.candles[0]
   return {
     ...result,
     candles: [],
+    ...(firstCandle ? { firstCandle } : {}),
     parseToken,
     candleCount: result.candleCount,
     firstTime: result.firstTime,

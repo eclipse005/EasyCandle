@@ -34,6 +34,7 @@ import {
   DEFAULT_RISK_REWARD,
   evaluatePendingFill,
   evaluateStopTakeProfit,
+  fillPriceWithSpread,
   historicOrderFromMarketFill,
   historicOrderFromPending,
   isPendingTicketType,
@@ -62,6 +63,7 @@ import {
   type PendingOrderKind,
   type TicketOrderType,
   type TicketDraftLevels,
+  type TradeCosts,
   type TradeRewindResult
 } from '@/lib/paperTrade'
 
@@ -212,6 +214,8 @@ export type SessionReport = {
   trades: ClosedTrade[]
   summary: SessionSummary
   closedOpenOnExit: boolean
+  /** Session starting balance used for the equity curve (quote currency). */
+  startingBalance?: number
 }
 
 let drawingSeq = 0
@@ -575,6 +579,8 @@ type ReplayStore = {
   setPricePick: (kind: PricePickKind | null) => void
   applyPricePick: (price: number) => void
   dismissSessionReport: () => void
+  /** Attach or clear a light journal note on a closed trade. */
+  setClosedTradeNote: (tradeId: string, note: string | null) => void
   setSymbol: (symbol: string) => void
   setTimeframe: (timeframe: string) => void
   setChartSplit: (split: boolean) => void
@@ -919,6 +925,22 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     return pnlScaleForSymbol(get().symbol, lots ?? get().tradeSize, override)
   }
 
+  function currentTradeCosts(): TradeCosts {
+    const params = useSymbolParamsStore.getState().paramsFor(get().symbol)
+    const costs: TradeCosts = {}
+    if (params.spread != null && Number.isFinite(params.spread) && params.spread >= 0) {
+      costs.spread = params.spread
+    }
+    if (
+      params.commissionPerLot != null &&
+      Number.isFinite(params.commissionPerLot) &&
+      params.commissionPerLot >= 0
+    ) {
+      costs.commissionPerLot = params.commissionPerLot
+    }
+    return costs
+  }
+
   function pausePlayback(): void {
     if (get().mode !== 'replay') return
     engine.pause()
@@ -943,15 +965,18 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (candle) {
         trades = [
           ...trades,
-          ...positions.map((open) =>
-            closePosition(
+          ...positions.map((open) => {
+            const costs = currentTradeCosts()
+            const exitFill = fillPriceWithSpread(open.side, candle.close, costs, 'exit')
+            return closePosition(
               open,
-              candle.close,
+              exitFill,
               candle.time,
               'session_exit',
-              currentPnlScale(open.lots)
+              currentPnlScale(open.lots),
+              costs
             )
-          )
+          })
         ]
         closedOpenOnExit = true
       }
@@ -1023,7 +1048,14 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         continue
       }
       closedTrades.push(
-        closePosition(open, hit.price, candle.time, hit.hit, currentPnlScale(open.lots))
+        closePosition(
+          open,
+          hit.price,
+          candle.time,
+          hit.hit,
+          currentPnlScale(open.lots),
+          currentTradeCosts()
+        )
       )
       if (selectedWorkingId === open.id) selectedWorkingId = null
       hitKind = hit.hit
@@ -1773,9 +1805,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     const candle = priceFollowCandle()
     if (!candle) return
 
+    const costs = currentTradeCosts()
+    const fillPrice = fillPriceWithSpread(side, candle.close, costs, 'entry')
     const result = openPosition(
       side,
-      candle.close,
+      fillPrice,
       candle.time,
       nextTradeId(),
       clampTradeSizeForSymbol(get().tradeSize, get().symbol)
@@ -1814,7 +1848,16 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     const candle = priceFollowCandle()
     if (!candle) return
 
-    const closed = closePosition(open, candle.close, candle.time, 'manual', currentPnlScale(open.lots))
+    const costs = currentTradeCosts()
+    const exitFill = fillPriceWithSpread(open.side, candle.close, costs, 'exit')
+    const closed = closePosition(
+      open,
+      exitFill,
+      candle.time,
+      'manual',
+      currentPnlScale(open.lots),
+      costs
+    )
 
     set((s) => ({
       positions: s.positions.filter((p) => p.id !== open.id),
@@ -2905,6 +2948,24 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     dismissSessionReport() {
       set({ sessionReport: null })
+    },
+
+    setClosedTradeNote(tradeId, note) {
+      if (!tradeId) return
+      const cleaned = note == null ? '' : String(note).trim().slice(0, 500)
+      set((s) => ({
+        closedTrades: s.closedTrades.map((trade) =>
+          trade.id === tradeId
+            ? cleaned
+              ? { ...trade, note: cleaned }
+              : (() => {
+                  const next = { ...trade }
+                  delete next.note
+                  return next
+                })()
+            : trade
+        )
+      }))
     },
 
     setSymbol(symbol) {

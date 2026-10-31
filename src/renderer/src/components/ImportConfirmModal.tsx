@@ -16,6 +16,8 @@ export type ImportConfirmDetails = {
   symbol: string | null
   symbolFromFilename: boolean
   candles: Candle[]
+  /** Survives parseToken stripping when `candles` is empty. */
+  firstCandle?: Candle
   candleCount: number
   firstTime: number
   lastTime: number
@@ -76,6 +78,7 @@ export default function ImportConfirmModal({
   const firstTime = details.firstTime || details.candles[0]?.time
   const lastTime = details.lastTime || details.candles[details.candles.length - 1]?.time
   const candleCount = details.candleCount || details.candles.length
+  const previewCandle = details.firstCandle ?? details.candles[0]
   const needSymbol = !details.symbolFromFilename
   const spanDays = firstTime && lastTime ? ((lastTime - firstTime) / 86400).toFixed(1) : '—'
   const isReplace = Boolean(details.replaceId && details.noNewer)
@@ -244,7 +247,26 @@ export default function ImportConfirmModal({
               </span>
               <p className="mt-0.5 tabular-nums text-zinc-200">{spanDays} days</p>
             </div>
+
+            {previewCandle ? (
+              <div className="col-span-2">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                  First bar preview
+                </span>
+                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
+                  {formatUtcCandleTime(previewCandle.time)} · O {previewCandle.open} H{' '}
+                  {previewCandle.high} L {previewCandle.low} C {previewCandle.close}
+                </p>
+              </div>
+            ) : null}
           </div>
+
+          {needSymbol && resolvedSymbol.length > 0 && resolvedSymbol.length < 6 ? (
+            <p className="text-[11px] leading-relaxed text-amber-400/90">
+              Symbol looks short — FX pairs are usually 6 letters (e.g. EURUSD). Confirm before
+              loading if this is intentional.
+            </p>
+          ) : null}
 
           {isUpdate && (
             <p className="text-[11px] leading-relaxed text-sky-300/90">

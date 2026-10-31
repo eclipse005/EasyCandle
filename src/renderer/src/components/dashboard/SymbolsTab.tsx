@@ -8,11 +8,13 @@ import { quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 
-/** Per-symbol parameter editor: contract size and precision overrides. */
+/** Per-symbol parameter editor: contract size, spread, commission, precision. */
 export default function SymbolsTab(): ReactNode {
   const imports = useReplayStore((s) => s.importedList)
   const params = useSymbolParamsStore((s) => s.params)
   const setContractSize = useSymbolParamsStore((s) => s.setContractSize)
+  const setSpread = useSymbolParamsStore((s) => s.setSpread)
+  const setCommissionPerLot = useSymbolParamsStore((s) => s.setCommissionPerLot)
 
   // One row per symbol, derived from the imported datasets (deduped).
   const rows = useMemo(() => {
@@ -31,8 +33,8 @@ export default function SymbolsTab(): ReactNode {
     <section>
       <h2 className="mb-1 text-sm font-semibold text-zinc-100">Symbol parameters</h2>
       <p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
-        Contract size is units per 1.0 lot and is broker-specific — the default is inferred from
-        the symbol name, but your explicit value always wins (P/L, balances, risk sizing).
+        Contract size is units per 1.0 lot. Spread (full bid–ask in price) and round-turn commission
+        per lot apply to paper fills. Explicit values always win over name-derived defaults.
       </p>
 
       {rows.length === 0 ? (
@@ -54,7 +56,7 @@ export default function SymbolsTab(): ReactNode {
                 key={key}
                 className="flex flex-wrap items-center gap-3 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2.5"
               >
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-40">
                   <div className="text-xs font-semibold text-zinc-100">{row.symbol}</div>
                   <div className="mt-0.5 text-[11px] text-zinc-500">
                     {row.datasetCount} dataset{row.datasetCount === 1 ? '' : 's'} ·{' '}
@@ -63,7 +65,7 @@ export default function SymbolsTab(): ReactNode {
                   </div>
                 </div>
                 <label className="flex shrink-0 items-center gap-2 text-[11px] text-zinc-500">
-                  Contract size
+                  Contract
                   <input
                     type="number"
                     min="0"
@@ -75,12 +77,50 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setContractSize(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-28 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
+                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
                       userSize != null ? 'border-amber-500/40' : 'border-zinc-700'
                     }`}
                   />
                 </label>
-                <span className="w-24 shrink-0 text-right text-[11px] tabular-nums text-zinc-500">
+                <label className="flex shrink-0 items-center gap-2 text-[11px] text-zinc-500">
+                  Spread
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    aria-label={`Spread for ${row.symbol}`}
+                    title="Full bid–ask width in price units"
+                    value={spec.spread ?? ''}
+                    onChange={(event) => {
+                      const text = event.target.value.trim()
+                      setSpread(row.symbol, text === '' ? null : Number(text))
+                    }}
+                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
+                      spec.spread != null ? 'border-amber-500/40' : 'border-zinc-700'
+                    }`}
+                  />
+                </label>
+                <label className="flex shrink-0 items-center gap-2 text-[11px] text-zinc-500">
+                  Comm/lot
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    aria-label={`Commission per lot for ${row.symbol}`}
+                    title={`Round-turn commission in ${quote} per 1.0 lot`}
+                    value={spec.commissionPerLot ?? ''}
+                    onChange={(event) => {
+                      const text = event.target.value.trim()
+                      setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
+                    }}
+                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
+                      spec.commissionPerLot != null ? 'border-amber-500/40' : 'border-zinc-700'
+                    }`}
+                  />
+                </label>
+                <span className="w-28 shrink-0 text-right text-[11px] tabular-nums text-zinc-500">
                   1 lot = {formatContractSize(effective)} {quote}
                 </span>
               </div>
