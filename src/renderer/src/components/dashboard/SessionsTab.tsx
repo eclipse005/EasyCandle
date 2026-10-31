@@ -24,7 +24,6 @@ import {
   computeSessionAnalytics,
   daysRemaining,
   formatRiskRewardRatio,
-  type PeriodBucket
 } from '@/lib/sessionAnalytics'
 import { formatAccountShortDate } from '@/lib/displayTime'
 import { clearSessionNote, getSessionNote, setSessionNote } from '@/lib/sessionNotes'
@@ -36,6 +35,7 @@ import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
+import PeriodBarChart from '@/components/dashboard/PeriodBarChart'
 
 type SortOrder = 'newest' | 'oldest'
 
@@ -502,16 +502,25 @@ function SessionCard({
                   <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
                 </MiniChartCard>
                 <MiniChartCard title={t('sessions.monthly')}>
-                  <BarSparkline
+                  <PeriodBarChart
                     buckets={analytics.monthly}
+                    mode="month"
+                    emptyKey="charts.barsEmptySession"
                     positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
+                    trackClassName="h-28"
+                    barMaxClassName="max-w-[2.5rem]"
+                    gapClassName="gap-1.5"
                   />
                 </MiniChartCard>
                 <MiniChartCard title={t('sessions.daily')}>
-                  <BarSparkline
+                  <PeriodBarChart
                     buckets={analytics.daily}
+                    mode="weekday"
+                    emptyKey="charts.barsEmptySession"
                     positiveClass="from-sky-600 via-sky-400 to-sky-200"
-                    shortLabels
+                    trackClassName="h-28"
+                    barMaxClassName="max-w-[2.5rem]"
+                    gapClassName="gap-1.5"
                   />
                 </MiniChartCard>
               </div>
@@ -635,46 +644,3 @@ function EquitySparkline({ points }: { points: number[] }): ReactNode {
   )
 }
 
-function BarSparkline({
-  buckets,
-  positiveClass,
-  shortLabels = false
-}: {
-  buckets: PeriodBucket[]
-  positiveClass: string
-  shortLabels?: boolean
-}): ReactNode {
-  const maxAbs = Math.max(1, ...buckets.map((b) => Math.abs(b.pnl)))
-  const hasData = buckets.some((b) => b.pnl !== 0 || (b.tradeCount ?? 0) > 0)
-  if (!hasData) {
-    return (
-      <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Bars fill from closed trades.
-      </p>
-    )
-  }
-  return (
-    <div className="flex h-full min-h-[8rem] items-end gap-1.5 px-0.5 pb-0.5 pt-1">
-      {buckets.map((b) => {
-        const height = Math.max(b.pnl === 0 ? 0 : 6, Math.round((Math.abs(b.pnl) / maxAbs) * 100))
-        const label = shortLabels ? b.label.slice(0, 3) : b.label
-        const up = b.pnl >= 0
-        return (
-          <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-            <div className="flex h-28 w-full items-end justify-center">
-              <div
-                className={cn(
-                  'w-[70%] max-w-[2.5rem] rounded-t-lg bg-gradient-to-t',
-                  up ? positiveClass : 'from-red-700 via-red-500 to-red-300'
-                )}
-                style={{ height: `${height}%` }}
-                title={`${b.label}: ${formatPnl(b.pnl)}`}
-              />
-            </div>
-            <span className={cn('truncate', softType.micro)}>{label}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}

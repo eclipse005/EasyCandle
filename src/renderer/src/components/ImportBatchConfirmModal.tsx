@@ -1,3 +1,4 @@
+import { useT } from '@/i18n/useT'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Trash2, X } from 'lucide-react'
 import type { Candle } from '@shared/candleUtils'
@@ -101,6 +102,7 @@ export default function ImportBatchConfirmModal({
   onCancel,
   onItemsChange
 }: ImportBatchConfirmModalProps): ReactNode {
+  const { t } = useT()
   const [rows, setRows] = useState<ImportBatchItem[]>([])
   const [drafts, setDrafts] = useState<Record<string, SymbolDraft>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -231,11 +233,11 @@ export default function ImportBatchConfirmModal({
 
   function submit(): void {
     if (!okRows.length) {
-      setFormError('No valid files to import.')
+      setFormError(t('importConfirm.noValid'))
       return
     }
     if (!isCsvDataTimezone(dataTimezone)) {
-      setFormError('Choose the CSV data timezone before saving. We never guess it.')
+      setFormError(t('importConfirm.needTz'))
       return
     }
 
@@ -245,11 +247,11 @@ export default function ImportBatchConfirmModal({
     for (const row of okRows) {
       const symbol = resolvedById.get(row.id) ?? ''
       if (!symbol) {
-        setFormError(`Symbol is required for ${row.fileName}.`)
+        setFormError(t('importConfirm.symbolRequiredErr', { name: row.fileName }))
         return
       }
       if (symbol.length < 3) {
-        setFormError(`Enter a valid symbol for ${row.fileName} (e.g. XAUUSD).`)
+        setFormError(t('importConfirm.symbolInvalid', { name: row.fileName }))
         return
       }
 
@@ -260,7 +262,7 @@ export default function ImportBatchConfirmModal({
         if (text !== '') {
           contractSize = Number(text)
           if (!Number.isFinite(contractSize) || contractSize <= 0) {
-            setFormError(`Contract size for ${symbol} must be a positive number.`)
+            setFormError(t('importConfirm.contractPositive', { symbol }))
             return
           }
         }
@@ -320,7 +322,7 @@ export default function ImportBatchConfirmModal({
           <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
             <div>
               <h2 id="import-confirm-title" className="text-sm font-semibold text-zinc-100">
-                Confirm import
+                {t('importConfirm.title')}
               </h2>
               <p className="mt-0.5 truncate text-[11px] text-zinc-500" title={details.fileName}>
                 {details.fileName}
@@ -328,7 +330,7 @@ export default function ImportBatchConfirmModal({
             </div>
             <button
               type="button"
-              aria-label="Cancel import"
+              aria-label={t('importConfirm.cancelAria')}
               disabled={busy}
               onClick={onCancel}
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
@@ -341,7 +343,7 @@ export default function ImportBatchConfirmModal({
             <div className="grid grid-cols-2 gap-3 text-[12px]">
               <label className="block">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Symbol{needSymbol ? ' *' : ''}
+                  {needSymbol ? t('importConfirm.symbolRequired') : t('importConfirm.symbol')}
                 </span>
                 {needSymbol ? (
                   <input
@@ -349,8 +351,8 @@ export default function ImportBatchConfirmModal({
                     value={draft.symbolText}
                     disabled={busy}
                     autoFocus
-                    placeholder="e.g. XAUUSD"
-                    aria-label="Symbol"
+                    placeholder={t('importConfirm.symbolPlaceholder')}
+                    aria-label={t('importConfirm.symbol')}
                     onChange={(event) =>
                       setDraft(details.id, { symbolText: event.target.value.toUpperCase() })
                     }
@@ -363,7 +365,7 @@ export default function ImportBatchConfirmModal({
 
               <div>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Source TF
+                  {t('importConfirm.sourceTf')}
                 </span>
                 <span className="mt-1 block font-medium text-zinc-100">
                   {IMPORT_SOURCE_TIMEFRAME}
@@ -372,7 +374,7 @@ export default function ImportBatchConfirmModal({
 
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Contract size
+                  {t('importConfirm.contractSize')}
                 </span>
                 {contractInfo ? (
                   <div className="mt-1 flex items-center gap-2">
@@ -383,16 +385,17 @@ export default function ImportBatchConfirmModal({
                       value={draft.contractSizeText}
                       disabled={busy}
                       placeholder={defaultContractSize != null ? String(defaultContractSize) : ''}
-                      aria-label="Contract size"
+                      aria-label={t('importConfirm.contractSize')}
                       onChange={(event) =>
                         setDraft(details.id, { contractSizeText: event.target.value })
                       }
                       className="h-8 w-[7.5rem] min-w-[7.5rem] rounded-xl border border-zinc-800 bg-zinc-900 px-2.5 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                     />
                     <span className="text-[11px] text-zinc-500">
-                      units per lot · default{' '}
-                      {defaultContractSize != null ? formatContractSize(defaultContractSize) : '—'}{' '}
-                      ({contractInfo?.label ?? 'unknown'})
+                      {t('importConfirm.unitsPerLot', {
+                        size: defaultContractSize != null ? formatContractSize(defaultContractSize) : '—',
+                        label: contractInfo?.label ?? t('importConfirm.unknown')
+                      })}
                     </span>
                   </div>
                 ) : (
@@ -402,7 +405,7 @@ export default function ImportBatchConfirmModal({
 
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Built timeframes
+                  {t('importConfirm.builtTf')}
                 </span>
                 <p className="mt-0.5 text-zinc-200">5m · 15m · 1h · 4h · 1d</p>
               </div>
@@ -410,12 +413,12 @@ export default function ImportBatchConfirmModal({
 
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  CSV data timezone <span className="text-amber-400/90">required</span>
+                  {t('importConfirm.csvTz')} <span className="text-amber-400/90">{t('importConfirm.required')}</span>
                 </span>
                 <select
                   value={dataTimezone}
                   disabled={busy}
-                  aria-label="CSV data timezone"
+                  aria-label={t('importConfirm.csvTzAria')}
                   aria-required="true"
                   onChange={(event) => {
                     setDataTimezone(event.target.value)
@@ -423,7 +426,7 @@ export default function ImportBatchConfirmModal({
                   }}
                   className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                 >
-                  <option value="">Select timezone of timestamps in this CSV…</option>
+                  <option value="">{t('importConfirm.selectTz')}</option>
                   {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {opt.label}
@@ -433,14 +436,14 @@ export default function ImportBatchConfirmModal({
                 <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
                   {dataTimezone
                     ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
-                      'Timestamps remapped to UTC on save using this zone.'
-                    : 'Do not skip — broker/server time is often not UTC. We never assume it.'}
+                      t('importConfirm.tzRemapHint')
+                    : t('importConfirm.tzRequiredHint')}
                 </p>
               </div>
 
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Start (CSV wall)
+                  {t('importConfirm.startWall')}
                 </span>
                 <p className="mt-0.5 tabular-nums text-zinc-200">
                   {formatCsvWallClock(firstTime)}
@@ -453,7 +456,7 @@ export default function ImportBatchConfirmModal({
               </div>
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  End (CSV wall)
+                  {t('importConfirm.endWall')}
                 </span>
                 <p className="mt-0.5 tabular-nums text-zinc-200">
                   {formatCsvWallClock(lastTime)}
@@ -466,21 +469,21 @@ export default function ImportBatchConfirmModal({
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  1m candles
+                  {t('importConfirm.candles1m')}
                 </span>
                 <p className="mt-0.5 tabular-nums text-zinc-200">{candleCount.toLocaleString()}</p>
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Span (≥{MIN_IMPORT_DAYS}d)
+                  {t('importConfirm.span', { days: MIN_IMPORT_DAYS })}
                 </span>
-                <p className="mt-0.5 tabular-nums text-zinc-200">{span.toFixed(1)} days</p>
+                <p className="mt-0.5 tabular-nums text-zinc-200">{t('importConfirm.spanDays', { days: span.toFixed(1) })}</p>
               </div>
 
               {previewCandle ? (
                 <div className="col-span-2">
                   <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                    First bar preview
+                    {t('importConfirm.firstBar')}
                   </span>
                   <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
                     {formatCsvWallClock(previewCandle.time)} · O {previewCandle.open} H{' '}
@@ -492,8 +495,7 @@ export default function ImportBatchConfirmModal({
 
             {needSymbol && resolvedSymbol.length > 0 && resolvedSymbol.length < 6 ? (
               <p className="text-[11px] leading-relaxed text-amber-400/90">
-                Symbol looks short — FX pairs are usually 6 letters (e.g. EURUSD). Confirm before
-                loading if this is intentional.
+                {t('importConfirm.symbolShort')}
               </p>
             ) : null}
 
@@ -515,7 +517,7 @@ export default function ImportBatchConfirmModal({
               onClick={onCancel}
               className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
             >
-              Cancel
+              {t('importConfirm.cancel')}
             </button>
             <button
               type="button"
@@ -523,7 +525,7 @@ export default function ImportBatchConfirmModal({
               onClick={submit}
               className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
             >
-              {busy ? 'Saving…' : 'Confirm & load'}
+              {busy ? t('importConfirm.saving') : t('importConfirm.confirmLoad')}
             </button>
           </div>
         </div>
@@ -550,16 +552,21 @@ export default function ImportBatchConfirmModal({
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
             <h2 id="import-batch-title" className="text-sm font-semibold text-zinc-100">
-              Confirm import
+              {t('importConfirm.title')}
             </h2>
             <p className="mt-0.5 text-[11px] text-zinc-500">
-              {rows.length} file{rows.length === 1 ? '' : 's'}
-              {lockedSymbol ? ` · locked to ${normalizeSymbol(lockedSymbol)}` : ''}
+              {t('importConfirm.filesCount', {
+                count: rows.length,
+                suffix: rows.length === 1 ? '' : 's'
+              })}
+              {lockedSymbol
+                ? t('importConfirm.lockedTo', { symbol: normalizeSymbol(lockedSymbol) })
+                : ''}
             </p>
           </div>
           <button
             type="button"
-            aria-label="Cancel import"
+            aria-label={t('importConfirm.cancelAria')}
             disabled={busy}
             onClick={onCancel}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
@@ -571,18 +578,16 @@ export default function ImportBatchConfirmModal({
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
           <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-white/[0.06] bg-zinc-900/40 px-3 py-2 text-[11px] text-zinc-400">
             <span>
-              <span className="tabular-nums text-zinc-200">{summary.fileCount}</span> files
+              {t('importConfirm.summaryFiles', { count: summary.fileCount })}
             </span>
             <span>
-              <span className="tabular-nums text-zinc-200">{summary.symbolCount}</span> symbols
+              {t('importConfirm.summarySymbols', { count: summary.symbolCount })}
             </span>
             <span>
-              <span className="tabular-nums text-zinc-200">{summary.coverageDays}</span> coverage
-              days
+              {t('importConfirm.summaryCoverage', { count: summary.coverageDays })}
             </span>
             <span>
-              will write{' '}
-              <span className="tabular-nums text-zinc-200">{summary.datasetCount}</span> datasets
+              {t('importConfirm.summaryDatasets', { count: summary.datasetCount })}
             </span>
           </div>
 
@@ -591,12 +596,12 @@ export default function ImportBatchConfirmModal({
               <table className="w-full border-collapse text-left text-[11px]">
                 <thead className="sticky top-0 bg-zinc-950/95 text-[10px] uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
-                    <th className="px-3 py-2 font-medium">File</th>
-                    <th className="px-2 py-2 font-medium">Symbol</th>
-                    <th className="px-2 py-2 font-medium">Range</th>
-                    <th className="px-2 py-2 font-medium">Days</th>
-                    <th className="px-2 py-2 font-medium">Candles</th>
-                    <th className="px-2 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium">{t('importConfirm.colFile')}</th>
+                    <th className="px-2 py-2 font-medium">{t('importConfirm.colSymbol')}</th>
+                    <th className="px-2 py-2 font-medium">{t('importConfirm.colRange')}</th>
+                    <th className="px-2 py-2 font-medium">{t('importConfirm.colDays')}</th>
+                    <th className="px-2 py-2 font-medium">{t('importConfirm.colCandles')}</th>
+                    <th className="px-2 py-2 font-medium">{t('importConfirm.colStatus')}</th>
                     <th className="px-2 py-2 font-medium" />
                   </tr>
                 </thead>
@@ -630,8 +635,8 @@ export default function ImportBatchConfirmModal({
                               type="text"
                               value={draft.symbolText}
                               disabled={busy}
-                              placeholder="Symbol"
-                              aria-label={`Symbol for ${row.fileName}`}
+                              placeholder={t('importConfirm.symbol')}
+                              aria-label={t('importConfirm.symbolAria', { name: row.fileName })}
                               onChange={(event) =>
                                 setDraft(row.id, {
                                   symbolText: event.target.value.toUpperCase()
@@ -674,7 +679,7 @@ export default function ImportBatchConfirmModal({
                           <SoftButton
                             size="sm"
                             variant="ghost"
-                            aria-label={`Remove ${row.fileName}`}
+                            aria-label={t('importConfirm.removeAria', { name: row.fileName })}
                             disabled={busy}
                             onClick={() => removeRow(row.id)}
                             className="!h-7 !w-7 !px-0 hover:text-red-300"
@@ -692,7 +697,7 @@ export default function ImportBatchConfirmModal({
 
           <div className="space-y-3">
             <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-              Contract size by symbol
+              {t('importConfirm.contractSize')}
             </p>
             {Array.from(symbolGroups.entries()).map(([key, group]) => {
               const symbol =
@@ -731,22 +736,24 @@ export default function ImportBatchConfirmModal({
                         placeholder={
                           defaultContractSize != null ? String(defaultContractSize) : ''
                         }
-                        aria-label={`Contract size for ${symbol}`}
+                        aria-label={t('importConfirm.contractAria', { symbol })}
                         onChange={(event) =>
                           setDraft(draftKey, { contractSizeText: event.target.value })
                         }
                         className="h-7 w-[7.5rem] min-w-[7.5rem] rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                       />
                       <span className="text-[11px] text-zinc-500">
-                        default{' '}
-                        {defaultContractSize != null
-                          ? formatContractSize(defaultContractSize)
-                          : '—'}{' '}
-                        ({contractInfo.label})
+                        {t('importConfirm.defaultSize', {
+                          size:
+                            defaultContractSize != null
+                              ? formatContractSize(defaultContractSize)
+                              : '—',
+                          label: contractInfo.label
+                        })}
                       </span>
                     </>
                   ) : (
-                    <span className="text-[11px] text-zinc-500">no contract default</span>
+                    <span className="text-[11px] text-zinc-500">{t('importConfirm.noContractDefault')}</span>
                   )}
                 </div>
               )
@@ -757,12 +764,12 @@ export default function ImportBatchConfirmModal({
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
             <label className="block">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                CSV data timezone <span className="text-amber-400/90">required</span>
+                {t('importConfirm.csvTz')} <span className="text-amber-400/90">{t('importConfirm.required')}</span>
               </span>
               <select
                 value={dataTimezone}
                 disabled={busy}
-                aria-label="CSV data timezone"
+                aria-label={t('importConfirm.csvTzAria')}
                 aria-required="true"
                 onChange={(event) => {
                   setDataTimezone(event.target.value)
@@ -770,7 +777,7 @@ export default function ImportBatchConfirmModal({
                 }}
                 className="mt-1.5 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
               >
-                <option value="">Select timezone of timestamps in these CSVs…</option>
+                <option value="">{t('importConfirm.selectTzBatch')}</option>
                 {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
                     {opt.label}
@@ -779,7 +786,7 @@ export default function ImportBatchConfirmModal({
               </select>
             </label>
             <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
-              Applies to every file in this batch. We never guess broker/server time.
+              {t('importConfirm.batchTzHint')}
             </p>
           </div>
 
@@ -796,7 +803,7 @@ export default function ImportBatchConfirmModal({
             onClick={onCancel}
             className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
-            Cancel
+            {t('importConfirm.cancel')}
           </button>
           <button
             type="button"
@@ -805,8 +812,10 @@ export default function ImportBatchConfirmModal({
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >
             {busy
-              ? 'Saving…'
-              : `Confirm & load${okRows.length > 1 ? ` (${okRows.length})` : ''}`}
+              ? t('importConfirm.saving')
+              : okRows.length > 1
+                ? t('importConfirm.confirmLoadN', { count: okRows.length })
+                : t('importConfirm.confirmLoad')}
           </button>
         </div>
       </div>

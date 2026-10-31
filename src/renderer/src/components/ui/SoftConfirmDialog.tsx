@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftDialog from '@/components/ui/SoftDialog'
+import { useT } from '@/i18n/useT'
 
 type SoftConfirmDialogProps = {
   open: boolean
@@ -20,13 +21,16 @@ export default function SoftConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   busy = false,
   danger = true
 }: SoftConfirmDialogProps): ReactNode {
+  const { t } = useT()
+  const confirmText = confirmLabel ?? t('common.delete')
+  const cancelText = cancelLabel ?? t('common.cancel')
   return (
     <SoftDialog
       open={open}
@@ -38,7 +42,7 @@ export default function SoftConfirmDialog({
       footer={
         <>
           <SoftButton variant="ghost" size="sm" disabled={busy} onClick={onCancel}>
-            {cancelLabel}
+            {cancelText}
           </SoftButton>
           <SoftButton
             variant={danger ? 'danger' : 'primary'}
@@ -46,7 +50,7 @@ export default function SoftConfirmDialog({
             disabled={busy}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmText}
           </SoftButton>
         </>
       }
@@ -54,7 +58,7 @@ export default function SoftConfirmDialog({
       {description != null ? (
         <div className="text-caption leading-relaxed text-zinc-300">{description}</div>
       ) : (
-        <p className="sr-only">Confirm this action.</p>
+        <p className="sr-only">{t('common.confirmAction')}</p>
       )}
     </SoftDialog>
   )

@@ -19,6 +19,8 @@ import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { cn } from '@/components/ui/cn'
 import { softType } from '@/components/ui/softTokens'
+import { useT } from '@/i18n/useT'
+import type { MessageKey } from '@/i18n/messages'
 
 export type SymbolDatasetsDialogProps = {
   open: boolean
@@ -36,18 +38,24 @@ function normalizeSymbol(value: string): string {
     .replace(/[^A-Z0-9]/g, '')
 }
 
-function parseProgressLabel(progress: ImportJobProgress): string {
+function parseProgressLabel(
+  progress: ImportJobProgress,
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string
+): string {
   if (progress.job === 'parse') {
-    if (progress.phase === 'preparing') return 'Preparing file…'
+    if (progress.phase === 'preparing') return t('importProgress.preparing')
     if (progress.phase === 'parsing') {
       if (progress.totalRows && progress.totalRows > 0) {
-        return `Parsing candles… ${(progress.processedRows ?? 0).toLocaleString()} / ${progress.totalRows.toLocaleString()}`
+        return t('importProgress.parsingCount', {
+          processed: (progress.processedRows ?? 0).toLocaleString(),
+          total: progress.totalRows.toLocaleString()
+        })
       }
-      return 'Parsing candles…'
+      return t('importProgress.parsing')
     }
-    return 'Validating candles…'
+    return t('importProgress.validating')
   }
-  if (progress.job === 'save') return 'Saving…'
+  if (progress.job === 'save') return t('importProgress.saving')
   return progress.phase
 }
 
@@ -67,6 +75,7 @@ export default function SymbolDatasetsDialog({
   files,
   onClose
 }: SymbolDatasetsDialogProps): ReactNode {
+  const { t } = useT()
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
   const importMeta = useReplayStore((s) => s.importMeta)
   const clearImportedDataset = useReplayStore((s) => s.clearImportedDataset)
@@ -117,7 +126,7 @@ export default function SymbolDatasetsDialog({
     setModalError(null)
     const total = fileList.length
     setLoadProgress({
-      label: total > 1 ? `Parsing 1/${total}…` : 'Reading file…',
+      label: total > 1 ? t('importProgress.parsingN', { idx: 1, total }) : t('importProgress.reading'),
       percent: 2
     })
     await yieldToEventLoop()
@@ -125,7 +134,7 @@ export default function SymbolDatasetsDialog({
     const unsub = window.api.onImportJobProgress((progress) => {
       if (progress.job !== 'parse') return
       setLoadProgress((prev) => ({
-        label: parseProgressLabel(progress),
+        label: parseProgressLabel(progress, t),
         percent: prev?.percent ?? progress.percent
       }))
     })
@@ -137,7 +146,7 @@ export default function SymbolDatasetsDialog({
         const file = fileList[i]
         const idx = i + 1
         setLoadProgress({
-          label: total > 1 ? `Parsing ${idx}/${total}…` : 'Reading file…',
+          label: total > 1 ? t('importProgress.parsingN', { idx, total }) : t('importProgress.reading'),
           percent: Math.round((i / total) * 90) + 2
         })
         await yieldToEventLoop()
@@ -186,13 +195,13 @@ export default function SymbolDatasetsDialog({
         })
       }
 
-      setLoadProgress({ label: 'Ready…', percent: 98 })
+      setLoadProgress({ label: t('importProgress.ready'), percent: 98 })
       if (batch.every((b) => b.status === 'error')) {
         showInline(
           'error',
           batch.length === 1
-            ? batch[0].error || 'Import failed.'
-            : `All ${batch.length} files failed to parse.`
+            ? batch[0].error || t('importProgress.failed')
+            : t('importProgress.allFailed', { count: batch.length })
         )
         discardBatchTokens(batch)
         return
@@ -232,7 +241,7 @@ export default function SymbolDatasetsDialog({
     setMessage(null)
     const total = saves.length
     setConfirmProgress({
-      label: total > 1 ? `Saving 1/${total}…` : 'Building timeframes…',
+      label: total > 1 ? t('importProgress.savingN', { idx: 1, total }) : t('importProgress.buildingTf'),
       percent: 4
     })
     await yieldToEventLoop()
@@ -240,7 +249,7 @@ export default function SymbolDatasetsDialog({
     const unsub = window.api.onImportJobProgress((progress) => {
       if (progress.job === 'parse') return
       setConfirmProgress((prev) => ({
-        label: parseProgressLabel(progress),
+        label: parseProgressLabel(progress, t),
         percent: prev?.percent ?? progress.percent
       }))
     })
@@ -256,7 +265,7 @@ export default function SymbolDatasetsDialog({
         const save = saves[i]
         const idx = i + 1
         setConfirmProgress({
-          label: total > 1 ? `Saving ${idx}/${total}…` : 'Building timeframes…',
+          label: total > 1 ? t('importProgress.savingN', { idx, total }) : t('importProgress.buildingTf'),
           percent: Math.round((i / total) * 85) + 4
         })
         await yieldToEventLoop()
@@ -294,15 +303,21 @@ export default function SymbolDatasetsDialog({
       if (failures.length && savedCount === 0) {
         setModalError(
           failures.length === 1
-            ? `Failed to save ${failures[0].item.fileName}${lastSaveError ? `: ${lastSaveError}` : '.'}`
-            : `Failed to save all ${failures.length} files${lastSaveError ? `: ${lastSaveError}` : '.'}`
+            ? t('importProgress.saveFailedOne', {
+                name: failures[0].item.fileName,
+                detail: lastSaveError ? `: ${lastSaveError}` : '.'
+              })
+            : t('importProgress.saveFailedAll', {
+                count: failures.length,
+                detail: lastSaveError ? `: ${lastSaveError}` : '.'
+              })
         )
         return
       }
 
       if (lastMetaId) {
         setConfirmProgress({
-          label: 'Loading chart…',
+          label: t('importProgress.loadingChart'),
           percent: IMPORT_BUILD_UI_PERCENT.loadingChart
         })
         await selectImportedDataset(lastMetaId, lastTimeframe || undefined)
@@ -312,7 +327,11 @@ export default function SymbolDatasetsDialog({
 
       if (failures.length) {
         setModalError(
-          `Saved ${savedCount}/${total}. ${failures.length} failed — confirm again to retry.`
+          t('importProgress.partialSaved', {
+            saved: savedCount,
+            total,
+            failed: failures.length
+          })
         )
         setPending(
           failures.map((f) => ({
@@ -322,7 +341,11 @@ export default function SymbolDatasetsDialog({
         )
         showInline(
           'info',
-          `Imported ${savedCount} file${savedCount === 1 ? '' : 's'}; ${failures.length} failed.`
+          t('importProgress.importedPartial', {
+            saved: savedCount,
+            suffix: savedCount === 1 ? '' : 's',
+            failed: failures.length
+          })
         )
         return
       }
@@ -332,8 +355,11 @@ export default function SymbolDatasetsDialog({
       showInline(
         'success',
         savedCount === 1
-          ? `Imported ${saves[0].item.fileName} (${saves[0].item.candleCount.toLocaleString()} × 1m).`
-          : `Imported ${savedCount} files under ${panelSymbol}.`
+          ? t('importProgress.importedOne', {
+              name: saves[0].item.fileName,
+              count: saves[0].item.candleCount.toLocaleString()
+            })
+          : t('importProgress.importedMany', { count: savedCount, symbol: panelSymbol })
       )
     } finally {
       unsub()
@@ -362,8 +388,8 @@ export default function SymbolDatasetsDialog({
         open={open}
         onClose={handleClose}
         labelledBy="symbol-datasets-title"
-        title={`${symbol} datasets`}
-        description="Each CSV is a dataset under this symbol. Overlapping bars: newer import wins. Multi-select supported."
+        title={t('symbolDatasets.title', { symbol })}
+        description={t('symbolDatasets.description')}
         className="max-h-[min(90vh,48rem)] max-w-3xl"
         closeDisabled={importDisabled}
         footer={
@@ -374,17 +400,17 @@ export default function SymbolDatasetsDialog({
               onClick={() => void onImportMore()}
             >
               <FileUp className="h-3.5 w-3.5" aria-hidden />
-              {loadProgress ? 'Importing…' : 'Import'}
+              {loadProgress ? t('symbolDatasets.importing') : t('symbolDatasets.import')}
             </SoftButton>
             <SoftButton variant="primary" disabled={importDisabled} onClick={handleClose}>
-              Done
+              {t('symbolDatasets.done')}
             </SoftButton>
           </>
         }
       >
         <div className="space-y-4">
           {files.length === 0 ? (
-            <SoftEmpty>No files for this symbol — import a CSV.</SoftEmpty>
+            <SoftEmpty>{t('symbolDatasets.empty')}</SoftEmpty>
           ) : (
             <div className="max-h-[min(40vh,22rem)] overflow-y-auto rounded-xl border border-white/[0.06]">
               <ul className="divide-y divide-white/[0.05]">
@@ -396,15 +422,17 @@ export default function SymbolDatasetsDialog({
                           {meta.originalFileName}
                         </p>
                         <p className={cn('mt-1', softType.caption)}>
-                          {meta.candleCount.toLocaleString()} × 1m ·{' '}
-                          {toUtcParts(meta.firstTime).date || '—'} →{' '}
-                          {toUtcParts(meta.lastTime).date || '—'}
+                          {t('symbolDatasets.candlesMeta', {
+                            count: meta.candleCount.toLocaleString(),
+                            from: toUtcParts(meta.firstTime).date || '—',
+                            to: toUtcParts(meta.lastTime).date || '—'
+                          })}
                         </p>
                       </div>
                       <SoftButton
                         size="sm"
                         variant="ghost"
-                        aria-label={`Delete ${meta.originalFileName}`}
+                        aria-label={t('symbolDatasets.deleteAria', { name: meta.originalFileName })}
                         disabled={importDisabled}
                         onClick={() => setPendingFileDelete(meta)}
                         className="!h-7 !w-7 shrink-0 !px-0 hover:text-red-300"
@@ -443,7 +471,7 @@ export default function SymbolDatasetsDialog({
           <DateCoveragePopover
             mode="coverage"
             coverageDays={coverage}
-            caption="Date coverage"
+            caption={t('symbolDatasets.dateCoverage')}
             disabled={importDisabled}
           />
         </div>
@@ -451,12 +479,14 @@ export default function SymbolDatasetsDialog({
 
       <SoftConfirmDialog
         open={pendingFileDelete != null}
-        title="Delete file"
+        title={t('symbolDatasets.deleteTitle')}
         description={
           pendingFileDelete
-            ? `Delete the file “${pendingFileDelete.originalFileName}”? This cannot be undone.`
+            ? t('symbolDatasets.deleteBody', { name: pendingFileDelete.originalFileName })
             : undefined
         }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         busy={deleteBusy}
         onCancel={() => {
           if (!deleteBusy) setPendingFileDelete(null)

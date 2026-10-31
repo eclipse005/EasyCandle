@@ -2,7 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
-import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
+import { SoftSelect } from '@/components/ui/SoftInput'
+import SoftDateInput from '@/components/ui/SoftDateInput'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatPnl, type ClosedTrade } from '@/lib/paperTrade'
@@ -16,7 +17,6 @@ import {
   monthlyPnlBuckets,
   profitFactor,
   weekdayPnlBuckets,
-  type PeriodBucket
 } from '@/lib/sessionAnalytics'
 import { chartTimezoneById, sessionUtcOffsetLabel } from '@/lib/chartTimezone'
 import { useAccountPrefsStore } from '@/store/accountPrefsStore'
@@ -25,6 +25,7 @@ import { useStrategiesStore } from '@/store/strategiesStore'
 import { formatWinRatePct } from '@/lib/localPerformance'
 import { sideReport } from '@/lib/paperTrade'
 import { useT } from '@/i18n/useT'
+import PeriodBarChart from '@/components/dashboard/PeriodBarChart'
 
 type SideFilter = 'all' | 'long' | 'short'
 type OutcomeFilter = 'all' | 'win' | 'loss' | 'be'
@@ -303,8 +304,7 @@ export default function AnalyticsTab(): ReactNode {
           </label>
           <label className="min-w-[9rem]">
             <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.from')}</span>
-            <SoftInput
-              type="date"
+            <SoftDateInput
               className="h-11 text-body"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -312,8 +312,7 @@ export default function AnalyticsTab(): ReactNode {
           </label>
           <label className="min-w-[9rem]">
             <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.to')}</span>
-            <SoftInput
-              type="date"
+            <SoftDateInput
               className="h-11 text-body"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
@@ -404,15 +403,19 @@ export default function AnalyticsTab(): ReactNode {
             <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
               <h2 className={softType.section}>{t('analytics.monthlyTitle')}</h2>
               <p className={cn('mt-1 mb-4', softType.caption)}>{t('analytics.monthlyHint')}</p>
-              <BarRow buckets={monthly} positiveClass="from-emerald-600 via-emerald-400 to-emerald-200" />
+              <PeriodBarChart
+                buckets={monthly}
+                mode="month"
+                positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
+              />
             </SoftCard>
             <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
               <h2 className={softType.section}>{t('analytics.dailyTitle')}</h2>
               <p className={cn('mt-1 mb-4', softType.caption)}>{t('analytics.dailyHint')}</p>
-              <BarRow
+              <PeriodBarChart
                 buckets={daily}
+                mode="weekday"
                 positiveClass="from-sky-600 via-sky-400 to-sky-200"
-                shortLabels
               />
             </SoftCard>
           </div>
@@ -472,8 +475,9 @@ export default function AnalyticsTab(): ReactNode {
           <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[320px] flex-col')}>
             <h2 className={softType.section}>{t('analytics.equityDd')}</h2>
             <p className={cn('mt-1 mb-4', softType.caption)}>
-              Underwater from peak after each filtered close (start{' '}
-              {formatPnl(startingBalance).replace(/^[+-]/, '')}).
+              {t('analytics.ddHint', {
+                balance: formatPnl(startingBalance).replace(/^[+-]/, '')
+              })}
             </p>
             <DrawdownChart points={dd.points} />
           </SoftCard>
@@ -485,7 +489,7 @@ export default function AnalyticsTab(): ReactNode {
                   ? '0.00'
                   : formatPnl(-Math.abs(dd.maxDrawdown)).replace(/^\+/, '')
               }
-              hint="Peak-to-trough on filtered equity"
+              hint={t('analytics.maxDdHint')}
               tone={dd.maxDrawdown > 0 ? 'down' : 'neutral'}
             />
             <StatCard
@@ -495,7 +499,7 @@ export default function AnalyticsTab(): ReactNode {
                   ? '—'
                   : `${(dd.maxDrawdownPct * 100).toFixed(2)}%`
               }
-              hint="Vs peak equity"
+              hint={t('analytics.maxDdPctHint')}
               tone={dd.maxDrawdownPct && dd.maxDrawdownPct > 0 ? 'down' : 'neutral'}
             />
             <StatCard
@@ -544,59 +548,16 @@ function StatCard({
   )
 }
 
-function BarRow({
-  buckets,
-  positiveClass,
-  shortLabels = false
-}: {
-  buckets: PeriodBucket[]
-  positiveClass: string
-  shortLabels?: boolean
-}): ReactNode {
-  const maxAbs = Math.max(1, ...buckets.map((b) => Math.abs(b.pnl)))
-  const hasData = buckets.some((b) => b.pnl !== 0 || (b.tradeCount ?? 0) > 0)
-  if (!hasData) {
-    return (
-      <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Bars fill as you close trades.
-      </p>
-    )
-  }
-  return (
-    <div className="flex min-h-[10rem] flex-1 items-end gap-2 px-1 pb-1 pt-2">
-      {buckets.map((b) => {
-        const height = Math.max(b.pnl === 0 ? 0 : 6, Math.round((Math.abs(b.pnl) / maxAbs) * 100))
-        const label = shortLabels ? b.label.slice(0, 3) : b.label
-        const up = b.pnl >= 0
-        return (
-          <div key={b.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <div className="flex h-36 w-full items-end justify-center">
-              <div
-                className={cn(
-                  'w-[70%] max-w-[2.75rem] rounded-t-lg bg-gradient-to-t',
-                  up ? positiveClass : 'from-red-700 via-red-500 to-red-300'
-                )}
-                style={{ height: `${height}%` }}
-                title={`${b.label}: ${formatPnl(b.pnl)}`}
-              />
-            </div>
-            <span className={cn('truncate', softType.micro)}>{label}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 function DrawdownChart({
   points
 }: {
   points: { index: number; equity: number; drawdown: number }[]
 }): ReactNode {
+  const { t } = useT()
   if (points.length < 2) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Drawdown appears after closed trades.
+        {t('charts.drawdownEmpty')}
       </p>
     )
   }

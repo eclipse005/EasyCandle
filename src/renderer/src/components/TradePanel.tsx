@@ -2,10 +2,6 @@ import { cn } from '@/components/ui/cn'
 import { ChevronDown, ChevronUp, Crosshair } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import {
-  formatExitReason,
-  formatOrderSideLabel,
-  formatOrderStatus,
-  formatPositionSize,
   formatRiskReward,
   pnlScaleForSymbol,
   realizedRiskReward,
@@ -28,6 +24,14 @@ import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import Tooltip from '@/components/Tooltip'
 import { softType } from '@/components/ui/softTokens'
 import { useT } from '@/i18n/useT'
+import {
+  exitReasonLabel,
+  orderSideLabel,
+  orderStatusLabel,
+  positionSizeLabel,
+  sideLetter,
+  sideWord
+} from '@/i18n/tradeLabels'
 
 type HistoryTab = 'positions' | 'openOrders' | 'orderHistory' | 'positionHistory'
 
@@ -69,6 +73,7 @@ function PendingOrderRow({
   onCancel: () => void
 }) {
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const { t } = useT()
   return (
     <li
       className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums ${
@@ -77,10 +82,10 @@ function PendingOrderRow({
     >
       <button type="button" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left" onClick={onSelect}>
         <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-micro font-medium text-primary-300/90">
-          Working
+          {t('blotter.pendingOrders')}
         </span>
-      <span className={sideClass(order.side)}>{formatOrderSideLabel(order.side, order.kind)}</span>
-      <span className="text-zinc-500">{formatPositionSize(order.lots, symbol)}</span>
+      <span className={sideClass(order.side)}>{orderSideLabel(order.side, order.kind)}</span>
+      <span className="text-zinc-500">{positionSizeLabel(order.lots, symbol)}</span>
       <span className="text-zinc-400">
         {order.kind === 'stopLimit' ? 'Stop' : 'Limit'}{' '}
         {formatAssetPrice(order.price, pricePrecision)} · {formatAccountDateTime(order.placedTime, accountTimezone)}
@@ -144,7 +149,7 @@ function OpenPositionRow({
           Open
         </span>
         <span className={sideClass(position.side)}>{position.side.toUpperCase()}</span>
-        <span className="text-zinc-500">{formatPositionSize(position.lots, symbol)}</span>
+        <span className="text-zinc-500">{positionSizeLabel(position.lots, symbol)}</span>
         <span className="text-zinc-400">
           Entry {formatAssetPrice(position.entryPrice, pricePrecision)} ·{' '}
           {formatAccountDateTime(position.entryTime, accountTimezone)}
@@ -197,12 +202,12 @@ function HistoricOrderRow({
           canceled ? 'bg-zinc-900 text-zinc-500' : 'bg-zinc-900 text-emerald-400/80'
         }`}
       >
-        {formatOrderStatus(order.status)}
+        {orderStatusLabel(order.status)}
       </span>
       <span className={sideClass(order.side, true)}>
-        {formatOrderSideLabel(order.side, order.type)}
+        {orderSideLabel(order.side, order.type)}
       </span>
-      <span className="text-zinc-500">{formatPositionSize(order.lots, symbol)}</span>
+      <span className="text-zinc-500">{positionSizeLabel(order.lots, symbol)}</span>
       <span>
         {formatAssetPrice(order.price, pricePrecision)}
         {canceled ? ' · canceled' : ''}
@@ -239,13 +244,14 @@ function ClosedPositionRow({
   onNoteChange: (note: string) => void
 }) {
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const { t } = useT()
   return (
     <li className="flex flex-col gap-0.5 py-1.5 text-zinc-400">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
         <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-micro font-medium text-zinc-500">
-          Closed
+          {t('blotter.closedPositions')}
         </span>
-        <span className="inline-flex items-center gap-1" title={trade.side === 'long' ? 'Buy → Sell' : 'Sell → Buy'}>
+        <span className="inline-flex items-center gap-1" title={trade.side === 'long' ? t('trade.buyToSell') : t('trade.sellToBuy')}>
           <span
             className={
               trade.side === 'long'
@@ -253,7 +259,7 @@ function ClosedPositionRow({
                 : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
             }
           >
-            {trade.side === 'long' ? 'B' : 'S'}
+            {sideLetter(trade.side, 'entry')}
           </span>
           <span className="text-zinc-600" aria-hidden>
             →
@@ -265,13 +271,13 @@ function ClosedPositionRow({
                 : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
             }
           >
-            {trade.side === 'long' ? 'S' : 'B'}
+            {sideLetter(trade.side, 'exit')}
           </span>
         </span>
-        <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
-        <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
+        <span className={sideClass(trade.side, true)}>{sideWord(trade.side)}</span>
+        <span className="text-zinc-500">{positionSizeLabel(trade.lots, symbol)}</span>
         <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro font-medium text-zinc-500">
-          {formatExitReason(trade.exitReason)}
+          {exitReasonLabel(trade.exitReason)}
         </span>
         <span>
           {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}
@@ -280,10 +286,10 @@ function ClosedPositionRow({
         <span className="text-zinc-600">
           {formatAccountDateTime(trade.entryTime, accountTimezone)} → {formatAccountDateTime(trade.exitTime, accountTimezone)}
         </span>
-        <Tooltip text="Scroll the chart to the entry time" side="top">
+        <Tooltip text={t('trade.scrollEntry')} side="top">
           <button
             type="button"
-            aria-label={`Scroll the chart to ${formatAccountDateTime(trade.entryTime, accountTimezone)}`}
+            aria-label={t('trade.scrollTo', { time: formatAccountDateTime(trade.entryTime, accountTimezone) })}
             className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
             onClick={onLocate}
           >
@@ -537,7 +543,7 @@ export default function TradePanel() {
               </span>
             ) : null}
           </span>
-          <Tooltip text={showPositions ? 'Hide trade history' : 'Show trade history'} side="top">
+          <Tooltip text={showPositions ? t('trade.hideHistory') : t('trade.showHistory')} side="top">
             <button
               type="button"
               onClick={() => setShowPositions((v) => !v)}

@@ -2,13 +2,17 @@ import { useEffect, useMemo } from 'react'
 import { Download, X } from 'lucide-react'
 import {
   equityCurve,
-  formatExitReason,
-  formatPositionSize,
   formatWinRate,
   tradesToCsv,
   type EquityPoint,
   type SideReport
 } from '@/lib/paperTrade'
+import {
+  exitReasonLabel,
+  positionSizeLabel,
+  sideLetter,
+  sideWord
+} from '@/i18n/tradeLabels'
 import { accountPnlFromQuote, formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { formatAccountDateTime } from '@/lib/displayTime'
 import { useAccountPrefsStore } from '@/store/accountPrefsStore'
@@ -38,7 +42,7 @@ function ReportBlock({ title, report, quote }: { title: string; report: SideRepo
           <dd className="text-zinc-200">
             {report.wins} / {report.losses}
             {report.breakeven > 0 ? (
-              <span className="text-zinc-600"> · {report.breakeven} BE</span>
+              <span className="text-zinc-600"> · {report.breakeven} {t('trade.be')}</span>
             ) : null}
           </dd>
         </div>
@@ -117,7 +121,7 @@ function EquityCurveChart({
         viewBox={`0 0 ${width} ${height}`}
         className="h-28 w-full"
         role="img"
-        aria-label="Session equity curve"
+        aria-label={t('trade.equityAria')}
       >
         <polyline
           fill="none"
@@ -243,7 +247,7 @@ export default function SessionReportDialog() {
                 : null}
               {sessionUsd != null ? ` · ≈ ${formatPnlCcy(sessionUsd, 'USD')}` : null}
               {sessionUsd == null && quoteCurrency !== 'USD'
-                ? ` · P/L in ${quoteCurrency}`
+                ? ` · ${t('trade.pnlIn', { quote: quoteCurrency })}`
                 : null}
             </p>
           </div>
@@ -284,7 +288,7 @@ export default function SessionReportDialog() {
                           : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
                       }
                     >
-                      {trade.side === 'long' ? 'B' : 'S'}
+                      {sideLetter(trade.side, 'entry')}
                     </span>
                     <span className="text-zinc-600" aria-hidden>
                       →
@@ -296,7 +300,7 @@ export default function SessionReportDialog() {
                           : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
                       }
                     >
-                      {trade.side === 'long' ? 'S' : 'B'}
+                      {sideLetter(trade.side, 'exit')}
                     </span>
                     <span
                       className={
@@ -305,12 +309,12 @@ export default function SessionReportDialog() {
                           : 'font-semibold text-red-400/90'
                       }
                     >
-                      {trade.side.toUpperCase()}
+                      {sideWord(trade.side)}
                     </span>
                   </span>
-                  <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
+                  <span className="text-zinc-500">{positionSizeLabel(trade.lots, symbol)}</span>
                   <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro uppercase tracking-wide text-zinc-500">
-                    {formatExitReason(trade.exitReason)}
+                    {exitReasonLabel(trade.exitReason)}
                   </span>
                   <span>
                     {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}

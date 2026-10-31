@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { BookOpen, Clock, Percent, Plus, Target } from 'lucide-react'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftButton from '@/components/ui/SoftButton'
@@ -7,6 +7,7 @@ import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { useSessionStore } from '@/store/sessionStore'
 import { useT } from '@/i18n/useT'
+import type { MessageKey } from '@/i18n/messages'
 import {
   computeLocalPerformance,
   formatDurationMs,
@@ -34,6 +35,7 @@ export default function TestingDashboardTab({
     [stats.monthlyTimeInvested]
   )
   const hasMonthData = stats.monthlyTimeInvested.some((m) => m.ms > 0)
+  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null)
 
   return (
     <div className={softSpace.sectionGap}>
@@ -134,16 +136,38 @@ export default function TestingDashboardTab({
             <div className="flex min-h-0 flex-1 items-end gap-3 px-1 pb-1 pt-4">
               {stats.monthlyTimeInvested.map((m) => {
                 const height = Math.max(4, Math.round((m.ms / maxMonthMs) * 100))
+                const monthIndex = Number(m.key.slice(5, 7)) - 1
+                const label =
+                  monthIndex >= 0 && monthIndex <= 11
+                    ? t(`cal.month.${monthIndex}` as MessageKey)
+                    : m.label
+                const active = hoveredMonth === m.key
+                const value = formatDurationMs(m.ms)
                 return (
-                  <div key={m.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div
+                    key={m.key}
+                    className="flex min-w-0 flex-1 flex-col items-center gap-2"
+                    onMouseEnter={() => setHoveredMonth(m.key)}
+                    onMouseLeave={() => setHoveredMonth(null)}
+                  >
                     <div className="flex h-44 w-full items-end justify-center">
-                      <div
-                        className="w-[72%] max-w-[3.5rem] rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-400 to-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
-                        style={{ height: `${height}%` }}
-                        title={`${m.label}: ${formatDurationMs(m.ms)}`}
-                      />
+                      <div className="relative w-[72%] max-w-[3.5rem]" style={{ height: `${height}%` }}>
+                        {active ? (
+                          <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-950/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-100 shadow-lg shadow-black/40">
+                            {value}
+                          </span>
+                        ) : null}
+                        <div
+                          className={cn(
+                            'h-full w-full origin-bottom rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-400 to-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.35)] transition duration-150 ease-out',
+                            active && 'scale-x-110 scale-y-105 brightness-125 ring-1 ring-white/25'
+                          )}
+                          role="img"
+                          aria-label={`${label}: ${value}`}
+                        />
+                      </div>
                     </div>
-                    <span className={softType.caption}>{m.label}</span>
+                    <span className={cn(softType.caption, active ? 'text-zinc-100' : undefined)}>{label}</span>
                   </div>
                 )
               })}

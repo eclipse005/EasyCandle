@@ -4,6 +4,7 @@ import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
+import SoftDateInput from '@/components/ui/SoftDateInput'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatExitReason } from '@/lib/paperTrade'
@@ -320,8 +321,7 @@ export default function TradesTab(): ReactNode {
         </label>
         <label className="min-w-[9rem]">
           <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.from')}</span>
-          <SoftInput
-            type="date"
+          <SoftDateInput
             className="h-11 text-body"
             value={dateFrom}
             onChange={(e) => {
@@ -332,8 +332,7 @@ export default function TradesTab(): ReactNode {
         </label>
         <label className="min-w-[9rem]">
           <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.to')}</span>
-          <SoftInput
-            type="date"
+          <SoftDateInput
             className="h-11 text-body"
             value={dateTo}
             onChange={(e) => {
