@@ -16,6 +16,7 @@ import {
   type AggregatedTradeRow,
   type TradeRowStatus
 } from '@/lib/localPerformance'
+import { ANALYTICS_TIMEZONE, analyticsDayBounds } from '@/lib/sessionAnalytics'
 
 type SideFilter = 'all' | 'long' | 'short'
 type StatusFilter = 'all' | TradeRowStatus
@@ -80,21 +81,6 @@ function statusBadge(status: TradeRowStatus): { label: string; className: string
   }
 }
 
-/** Chart time is unix seconds — date inputs are local YYYY-MM-DD. */
-function dayBounds(from: string, to: string): { fromSec: number | null; toSec: number | null } {
-  let fromSec: number | null = null
-  let toSec: number | null = null
-  if (from) {
-    const d = new Date(`${from}T00:00:00`)
-    if (!Number.isNaN(d.getTime())) fromSec = Math.floor(d.getTime() / 1000)
-  }
-  if (to) {
-    const d = new Date(`${to}T23:59:59.999`)
-    if (!Number.isNaN(d.getTime())) toSec = Math.floor(d.getTime() / 1000)
-  }
-  return { fromSec, toSec }
-}
-
 /** Aggregate open / pending / closed trades — FXR Basic filters locally. */
 export default function TradesTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
@@ -127,7 +113,7 @@ export default function TradesTab(): ReactNode {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const { fromSec, toSec } = dayBounds(dateFrom, dateTo)
+    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo)
     let rows = allRows
     if (sessionFilter !== 'all') rows = rows.filter((r) => r.sessionId === sessionFilter)
     if (sideFilter !== 'all') rows = rows.filter((r) => r.side === sideFilter)
@@ -372,6 +358,10 @@ export default function TradesTab(): ReactNode {
       <p className={softType.caption}>
         {filtered.length} trade{filtered.length === 1 ? '' : 's'}
         {filtered.length !== allRows.length ? ` (of ${allRows.length})` : ''} · local only
+        <span className="text-zinc-600" title={ANALYTICS_TIMEZONE}>
+          {' '}
+          · dates in New York (ET)
+        </span>
       </p>
 
       <SoftCard className="overflow-hidden">

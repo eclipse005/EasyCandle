@@ -91,6 +91,9 @@ export default function AboutDialog() {
             Replay charts and paper-trade without risk.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+            Analytics and trade date filters bucket days in New York (ET).
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
             Charts built with{' '}
             <a
               href="https://www.tradingview.com/"

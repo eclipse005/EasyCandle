@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { ClosedTrade } from '@/lib/paperTrade'
 import type { Session } from '@/store/sessionStore'
 import {
+  ANALYTICS_TIMEZONE,
+  analyticsDayBounds,
   averageRiskReward,
   computeSessionAnalytics,
   daysRemaining,
@@ -130,5 +132,36 @@ describe('analytics metrics', () => {
     const dd = drawdownSeries(1000, trades)
     expect(dd.maxDrawdown).toBeCloseTo(70)
     expect(dd.points[dd.points.length - 1].equity).toBeCloseTo(1030)
+  })
+})
+
+
+describe('analytics timezone (America/New_York)', () => {
+  it('exports New York as the fixed analytics zone', () => {
+    expect(ANALYTICS_TIMEZONE).toBe('America/New_York')
+  })
+
+  it('day bounds use New York midnight, not browser local', () => {
+    const { fromSec, toSec } = analyticsDayBounds('2024-07-15', '2024-07-15')
+    // 2024-07-15 00:00 EDT = 04:00 UTC; 23:59:59 EDT = 03:59:59 UTC next day
+    expect(fromSec).toBe(Date.UTC(2024, 6, 15, 4, 0, 0) / 1000)
+    expect(toSec).toBe(Date.UTC(2024, 6, 16, 3, 59, 59) / 1000)
+  })
+
+  it('weekday buckets follow New York wall calendar across UTC midnight', () => {
+    // Monday 2024-07-15 22:00 UTC = Monday 18:00 EDT
+    const monEdt = Date.UTC(2024, 6, 15, 22, 0, 0) / 1000
+    // Tuesday 2024-07-16 03:30 UTC = Monday 23:30 EDT (still Monday in NY)
+    const stillMon = Date.UTC(2024, 6, 16, 3, 30, 0) / 1000
+    // Tuesday 2024-07-16 05:00 UTC = Tuesday 01:00 EDT
+    const tueEdt = Date.UTC(2024, 6, 16, 5, 0, 0) / 1000
+    const trades = [
+      trade({ id: '1', side: 'long', pnl: 10, exitTime: monEdt }),
+      trade({ id: '2', side: 'long', pnl: 20, exitTime: stillMon }),
+      trade({ id: '3', side: 'long', pnl: 5, exitTime: tueEdt })
+    ]
+    const daily = weekdayPnlBuckets(trades)
+    expect(daily.find((d) => d.label === 'Monday')?.pnl).toBe(30)
+    expect(daily.find((d) => d.label === 'Tuesday')?.pnl).toBe(5)
   })
 })

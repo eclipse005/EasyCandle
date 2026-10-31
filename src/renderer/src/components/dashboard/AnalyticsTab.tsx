@@ -7,6 +7,9 @@ import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatPnl, type ClosedTrade } from '@/lib/paperTrade'
 import {
+  ANALYTICS_TIMEZONE,
+  analyticsDayBounds,
+  analyticsTodayStartSec,
   averageRiskReward,
   drawdownSeries,
   expectancy,
@@ -18,7 +21,6 @@ import {
 } from '@/lib/sessionAnalytics'
 import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
-import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { formatWinRatePct } from '@/lib/localPerformance'
 import { sideReport } from '@/lib/paperTrade'
 
@@ -41,25 +43,10 @@ function entryTypeOf(t: ClosedTrade): 'market' | 'limit' | 'stop-limit' {
   return 'market'
 }
 
-function dayBounds(from: string, to: string): { fromSec: number | null; toSec: number | null } {
-  let fromSec: number | null = null
-  let toSec: number | null = null
-  if (from) {
-    const d = new Date(`${from}T00:00:00`)
-    if (!Number.isNaN(d.getTime())) fromSec = Math.floor(d.getTime() / 1000)
-  }
-  if (to) {
-    const d = new Date(`${to}T23:59:59.999`)
-    if (!Number.isNaN(d.getTime())) toSec = Math.floor(d.getTime() / 1000)
-  }
-  return { fromSec, toSec }
-}
-
 /** Local analytics from IndexedDB — FXR free subset with filters + drawdown. */
 export default function AnalyticsTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
   const strategies = useStrategiesStore((s) => s.strategies)
-  const timezone = useChartSettingsStore((s) => s.timezone)
 
   const [sideFilter, setSideFilter] = useState<SideFilter>('all')
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all')
@@ -101,12 +88,8 @@ export default function AnalyticsTab(): ReactNode {
   )
 
   const filtered = useMemo(() => {
-    const { fromSec, toSec } = dayBounds(dateFrom, dateTo)
-    const startOfDay = (() => {
-      const d = new Date()
-      d.setHours(0, 0, 0, 0)
-      return Math.floor(d.getTime() / 1000)
-    })()
+    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo)
+    const startOfDay = analyticsTodayStartSec()
     return allTrades.filter((t) => {
       if (sideFilter !== 'all' && t.side !== sideFilter) return false
       if (outcomeFilter === 'win' && !(t.pnl > 0)) return false
@@ -331,16 +314,14 @@ export default function AnalyticsTab(): ReactNode {
               onChange={(e) => setDateTo(e.target.value)}
             />
           </label>
-          <div className="min-w-[8rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Timezone</span>
-            <p className={cn('flex h-11 items-center', softType.bodyMuted)} title="Chart timezone">
-              {timezone}
-            </p>
-          </div>
           <SoftButton size="sm" variant="ghost" onClick={clearFilters}>
             Clear filters
           </SoftButton>
         </div>
+
+        <p className={cn(softType.micro, 'text-zinc-600')} title={ANALYTICS_TIMEZONE}>
+          Date filters and monthly / daily buckets use New York (ET).
+        </p>
 
         <div className="flex flex-wrap items-center gap-2">
           <span className={softType.caption}>P&amp;L</span>

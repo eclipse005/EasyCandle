@@ -1,6 +1,61 @@
 import type { ClosedTrade } from '@/lib/paperTrade'
 import { cumulativeRealizedPnl, equityCurve, sideReport, type EquityPoint } from '@/lib/paperTrade'
 import type { Session } from '@/store/sessionStore'
+import {
+  DEFAULT_CHART_TIMEZONE,
+  parseSessionParts,
+  sessionDateTimeParts
+} from '@/lib/chartTimezone'
+
+/**
+ * Fixed zone for Analytics / Trades date filters and monthly·daily buckets.
+ * Matches FXR / chart default (America/New_York). Paper times are fixed — no
+ * per-filter timezone switch.
+ */
+export const ANALYTICS_TIMEZONE = DEFAULT_CHART_TIMEZONE
+
+/** `YYYY-MM-DD` From/To → inclusive unix-second bounds in {@link ANALYTICS_TIMEZONE}. */
+export function analyticsDayBounds(
+  from: string,
+  to: string
+): { fromSec: number | null; toSec: number | null } {
+  const fromSec = from ? parseSessionParts(from, '00:00:00', ANALYTICS_TIMEZONE) : null
+  const toSec = to ? parseSessionParts(to, '23:59:59', ANALYTICS_TIMEZONE) : null
+  return {
+    fromSec: fromSec != null && Number.isFinite(fromSec) ? fromSec : null,
+    toSec: toSec != null && Number.isFinite(toSec) ? toSec : null
+  }
+}
+
+/** Start of the current civil day in {@link ANALYTICS_TIMEZONE}, as unix seconds. */
+export function analyticsTodayStartSec(nowMs = Date.now()): number {
+  const p = sessionDateTimeParts(Math.floor(nowMs / 1000), ANALYTICS_TIMEZONE)
+  if (!p) {
+    const d = new Date(nowMs)
+    d.setUTCHours(0, 0, 0, 0)
+    return Math.floor(d.getTime() / 1000)
+  }
+  const date = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
+  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  return sec != null ? sec : Math.floor(nowMs / 1000)
+}
+
+function wallParts(unixSeconds: number) {
+  return sessionDateTimeParts(unixSeconds, ANALYTICS_TIMEZONE)
+}
+
+function wallMonthKey(unixSeconds: number): string | null {
+  const p = wallParts(unixSeconds)
+  if (!p) return null
+  return `${p.year}-${String(p.month).padStart(2, '0')}`
+}
+
+/** Civil weekday (Sun=0) for the wall-calendar day in {@link ANALYTICS_TIMEZONE}. */
+function wallWeekday(unixSeconds: number): number | null {
+  const p = wallParts(unixSeconds)
+  if (!p) return null
+  return new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
+}
 
 export type PeriodBucket = {
   key: string
@@ -93,19 +148,23 @@ export function monthlyPnlBuckets(
     if (Number.isFinite(t.exitTime)) latest = Math.max(latest, t.exitTime * 1000)
   }
   if (Number.isFinite(latest) && latest > 0) endMs = latest
-  const end = new Date(endMs)
+  const endParts = wallParts(Math.floor(endMs / 1000))
+  const endYear = endParts?.year ?? new Date(endMs).getUTCFullYear()
+  const endMonthIndex = (endParts?.month ?? new Date(endMs).getUTCMonth() + 1) - 1
   const buckets: PeriodBucket[] = []
   const index = new Map<string, number>()
   for (let i = count - 1; i >= 0; i -= 1) {
-    const d = new Date(end.getFullYear(), end.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const d = new Date(Date.UTC(endYear, endMonthIndex - i, 1))
+    const year = d.getUTCFullYear()
+    const m = d.getUTCMonth()
+    const key = `${year}-${String(m + 1).padStart(2, '0')}`
     index.set(key, buckets.length)
-    buckets.push({ key, label: MONTH_LABELS[d.getMonth()] ?? key, pnl: 0, tradeCount: 0 })
+    buckets.push({ key, label: MONTH_LABELS[m] ?? key, pnl: 0, tradeCount: 0 })
   }
   for (const t of list) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
-    const d = new Date(t.exitTime * 1000)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const key = wallMonthKey(t.exitTime)
+    if (!key) continue
     const i = index.get(key)
     if (i == null) continue
     buckets[i].pnl += t.pnl
@@ -124,7 +183,8 @@ export function weekdayPnlBuckets(trades: ClosedTrade[]): PeriodBucket[] {
   }))
   for (const t of Array.isArray(trades) ? trades : []) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
-    const dow = new Date(t.exitTime * 1000).getDay()
+    const dow = wallWeekday(t.exitTime)
+    if (dow == null) continue
     buckets[dow].pnl += t.pnl
     buckets[dow].tradeCount = (buckets[dow].tradeCount ?? 0) + 1
   }
@@ -142,26 +202,31 @@ function periodPnl(trades: ClosedTrade[], fromMs: number, toMs: number): number 
 }
 
 function startOfLocalDay(now: number): number {
-  const d = new Date(now)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
+  const p = wallParts(Math.floor(now / 1000))
+  if (!p) return now
+  const date = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
+  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  return sec != null ? sec * 1000 : now
 }
 
 function startOfLocalWeek(now: number): number {
-  const d = new Date(now)
-  const day = d.getDay()
+  const p = wallParts(Math.floor(now / 1000))
+  if (!p) return now
+  const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
   // Monday-start week (FXR-ish)
-  const diff = day === 0 ? 6 : day - 1
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - diff)
-  return d.getTime()
+  const diff = dow === 0 ? 6 : dow - 1
+  const monday = new Date(Date.UTC(p.year, p.month - 1, p.day - diff))
+  const date = `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`
+  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  return sec != null ? sec * 1000 : now
 }
 
 function startOfLocalMonth(now: number): number {
-  const d = new Date(now)
-  d.setDate(1)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
+  const p = wallParts(Math.floor(now / 1000))
+  if (!p) return now
+  const date = `${p.year}-${String(p.month).padStart(2, '0')}-01`
+  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  return sec != null ? sec * 1000 : now
 }
 
 export function formatRiskRewardRatio(rr: number | null): string {
