@@ -10,7 +10,8 @@ import {
   type SideReport
 } from '@/lib/paperTrade'
 import { accountPnlFromQuote, formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
+import { formatAccountDateTime } from '@/lib/displayTime'
+import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
 import { useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
@@ -133,6 +134,7 @@ function EquityCurveChart({
 
 export default function SessionReportDialog() {
   const { t } = useT()
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   const sessionReport = useReplayStore((s) => s.sessionReport)
   const dismissSessionReport = useReplayStore((s) => s.dismissSessionReport)
   const previewSessionReport = useUiLayoutStore((s) => s.previewSessionReport)
@@ -315,7 +317,7 @@ export default function SessionReportDialog() {
                     {formatAssetPrice(trade.exitPrice, pricePrecision)}
                   </span>
                   <span className="text-zinc-600">
-                    {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
+                    {formatAccountDateTime(trade.entryTime, accountTimezone)} → {formatAccountDateTime(trade.exitTime, accountTimezone)}
                   </span>
                   <span
                     className={`ml-auto font-medium ${

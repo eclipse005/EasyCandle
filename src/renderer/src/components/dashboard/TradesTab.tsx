@@ -7,7 +7,7 @@ import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatExitReason } from '@/lib/paperTrade'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
+import { formatAccountDateTime } from '@/lib/displayTime'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
 import { useSessionStore } from '@/store/sessionStore'
@@ -28,12 +28,6 @@ type EntryTypeFilter = 'all' | 'market' | 'limit' | 'stop-limit'
 type SortKey = 'time' | 'entry' | 'pnl' | 'symbol'
 
 const PAGE_SIZES = [10, 25, 50] as const
-
-/** Trade table times — UTC wall without the noisy "UTC" suffix. */
-function formatTradeTime(unixSeconds: number | null | undefined): string {
-  const raw = formatUtcCandleTime(unixSeconds)
-  return raw === '—' ? raw : raw.replace(/\s*UTC$/, '')
-}
 
 /** Keep sign + amount + ccy on one line (nbsp around sign and before currency). */
 function formatReturnCcy(pnl: number | null | undefined, currency: string): string {
@@ -386,7 +380,6 @@ export default function TradesTab(): ReactNode {
         {filtered.length !== allRows.length
           ? t('trades.ofTotal', { total: allRows.length })
           : ''}
-        {t('trades.localOnly')}
         <span className="text-zinc-600" title={accountTimezone}>
           {t('trades.datesIn', { tz: accountTzLabel })}
         </span>
@@ -441,10 +434,10 @@ export default function TradesTab(): ReactNode {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
-                      {formatTradeTime(row.entryTime)}
+                      {formatAccountDateTime(row.entryTime, accountTimezone)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
-                      {row.exitTime != null ? formatTradeTime(row.exitTime) : '—'}
+                      {row.exitTime != null ? formatAccountDateTime(row.exitTime, accountTimezone) : '—'}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-zinc-200">{row.symbol}</td>
                     <td className="px-4 py-3">

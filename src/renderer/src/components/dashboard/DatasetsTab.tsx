@@ -73,7 +73,7 @@ export default function DatasetsTab(): ReactNode {
           {groups.map((group) => {
             const span = coverageSpanLabel(group.coverageDays)
             const dayCount = group.coverageDays.size
-            const daysLabel = `${dayCount.toLocaleString()} day${dayCount === 1 ? '' : 's'}`
+            const daysLabel = t('symbols.days', { count: dayCount.toLocaleString() })
             // Product rule: omit file-count labels in Datasets chrome (detail via Edit).
             const metaLine = `${daysLabel} · ${span}`
             return (

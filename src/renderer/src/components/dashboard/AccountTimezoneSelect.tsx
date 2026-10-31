@@ -10,6 +10,7 @@ import {
 } from '@/lib/chartTimezone'
 import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { cn } from '@/components/ui/cn'
+import { useT } from '@/i18n/useT'
 
 function matchesQuery(zone: ChartTimezone, needle: string, atSeconds: number): boolean {
   const offset = sessionUtcOffsetLabel(zone.id, atSeconds).toLowerCase()
@@ -38,6 +39,7 @@ export function accountTimezoneOptionLabel(
 }
 
 export default function AccountTimezoneSelect(): ReactNode {
+  const { t } = useT()
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   const setAccountTimezone = useAccountPrefsStore((s) => s.setAccountTimezone)
   const [query, setQuery] = useState('')
@@ -100,7 +102,7 @@ export default function AccountTimezoneSelect(): ReactNode {
             <input
               type="search"
               value={query}
-              placeholder="Search city, region, UTC±…"
+              placeholder={t('settings.timezoneSearch')}
               aria-label="Search timezone"
               autoFocus
               onChange={(event) => setQuery(event.target.value)}
@@ -109,7 +111,7 @@ export default function AccountTimezoneSelect(): ReactNode {
           </div>
           <div className="max-h-72 overflow-y-auto py-1" role="listbox">
             {groups.length === 0 && (
-              <div className="px-3 py-2 text-caption text-zinc-500">No matching timezone</div>
+              <div className="px-3 py-2 text-caption text-zinc-500">{t('settings.timezoneEmpty')}</div>
             )}
             {groups.map((group) => (
               <div key={group.name}>

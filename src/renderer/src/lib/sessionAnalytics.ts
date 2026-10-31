@@ -277,10 +277,11 @@ export function daysRemaining(
   return Math.floor(delta / 86400)
 }
 
+/** @deprecated Prefer formatAccountShortDate from displayTime (account TZ). */
 export function formatShortDate(unixSec: number | null | undefined): string {
   if (unixSec == null || !Number.isFinite(unixSec)) return '—'
   const d = new Date(unixSec * 1000)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
 /** Average PnL per closed trade (expectancy). */

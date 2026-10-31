@@ -24,9 +24,9 @@ import {
   computeSessionAnalytics,
   daysRemaining,
   formatRiskRewardRatio,
-  formatShortDate,
   type PeriodBucket
 } from '@/lib/sessionAnalytics'
+import { formatAccountShortDate } from '@/lib/displayTime'
 import { clearSessionNote, getSessionNote, setSessionNote } from '@/lib/sessionNotes'
 import { formatPnl, summarizeSession } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
@@ -261,7 +261,7 @@ function SessionCard({
   onDuplicate: () => void
   onDelete: () => void
 }): ReactNode {
-  const { t } = useT()
+  const { t, locale } = useT()
   const [note, setNote] = useState(() => getSessionNote(session.id))
   const [datasetMeta, setDatasetMeta] = useState<ImportedDatasetMeta | null>(null)
 
@@ -314,8 +314,9 @@ function SessionCard({
       datasetMeta.lastTime ??
       datasetMeta.timeframes?.['1m']?.lastTime
     if (first == null || last == null) return null
-    return `${formatShortDate(first)} – ${formatShortDate(last)}`
-  }, [datasetMeta, session.timeframe])
+    const loc = locale === 'zh' ? 'zh-CN' : 'en-US'
+    return `${formatAccountShortDate(first, accountTimezone, loc)} – ${formatAccountShortDate(last, accountTimezone, loc)}`
+  }, [datasetMeta, session.timeframe, accountTimezone, locale])
 
   return (
     <SoftCard elevated className="overflow-hidden">
@@ -332,14 +333,14 @@ function SessionCard({
                     if (e.key === 'Enter') onCommitRename()
                     if (e.key === 'Escape') onCancelRename()
                   }}
-                  aria-label="Session name"
+                  aria-label={t('sessions.nameAria')}
                   autoFocus
                 />
                 <SoftButton size="sm" variant="primary" onClick={onCommitRename}>
-                  Save
+                  {t('sessions.save')}
                 </SoftButton>
                 <SoftButton size="sm" variant="ghost" onClick={onCancelRename}>
-                  Cancel
+                  {t('sessions.cancel')}
                 </SoftButton>
               </div>
             ) : (
@@ -377,20 +378,22 @@ function SessionCard({
                     ·
                   </span>
                   <span className={cn(softType.caption, 'whitespace-nowrap')}>
-                    {remaining} day{remaining === 1 ? '' : 's'} remaining
+                    {remaining === 1
+                      ? t('sessions.daysRemaining', { count: remaining })
+                      : t('sessions.daysRemainingPlural', { count: remaining })}
                   </span>
                 </>
               ) : null}
             </div>
             <p className={cn('mt-3', softType.caption)}>
-              Balance{' '}
+              {t('sessions.balance')}{' '}
               <span className="whitespace-nowrap text-body font-semibold tabular-nums text-zinc-100">
                 {formatPnlCcy(analytics.balance, quote).replace(/^[+-]/, '')}
               </span>
               <span className="mx-2 text-zinc-700" aria-hidden>
                 ·
               </span>
-              PnL{' '}
+              {t('sessions.pnl')}{' '}
               <span
                 className={cn(
                   'whitespace-nowrap text-body font-semibold tabular-nums',
@@ -422,14 +425,14 @@ function SessionCard({
               <FileText className="h-4 w-4" aria-hidden />
               {t('sessions.summary')}
             </SoftButton>
-            <SoftButton size="sm" variant="secondary" onClick={onAnalytics} aria-label="Analytics">
+            <SoftButton size="sm" variant="secondary" onClick={onAnalytics} aria-label={t('sessions.analyticsAria')}>
               <BarChart3 className="h-4 w-4" aria-hidden />
             </SoftButton>
             <SoftButton
               size="sm"
               variant="secondary"
               onClick={onStartRename}
-              aria-label="Rename session"
+              aria-label={t('sessions.renameAria')}
             >
               <Pencil className="h-4 w-4" aria-hidden />
             </SoftButton>
@@ -437,7 +440,7 @@ function SessionCard({
               size="sm"
               variant="secondary"
               onClick={onToggleNotes}
-              aria-label="Edit notes"
+              aria-label={t('sessions.notesAria')}
             >
               {t('sessions.notes')}
             </SoftButton>
@@ -445,7 +448,7 @@ function SessionCard({
               size="sm"
               variant="secondary"
               onClick={onDuplicate}
-              aria-label="Duplicate session"
+              aria-label={t('sessions.duplicateAria')}
             >
               <Copy className="h-4 w-4" aria-hidden />
             </SoftButton>
@@ -453,7 +456,7 @@ function SessionCard({
               size="sm"
               variant="ghost"
               onClick={onDelete}
-              aria-label="Delete session"
+              aria-label={t('sessions.deleteAria')}
               className="text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
@@ -463,7 +466,7 @@ function SessionCard({
               variant="ghost"
               onClick={onToggle}
               aria-expanded={expanded}
-              aria-label={expanded ? 'Collapse session' : 'Expand session'}
+              aria-label={expanded ? t('sessions.collapseAria') : t('sessions.expandAria')}
             >
               {expanded ? (
                 <ChevronUp className="h-4 w-4" aria-hidden />
@@ -519,31 +522,31 @@ function SessionCard({
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <MetricChip
-                  label="Total PnL"
+                  label={t('sessions.totalPnl')}
                   value={formatPnlCcy(analytics.totalPnl, quote)}
                   tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
                 />
                 <MetricChip
-                  label="Win Rate"
+                  label={t('sessions.winRate')}
                   value={
                     analytics.winRate == null
                       ? '—'
                       : `${Math.round(analytics.winRate * 1000) / 10}%`
                   }
                 />
-                <MetricChip label="Risk/Reward" value={formatRiskRewardRatio(analytics.riskReward)} />
+                <MetricChip label={t('sessions.riskReward')} value={formatRiskRewardRatio(analytics.riskReward)} />
                 <MetricChip
-                  label="Month"
+                  label={t('sessions.month')}
                   value={formatPnl(analytics.monthPnl)}
                   tone={chipTone(analytics.monthPnl)}
                 />
                 <MetricChip
-                  label="Week"
+                  label={t('sessions.week')}
                   value={formatPnl(analytics.weekPnl)}
                   tone={chipTone(analytics.weekPnl)}
                 />
                 <MetricChip
-                  label="Day"
+                  label={t('sessions.day')}
                   value={formatPnl(analytics.dayPnl)}
                   tone={chipTone(analytics.dayPnl)}
                 />
@@ -602,10 +605,11 @@ function MetricChip({
 }
 
 function EquitySparkline({ points }: { points: number[] }): ReactNode {
+  const { t } = useT()
   if (points.length === 0) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
-        Equity builds as you close trades.
+        {t('sessions.equityEmpty')}
       </p>
     )
   }
@@ -623,7 +627,7 @@ function EquitySparkline({ points }: { points: number[] }): ReactNode {
   const last = points[points.length - 1] ?? 0
   const up = last >= (points[0] ?? 0)
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label="Equity curve">
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label={t('sessions.equityCurveAria')}>
       <polyline
         fill="none"
         stroke={up ? '#34d399' : '#f87171'}

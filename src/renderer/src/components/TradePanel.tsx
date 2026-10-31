@@ -18,7 +18,8 @@ import {
   type Position
 } from '@/lib/paperTrade'
 import { accountPnlFromQuote, formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
+import { formatAccountDateTime } from '@/lib/displayTime'
+import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { formatAssetPrice } from '@shared/pricePrecision'
 import { usePricePrecision } from '@/hooks/usePricePrecision'
@@ -67,6 +68,7 @@ function PendingOrderRow({
   onSelect: () => void
   onCancel: () => void
 }) {
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   return (
     <li
       className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums ${
@@ -81,7 +83,7 @@ function PendingOrderRow({
       <span className="text-zinc-500">{formatPositionSize(order.lots, symbol)}</span>
       <span className="text-zinc-400">
         {order.kind === 'stopLimit' ? 'Stop' : 'Limit'}{' '}
-        {formatAssetPrice(order.price, pricePrecision)} · {formatUtcCandleTime(order.placedTime)}
+        {formatAssetPrice(order.price, pricePrecision)} · {formatAccountDateTime(order.placedTime, accountTimezone)}
       </span>
       {order.takeProfit != null && (
         <span className="text-teal-400/90">
@@ -126,6 +128,7 @@ function OpenPositionRow({
   onSelect: () => void
   onClose: () => void
 }) {
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   return (
     <li
       className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums ${
@@ -144,7 +147,7 @@ function OpenPositionRow({
         <span className="text-zinc-500">{formatPositionSize(position.lots, symbol)}</span>
         <span className="text-zinc-400">
           Entry {formatAssetPrice(position.entryPrice, pricePrecision)} ·{' '}
-          {formatUtcCandleTime(position.entryTime)}
+          {formatAccountDateTime(position.entryTime, accountTimezone)}
         </span>
         {position.takeProfit != null && (
           <span className="text-teal-400/90">
@@ -186,6 +189,7 @@ function HistoricOrderRow({
   pricePrecision: number
 }) {
   const canceled = order.status === 'canceled'
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums text-zinc-400">
       <span
@@ -204,8 +208,8 @@ function HistoricOrderRow({
         {canceled ? ' · canceled' : ''}
       </span>
       <span className="text-zinc-600">
-        {formatUtcCandleTime(order.placedTime)}
-        {order.updateTime !== order.placedTime ? ` → ${formatUtcCandleTime(order.updateTime)}` : ''}
+        {formatAccountDateTime(order.placedTime, accountTimezone)}
+        {order.updateTime !== order.placedTime ? ` → ${formatAccountDateTime(order.updateTime, accountTimezone)}` : ''}
       </span>
       {order.takeProfit != null && (
         <span className="text-teal-400/80">
@@ -234,6 +238,7 @@ function ClosedPositionRow({
   onLocate: () => void
   onNoteChange: (note: string) => void
 }) {
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   return (
     <li className="flex flex-col gap-0.5 py-1.5 text-zinc-400">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
@@ -273,12 +278,12 @@ function ClosedPositionRow({
           {formatAssetPrice(trade.exitPrice, pricePrecision)}
         </span>
         <span className="text-zinc-600">
-          {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
+          {formatAccountDateTime(trade.entryTime, accountTimezone)} → {formatAccountDateTime(trade.exitTime, accountTimezone)}
         </span>
         <Tooltip text="Scroll the chart to the entry time" side="top">
           <button
             type="button"
-            aria-label={`Scroll the chart to ${formatUtcCandleTime(trade.entryTime)}`}
+            aria-label={`Scroll the chart to ${formatAccountDateTime(trade.entryTime, accountTimezone)}`}
             className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
             onClick={onLocate}
           >

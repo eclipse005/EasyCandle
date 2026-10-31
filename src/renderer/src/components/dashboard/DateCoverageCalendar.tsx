@@ -3,22 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 import { cn } from '@/components/ui/cn'
 import SoftButton from '@/components/ui/SoftButton'
 import { softType } from '@/components/ui/softTokens'
-
-const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const
-const MONTH_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-] as const
+import { useT } from '@/i18n/useT'
 
 type CalendarView = 'days' | 'months' | 'years'
 
@@ -26,8 +11,8 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n)
 }
 
-function monthName(monthIndex: number): string {
-  return new Date(Date.UTC(2000, monthIndex, 1)).toLocaleString('en-US', {
+function monthName(monthIndex: number, locale: string): string {
+  return new Date(Date.UTC(2000, monthIndex, 1)).toLocaleString(locale, {
     month: 'long',
     timeZone: 'UTC'
   })
@@ -68,6 +53,7 @@ export default function DateCoverageCalendar({
   initialMonth,
   className
 }: DateCoverageCalendarProps): ReactNode {
+  const { t, locale } = useT()
   const selectable = typeof onSelectDay === 'function'
 
   const seed = useMemo(() => {
@@ -195,7 +181,7 @@ export default function DateCoverageCalendar({
                 )}
                 aria-label="Choose month"
               >
-                {monthName(month)}
+                {monthName(month, locale === 'zh' ? 'zh-CN' : 'en-US')}
               </button>
               <button
                 type="button"
@@ -279,11 +265,12 @@ export default function DateCoverageCalendar({
         </div>
       ) : view === 'months' ? (
         <div className="grid grid-cols-3 gap-1.5">
-          {MONTH_SHORT.map((label, idx) => {
+          {([0,1,2,3,4,5,6,7,8,9,10,11] as const).map((idx) => {
+            const label = t(`cal.month.${idx}` as 'cal.month.0')
             const selected = idx === month
             return (
               <button
-                key={label}
+                key={idx}
                 type="button"
                 onClick={() => pickMonth(idx)}
                 className={cn(
@@ -301,9 +288,9 @@ export default function DateCoverageCalendar({
       ) : (
         <>
           <div className="grid grid-cols-7 gap-0.5 text-center">
-            {WEEKDAYS.map((label) => (
-              <div key={label} className={cn(softType.micro, 'py-1 text-zinc-600')}>
-                {label}
+            {([0, 1, 2, 3, 4, 5, 6] as const).map((di) => (
+              <div key={di} className={cn(softType.micro, 'py-1 text-zinc-600')}>
+                {t(`cal.dow.${di}` as 'cal.dow.0')}
               </div>
             ))}
             {cells.map((cell, idx) => {

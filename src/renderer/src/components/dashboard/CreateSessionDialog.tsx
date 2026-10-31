@@ -173,8 +173,7 @@ export default function CreateSessionDialog({
             {symbolGroups.length === 0 ? <option value="">{t('session.noSymbols')}</option> : null}
             {symbolGroups.map((g) => (
               <option key={g.key} value={g.key}>
-                {g.symbol} · {g.coverageDays.size.toLocaleString()} day
-                {g.coverageDays.size === 1 ? '' : 's'}
+                {g.symbol} · {t('symbols.days', { count: g.coverageDays.size.toLocaleString() })}
               </option>
             ))}
           </SoftSelect>
