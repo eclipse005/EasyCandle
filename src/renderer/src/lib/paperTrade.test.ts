@@ -516,6 +516,7 @@ describe('rewindTradesAfterStepBack', () => {
       }
     ])
     expect(result.discardedEntryTimes).toEqual([])
+    expect(result.discardedExitTimes).toEqual([20])
   })
 
   it('reopens a trade closed on a finer bar inside the left coarser candle', () => {
@@ -528,6 +529,7 @@ describe('rewindTradesAfterStepBack', () => {
     })
     expect(result.closedTrades).toHaveLength(0)
     expect(result.positions[0]?.id).toBe('t1')
+    expect(result.discardedExitTimes).toEqual([20])
   })
 
   it('forgets a closed trade when rewind lands before its entry', () => {
@@ -553,6 +555,7 @@ describe('rewindTradesAfterStepBack', () => {
     expect(result.pendingOrders).toEqual([])
     expect(result.closedTrades).toHaveLength(0)
     expect(result.discardedEntryTimes).toEqual([20])
+    expect(result.discardedExitTimes).toEqual([20])
   })
 
   it('discards an open position when current is before entry', () => {
@@ -574,6 +577,7 @@ describe('rewindTradesAfterStepBack', () => {
     expect(result.positions).toEqual([])
     expect(result.pendingOrders).toEqual([])
     expect(result.discardedEntryTimes).toEqual([20])
+    expect(result.discardedExitTimes).toEqual([])
   })
 
   it('keeps an open position when still on or after entry candle', () => {

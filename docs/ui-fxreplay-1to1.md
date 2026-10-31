@@ -77,7 +77,7 @@
 - [x] Theme tokens: page `#030303`, card `#131415`, border `#414347`, primary `#0260FD`, up `#06A77D`, down `#ED6A5A` (`main.css` + `primary` Tailwind scale + `UI_TOKENS` / chart palette)
 - [x] Interactive chrome accent → primary blue (IconButton `tone="accent"`, play control); wordmark amber kept
 - [x] Session shell: order ticket `300px`; chart/ticket/blotter hairline `border-zinc-700`
-- [x] Chart overlays: bottom-left instant Buy (blue) / Sell (red) + qty → `paperBuy`/`paperSell`; bottom-right equity + session PnL
+- [x] Chart overlays: bottom-left instant Buy (blue) / Sell (red) + qty → `paperBuy`/`paperSell`; bottom-right equity pill removed in 0.1.29 (duplicates Paper trade blotter)
 - [x] Floating replay bar: dark card pill (`rounded-2xl`), blue circular play; scrubber deferred
 - [x] Blotter tab labels: Open positions / Pending orders / Closed positions (Order History retained)
 - [x] Ticket field reorder (Sell|Buy → risk chips → type) — **P1**

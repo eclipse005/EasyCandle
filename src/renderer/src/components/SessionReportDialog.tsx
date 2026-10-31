@@ -21,7 +21,7 @@ function ReportBlock({ title, report, quote }: { title: string; report: SideRepo
   return (
     <section className="min-w-0 flex-1">
       <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>{title}</h3>
-      <dl className={cn("grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums", softType.caption)}>
+      <dl className={cn("grid grid-cols-2 gap-x-4 gap-y-2.5 tabular-nums", softType.caption)}>
         <div>
           <dt className="text-zinc-600">Trades</dt>
           <dd className="text-zinc-200">{report.count}</dd>
@@ -31,7 +31,7 @@ function ReportBlock({ title, report, quote }: { title: string; report: SideRepo
           <dd className="text-zinc-200">{formatWinRate(report.winRate)}</dd>
         </div>
         <div>
-          <dt className="text-zinc-600">Wins / losses</dt>
+          <dt className="whitespace-nowrap text-zinc-600">W / L</dt>
           <dd className="text-zinc-200">
             {report.wins} / {report.losses}
             {report.breakeven > 0 ? (
@@ -193,7 +193,7 @@ export default function SessionReportDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-report-title"
-        className="flex max-h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
+        className="flex max-h-[min(92vh,820px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
@@ -222,7 +222,7 @@ export default function SessionReportDialog() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <div className="mb-4 flex flex-col gap-4 border-b border-zinc-800/80 pb-4 sm:flex-row">
+          <div className="mb-4 flex flex-col gap-5 border-b border-zinc-800/80 pb-4 sm:flex-row sm:gap-6">
             <ReportBlock title="Overall" report={summary.overall} quote={quoteCurrency} />
             <div className="hidden w-px bg-zinc-800 sm:block" aria-hidden />
             <ReportBlock title="Long" report={summary.long} quote={quoteCurrency} />
@@ -240,14 +240,37 @@ export default function SessionReportDialog() {
                 className="flex flex-col gap-0.5 py-1.5 text-zinc-400"
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
-                  <span
-                    className={
-                      trade.side === 'long'
-                        ? 'font-semibold text-emerald-400/90'
-                        : 'font-semibold text-red-400/90'
-                    }
-                  >
-                    {trade.side.toUpperCase()}
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className={
+                        trade.side === 'long'
+                          ? 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
+                          : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
+                      }
+                    >
+                      {trade.side === 'long' ? 'B' : 'S'}
+                    </span>
+                    <span className="text-zinc-600" aria-hidden>
+                      →
+                    </span>
+                    <span
+                      className={
+                        trade.side === 'long'
+                          ? 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
+                          : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
+                      }
+                    >
+                      {trade.side === 'long' ? 'S' : 'B'}
+                    </span>
+                    <span
+                      className={
+                        trade.side === 'long'
+                          ? 'font-semibold text-emerald-400/90'
+                          : 'font-semibold text-red-400/90'
+                      }
+                    >
+                      {trade.side.toUpperCase()}
+                    </span>
                   </span>
                   <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
                   <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro uppercase tracking-wide text-zinc-500">

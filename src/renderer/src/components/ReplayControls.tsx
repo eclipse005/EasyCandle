@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useMemo, useState } from 'react'
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -9,6 +9,7 @@ import {
   Play,
   SkipForward
 } from 'lucide-react'
+import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
 import Dropdown from '@/components/Dropdown'
 import IconButton from '@/components/IconButton'
 import Tooltip from '@/components/Tooltip'
@@ -20,6 +21,7 @@ import {
   toSessionParts
 } from '@/lib/chartTimezone'
 import { REPLAY_SPEEDS } from '@/lib/replayEngine'
+import { coverageDaysFromMetas, isDayCovered } from '@shared/dateCoverage'
 import { TIMEFRAMES } from '@shared/timeframes'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
@@ -51,6 +53,12 @@ export default function ReplayControls() {
   const timezone = useChartSettingsStore((s) => s.timezone)
   const offsetLabel = sessionUtcOffsetLabel(timezone)
   const timezoneTitle = sessionTimezoneTitle(timezone)
+  const importMeta = useReplayStore((s) => s.importMeta)
+
+  const coverageDays = useMemo(
+    () => (importMeta ? coverageDaysFromMetas([importMeta]) : new Set<string>()),
+    [importMeta]
+  )
 
   const seed = currentCandle
     ? toSessionParts(currentCandle.time, timezone)
@@ -66,6 +74,15 @@ export default function ReplayControls() {
   async function onJump(event: FormEvent): Promise<void> {
     event.preventDefault()
     setJumpError(null)
+
+    if (!jumpDate || !jumpTime) {
+      setJumpError('Pick a covered day and time.')
+      return
+    }
+    if (coverageDays.size > 0 && !isDayCovered(coverageDays, jumpDate)) {
+      setJumpError('That day has no K-line data in this dataset.')
+      return
+    }
 
     const seconds = parseSessionParts(jumpDate, jumpTime, timezone)
     if (seconds == null) {
@@ -184,6 +201,8 @@ export default function ReplayControls() {
 
       <Dropdown
         align="end"
+        placement="top"
+        menuClassName="!overflow-visible"
         trigger={({ open, toggle }) => (
           <IconButton
             tooltip={`Jump to ${offsetLabel} time`}
@@ -199,32 +218,51 @@ export default function ReplayControls() {
           </IconButton>
         )}
       >
-        <form onSubmit={onJump} className="flex flex-col gap-1.5 p-2">
+        <form
+          onSubmit={onJump}
+          className="flex w-[min(18.5rem,calc(100vw-2rem))] flex-col gap-2 p-2"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
             Jump · {timezoneTitle}
           </span>
-          <div className="flex items-center gap-1">
-            <SkipForward className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
-            <input
-              type="date"
-              value={jumpDate}
-              disabled={busy}
-              aria-label={`Jump date ${timezoneTitle}`}
-              onChange={(e) => setJumpDate(e.target.value)}
-              className="h-8 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+          {coverageDays.size > 0 ? (
+            <DateCoverageCalendar
+              coverageDays={coverageDays}
+              selectedDay={jumpDate}
+              initialMonth={jumpDate ? jumpDate.slice(0, 7) : undefined}
+              onSelectDay={(day) => {
+                setJumpError(null)
+                setJumpDate(day)
+              }}
+              className="rounded-xl border border-white/[0.06] bg-zinc-950/80 p-2"
             />
+          ) : (
+            <p className="rounded-xl border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-500">
+              No coverage calendar for this session.
+            </p>
+          )}
+          <div className="flex items-center gap-1.5">
             <input
               type="time"
               value={jumpTime}
               disabled={busy}
               aria-label={`Jump time ${timezoneTitle}`}
               onChange={(e) => setJumpTime(e.target.value)}
-              className="h-8 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+              className="h-8 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
             />
             <IconButton type="submit" disabled={busy} tooltip={`Jump to ${timezoneTitle}`}>
               <SkipForward className="h-4 w-4" />
             </IconButton>
           </div>
+          {jumpDate ? (
+            <span className="px-0.5 text-[10px] tabular-nums text-zinc-500">
+              Day {jumpDate}
+              {coverageDays.size > 0 && !isDayCovered(coverageDays, jumpDate)
+                ? ' · no data'
+                : ''}
+            </span>
+          ) : null}
           {jumpError && <span className="text-xs text-red-400">{jumpError}</span>}
         </form>
       </Dropdown>

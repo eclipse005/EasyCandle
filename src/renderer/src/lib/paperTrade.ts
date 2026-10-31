@@ -906,6 +906,8 @@ export type TradeRewindResult = {
   orderHistory: HistoricOrder[]
   /** Entry times whose open markers should be removed (forgotten / reset). */
   discardedEntryTimes: number[]
+  /** Exit times whose close markers should be removed when a trade is reopened / forgotten. */
+  discardedExitTimes: number[]
 }
 
 function eventOnLeftCandle(time: number, leftCandleTime: number, leftCoverEnd: number): boolean {
@@ -939,6 +941,7 @@ export function rewindTradesAfterStepBack(args: {
   let closedTrades = Array.isArray(args.closedTrades) ? [...args.closedTrades] : []
   let orderHistory = Array.isArray(args.orderHistory) ? [...args.orderHistory] : []
   const discardedEntryTimes: number[] = []
+  const discardedExitTimes: number[] = []
 
   const keptPositions: Position[] = []
   for (const position of positions) {
@@ -958,6 +961,7 @@ export function rewindTradesAfterStepBack(args: {
       stillClosed.push(trade)
       continue
     }
+    discardedExitTimes.push(trade.exitTime)
     if (trade.entryTime <= currentCandleTime) {
       positions.push(positionFromClosedTrade(trade))
     } else {
@@ -987,7 +991,7 @@ export function rewindTradesAfterStepBack(args: {
 
   pendingOrders = pendingOrders.filter((pending) => !(currentCandleTime < pending.placedTime))
 
-  return { positions, pendingOrders, closedTrades, orderHistory, discardedEntryTimes }
+  return { positions, pendingOrders, closedTrades, orderHistory, discardedEntryTimes, discardedExitTimes }
 }
 
 /**

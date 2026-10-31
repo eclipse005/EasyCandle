@@ -1981,12 +1981,46 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
           const to = toXY(trade.exitTime, trade.exitPrice)
           if (!from || !to) return null
 
-          const color = trade.pnl >= 0 ? '#06A77D' : '#ED6A5A'
+          const lineColor = trade.pnl >= 0 ? TRADE_OVERLAY.pnlProfit : TRADE_OVERLAY.pnlLoss
+          const entryLetter = trade.side === 'long' ? 'B' : 'S'
+          const exitLetter = trade.side === 'long' ? 'S' : 'B'
+          const entryColor =
+            trade.side === 'long' ? TRADE_OVERLAY.pnlProfit : TRADE_OVERLAY.shortLine
+          const exitColor =
+            trade.side === 'long' ? TRADE_OVERLAY.shortLine : TRADE_OVERLAY.pnlProfit
           const samePoint = Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5
+          const badgeR = 8
+
+          function letterBadge(pt: { x: number; y: number }, letter: string, fill: string) {
+            return (
+              <g>
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={badgeR}
+                  fill={fill}
+                  stroke="#131415"
+                  strokeWidth={1.25}
+                />
+                <text
+                  x={pt.x}
+                  y={pt.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="#FFFFFF"
+                  fontSize={10}
+                  fontWeight={700}
+                  fontFamily={TRADE_OVERLAY.font}
+                  className="pointer-events-none select-none"
+                >
+                  {letter}
+                </text>
+              </g>
+            )
+          }
 
           return (
             <g key={`trade-${trade.id}-${trade.exitTime}`}>
-              <circle cx={from.x} cy={from.y} r={3} fill={color} />
               {!samePoint && (
                 <>
                   <line
@@ -1994,17 +2028,26 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
                     y1={from.y}
                     x2={to.x}
                     y2={to.y}
-                    stroke={color}
+                    stroke={lineColor}
                     strokeWidth={TRADE_OVERLAY.historyWidth}
-                    strokeOpacity={0.9}
+                    strokeOpacity={0.95}
                     strokeDasharray={TRADE_OVERLAY.historyDash}
                   />
-                  <polygon points={arrowHeadPoints(from, to)} fill={color} stroke="none" />
+                  <polygon points={arrowHeadPoints(from, to)} fill={lineColor} stroke="none" />
                 </>
               )}
               {samePoint && (
-                <circle cx={to.x} cy={to.y} r={4.5} fill="none" stroke={color} strokeWidth={1.5} />
+                <circle
+                  cx={to.x}
+                  cy={to.y}
+                  r={badgeR + 2.5}
+                  fill="none"
+                  stroke={lineColor}
+                  strokeWidth={1.5}
+                />
               )}
+              {letterBadge(from, entryLetter, entryColor)}
+              {!samePoint && letterBadge(to, exitLetter, exitColor)}
             </g>
           )
         })}

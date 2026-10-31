@@ -4,7 +4,6 @@ import AboutDialog from '@/components/AboutDialog'
 import AppTour from '@/components/AppTour'
 import ChartSettingsDialog from '@/components/ChartSettingsDialog'
 import ChartInstantTrade from '@/components/ChartInstantTrade'
-import ChartSessionEquity from '@/components/ChartSessionEquity'
 import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
 import DrawingToolbar from '@/components/DrawingToolbar'
 import DrawingSettingsDialog from '@/components/DrawingSettingsDialog'
@@ -105,12 +104,7 @@ export default function AppShell({
           {showDrawingToolbar && <DrawingToolbar />}
           <div className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
             {children}
-            {showPaperTrade && inReplay && !chartFullscreen && (
-              <>
-                <ChartInstantTrade />
-                <ChartSessionEquity priceScaleWidth={priceScaleWidth} />
-              </>
-            )}
+            {showPaperTrade && inReplay && !chartFullscreen && <ChartInstantTrade />}
             <div
               className="pointer-events-none absolute z-20"
               style={{

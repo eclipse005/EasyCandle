@@ -246,6 +246,29 @@ function ClosedPositionRow({
         <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-micro font-medium text-zinc-500">
           Closed
         </span>
+        <span className="inline-flex items-center gap-1" title={trade.side === 'long' ? 'Buy → Sell' : 'Sell → Buy'}>
+          <span
+            className={
+              trade.side === 'long'
+                ? 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
+                : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
+            }
+          >
+            {trade.side === 'long' ? 'B' : 'S'}
+          </span>
+          <span className="text-zinc-600" aria-hidden>
+            →
+          </span>
+          <span
+            className={
+              trade.side === 'long'
+                ? 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-red-500/15 px-1 text-micro font-bold text-red-400'
+                : 'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-emerald-500/15 px-1 text-micro font-bold text-emerald-400'
+            }
+          >
+            {trade.side === 'long' ? 'S' : 'B'}
+          </span>
+        </span>
         <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
         <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
         <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro font-medium text-zinc-500">

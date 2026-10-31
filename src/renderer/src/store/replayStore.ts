@@ -209,6 +209,22 @@ export type TradeMarker = {
   text: string
 }
 
+/** FX Replay–style entry marker: long → B below, short → S above. */
+function tradeMarkerForSide(side: 'long' | 'short', time: number): TradeMarker {
+  return {
+    time,
+    position: side === 'long' ? 'belowBar' : 'aboveBar',
+    color: side === 'long' ? '#06A77D' : '#ED6A5A',
+    shape: side === 'long' ? 'arrowUp' : 'arrowDown',
+    text: side === 'long' ? 'B' : 'S'
+  }
+}
+
+/** Closing marker is the opposite side (long exit → S, short exit → B). */
+function tradeMarkerForExit(openSide: 'long' | 'short', time: number): TradeMarker {
+  return tradeMarkerForSide(openSide === 'long' ? 'short' : 'long', time)
+}
+
 export type SessionReport = {
   symbol: string
   timeframe: string
@@ -742,7 +758,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
   }
 
   function applyRewindResult(rewound: TradeRewindResult): void {
-    const discardSet = new Set(rewound.discardedEntryTimes)
+    const discardSet = new Set([
+      ...rewound.discardedEntryTimes,
+      ...rewound.discardedExitTimes
+    ])
     const tradeMarkers =
       discardSet.size === 0
         ? get().tradeMarkers
@@ -1031,13 +1050,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const filled = pendingToPosition(pending, candle.time)
       positions.push(filled)
       filledThisBar.add(filled.id)
-      tradeMarkers.push({
-        time: candle.time,
-        position: pending.side === 'long' ? 'belowBar' : 'aboveBar',
-        color: pending.side === 'long' ? '#06A77D' : '#ED6A5A',
-        shape: pending.side === 'long' ? 'arrowUp' : 'arrowDown',
-        text: pending.side === 'long' ? 'B' : 'S'
-      })
+      tradeMarkers.push(tradeMarkerForSide(pending.side, candle.time))
       orderHistory.push(historicOrderFromPending(pending, 'filled', candle.time))
       event = 'fill'
     }
@@ -1064,6 +1077,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           currentTradeCosts()
         )
       )
+      tradeMarkers.push(tradeMarkerForExit(open.side, candle.time))
       if (selectedWorkingId === open.id) selectedWorkingId = null
       hitKind = hit.hit
       event = hit.hit
@@ -1826,13 +1840,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       return
     }
 
-    const marker: TradeMarker = {
-      time: candle.time,
-      position: side === 'long' ? 'belowBar' : 'aboveBar',
-      color: side === 'long' ? '#06A77D' : '#ED6A5A',
-      shape: side === 'long' ? 'arrowUp' : 'arrowDown',
-      text: side === 'long' ? 'B' : 'S'
-    }
+    const marker = tradeMarkerForSide(side, candle.time)
 
     set((s) => ({
       positions: [...s.positions, result.position],
@@ -1866,10 +1874,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       costs
     )
 
+    const exitMarker = tradeMarkerForExit(open.side, candle.time)
+
     set((s) => ({
       positions: s.positions.filter((p) => p.id !== open.id),
       selectedWorkingId: s.selectedWorkingId === open.id ? null : s.selectedWorkingId,
       closedTrades: [...s.closedTrades, closed],
+      tradeMarkers: [...s.tradeMarkers, exitMarker],
       replayMessage: null
     }))
   }
