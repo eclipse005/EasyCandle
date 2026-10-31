@@ -18,6 +18,7 @@ import {
   type Time
 } from 'lightweight-charts'
 import DrawingOverlay from '@/components/DrawingOverlay'
+import DrawingSelectionBar from '@/components/DrawingSelectionBar'
 import ChartContextMenu from '@/components/ChartContextMenu'
 import ActiveIndicatorsLegend from '@/components/ActiveIndicatorsLegend'
 import OhlcLegend from '@/components/OhlcLegend'
@@ -29,6 +30,10 @@ import {
   commitGesture,
   lastJSON as lastDrawingJSON
 } from '@/lib/drawings/drawingBridge'
+import {
+  makeChartViewApi,
+  registerPrimaryChartView
+} from '@/lib/chart/chartViewBridge'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useChartPaneModel } from '@/hooks/useChartPaneModel'
 import { themedWordmarkUrl } from '@/lib/chartWordmark'
@@ -530,19 +535,42 @@ export default function CandleChart({
       useDrawingUiStore.getState().refreshUndoRedo()
     })
     const offTool = manager.on('tool', (kind) => useDrawingUiStore.setState({ armedTool: kind }))
+    const offSelection = manager.on('selection', (ids) => {
+      if (isPrimary) useDrawingUiStore.getState().setSelectedIds(ids)
+    })
 
     // Re-apply the UI settings (a fresh manager starts from lib defaults) and
     // restore the workspace drawings into the fresh manager.
     manager.setDrawingsVisible(useDrawingUiStore.getState().drawingsVisible)
     manager.setMagnet(useDrawingUiStore.getState().magnet)
     manager.setStayInDrawingMode(useDrawingUiStore.getState().stayInDrawingMode)
+    if (useDrawingUiStore.getState().drawingsLocked) {
+      for (const d of manager.drawings()) {
+        if (!d.locked) manager.update({ ...d, locked: true })
+      }
+    }
     const restored = lastDrawingJSON()
     if (restored !== '[]') manager.importJSON(restored)
+    if (isPrimary) {
+      useDrawingUiStore.getState().setSelectedIds(manager.selection())
+      registerPrimaryChartView(
+        makeChartViewApi(
+          () => chartRef.current,
+          () => rangeCandlesRef.current.length,
+          focusLatestCandle
+        )
+      )
+    }
 
     return () => {
       offChange()
       offGesture()
       offTool()
+      offSelection()
+      if (isPrimary) {
+        registerPrimaryChartView(null)
+        useDrawingUiStore.getState().setSelectedIds([])
+      }
       detachPane(paneId)
       drawingManagerRef.current = null
     }
@@ -756,6 +784,7 @@ export default function CandleChart({
     y: number
     price: number
     time: number | null
+    drawingId?: string | null
   } | null>(null)
 
   const smcScene = smcOverlay?.type === 'smc' ? smcOverlay.scene : null
@@ -773,12 +802,28 @@ export default function CandleChart({
         const price = series.coordinateToPrice(event.clientY - rect.top)
         const time = chart.timeScale().coordinateToTime(event.clientX - rect.left)
         if (price == null) return
+        const hovered = drawingManagerRef.current?.hoveredId() ?? null
+        const selected = useDrawingUiStore.getState().selectedIds
+        const drawingId = hovered ?? (selected.length === 1 ? selected[0] : null)
         setContextMenu({
           x: event.clientX - rect.left,
           y: event.clientY - rect.top,
           price: Number(price),
-          time: typeof time === 'number' ? time : null
+          time: typeof time === 'number' ? time : null,
+          drawingId
         })
+      }}
+      onDoubleClick={(event) => {
+        if (!isPrimary) return
+        const mgr = drawingManagerRef.current
+        if (!mgr) return
+        const hovered = mgr.hoveredId()
+        const selected = useDrawingUiStore.getState().selectedIds
+        const id = hovered ?? (selected.length === 1 ? selected[0] : null)
+        if (!id) return
+        event.preventDefault()
+        mgr.select([id])
+        useDrawingUiStore.getState().openObjectDialog(id)
       }}
     >
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
@@ -816,6 +861,7 @@ export default function CandleChart({
             paneCandles={seriesCandles}
             pricePrecision={pricePrecision}
           />
+          {isPrimary ? <DrawingSelectionBar /> : null}
         </>
       )}
       {empty && (

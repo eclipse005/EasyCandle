@@ -7,6 +7,7 @@ import ChartInstantTrade from '@/components/ChartInstantTrade'
 import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
 import DrawingToolbar from '@/components/DrawingToolbar'
 import DrawingSettingsDialog from '@/components/DrawingSettingsDialog'
+import DrawingObjectDialog from '@/components/DrawingObjectDialog'
 import FloatingReplayBar from '@/components/FloatingReplayBar'
 import FloatingTradeBar from '@/components/FloatingTradeBar'
 import IconButton from '@/components/IconButton'
@@ -150,6 +151,7 @@ export default function AppShell({
       <AboutDialog />
       <ChartSettingsDialog />
       <DrawingSettingsDialog />
+      <DrawingObjectDialog />
       <SessionReportDialog />
     </div>
   )

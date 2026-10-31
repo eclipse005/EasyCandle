@@ -12,6 +12,12 @@ type DrawingUiState = {
   stayInDrawingMode: boolean
   /** TV "Hide all drawings". */
   drawingsVisible: boolean
+  /** Toolbar Lock: every drawing's `locked` flag. */
+  drawingsLocked: boolean
+  /** LCD selection (primary pane). */
+  selectedIds: string[]
+  /** Open the per-object Style/Text/Coordinates/Visibility dialog. */
+  objectDialogId: string | null
   /** Bumped on every drawing-list change so React + auto-save can react. */
   revision: number
   canUndo: boolean
@@ -20,6 +26,9 @@ type DrawingUiState = {
   setMagnet: (mode: MagnetMode) => void
   toggleStayInDrawingMode: () => void
   setDrawingsVisible: (visible: boolean) => void
+  setDrawingsLocked: (locked: boolean) => void
+  setSelectedIds: (ids: readonly string[]) => void
+  openObjectDialog: (id: string | null) => void
   bumpRevision: () => void
   undo: () => void
   redo: () => void
@@ -28,18 +37,28 @@ type DrawingUiState = {
   resetWorkspace: () => void
 }
 
+function applyLockAll(locked: boolean): void {
+  const mgr = bridge.getPrimary()
+  if (!mgr) return
+  for (const d of mgr.drawings()) {
+    if (Boolean(d.locked) !== locked) mgr.update({ ...d, locked })
+  }
+}
+
 export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
   armedTool: null,
   magnet: 'off',
   stayInDrawingMode: false,
   drawingsVisible: true,
+  drawingsLocked: false,
+  selectedIds: [],
+  objectDialogId: null,
   revision: 0,
   canUndo: false,
   canRedo: false,
 
   setArmedTool(kind) {
     set({ armedTool: kind })
-    // Apply to both panes; the managers are attached once the chart renders.
     bridge.getPrimary()?.setTool(kind)
     bridge.getSecondary()?.setTool(kind)
   },
@@ -61,6 +80,21 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
     set({ drawingsVisible: visible })
     bridge.getPrimary()?.setDrawingsVisible(visible)
     bridge.getSecondary()?.setDrawingsVisible(visible)
+  },
+
+  setDrawingsLocked(locked) {
+    set({ drawingsLocked: locked })
+    applyLockAll(locked)
+    get().bumpRevision()
+    get().refreshUndoRedo()
+  },
+
+  setSelectedIds(ids) {
+    set({ selectedIds: [...ids] })
+  },
+
+  openObjectDialog(id) {
+    set({ objectDialogId: id })
   },
 
   bumpRevision() {
@@ -86,7 +120,15 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
   },
 
   resetWorkspace() {
-    set({ armedTool: null, drawingsVisible: true, canUndo: false, canRedo: false })
+    set({
+      armedTool: null,
+      drawingsVisible: true,
+      drawingsLocked: false,
+      selectedIds: [],
+      objectDialogId: null,
+      canUndo: false,
+      canRedo: false
+    })
     bridge.resetWorkspace()
   }
 }))

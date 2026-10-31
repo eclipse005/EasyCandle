@@ -1,5 +1,6 @@
-import { memo, useState, type ReactNode } from 'react'
+import { memo, useRef, useState, type ReactNode } from 'react'
 import {
+  ChevronRight,
   Eye,
   EyeOff,
   Lock,
@@ -16,11 +17,12 @@ import { DRAWING_TOOL_GROUPS, FAVOURITE_TOOLS, type DrawingToolId } from '@/lib/
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
+import { clearAllDrawings } from '@/lib/drawings/drawingActions'
 
 /**
- * TV-style drawing toolbar: a favourites rail (visible by default), grouped
- * tool submenus, magnet modes, keep-drawing, undo/redo, lock, hide, and
- * clear — all backed by the lightweight-charts-drawing DrawingManager.
+ * TV / FXR drawing toolbar: favourites rail, grouped flyouts (single-click arms
+ * the group's default tool; double-click opens the flyout — not settings),
+ * magnet modes, keep-drawing, undo/redo, lock, hide/remove menus.
  */
 export default memo(function DrawingToolbar() {
   const mode = useReplayStore((s) => s.mode)
@@ -37,10 +39,14 @@ export default memo(function DrawingToolbar() {
   const redo = useDrawingUiStore((s) => s.redo)
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
   const setDrawingsVisible = useDrawingUiStore((s) => s.setDrawingsVisible)
+  const drawingsLocked = useDrawingUiStore((s) => s.drawingsLocked)
+  const setDrawingsLocked = useDrawingUiStore((s) => s.setDrawingsLocked)
   const setDrawingDialogOpen = useDrawingSettingsStore((s) => s.setDrawingDialogOpen)
 
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
-  const [locked, setLocked] = useState(false)
+  const [hideMenuOpen, setHideMenuOpen] = useState(false)
+  const [removeMenuOpen, setRemoveMenuOpen] = useState(false)
+  const lastGroupClickRef = useRef<{ id: string; t: number } | null>(null)
 
   const disabled = mode === 'replay' && replayStatus === 'ended'
 
@@ -49,12 +55,36 @@ export default memo(function DrawingToolbar() {
     setOpenGroupId(null)
   }
 
+  function onGroupClick(groupId: string, defaultTool: DrawingToolId): void {
+    const now = Date.now()
+    const last = lastGroupClickRef.current
+    if (last && last.id === groupId && now - last.t < 350) {
+      // Double-click → open flyout (FXR: not settings).
+      setOpenGroupId(groupId)
+      lastGroupClickRef.current = null
+      return
+    }
+    lastGroupClickRef.current = { id: groupId, t: now }
+    // Single-click → arm the group's first (default) tool.
+    window.setTimeout(() => {
+      const cur = lastGroupClickRef.current
+      if (cur && cur.id === groupId && cur.t === now) {
+        arm(armedTool === defaultTool ? null : defaultTool)
+        lastGroupClickRef.current = null
+      }
+    }, 280)
+  }
+
   function renderGroupSubmenu(group: (typeof DRAWING_TOOL_GROUPS)[number]): ReactNode {
     return (
       <div
         role="menu"
         className="absolute left-full top-0 z-[70] ml-1 min-w-[11rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
       >
+        <div className="flex items-center gap-1 px-3 pb-1 pt-0.5 text-[9px] font-medium uppercase tracking-[0.1em] text-zinc-500">
+          {group.label}
+          <ChevronRight className="h-3 w-3" />
+        </div>
         {group.tools.map((tool) => (
           <button
             key={tool.kind}
@@ -71,6 +101,8 @@ export default memo(function DrawingToolbar() {
             {tool.label}
           </button>
         ))}
+        <div className="my-1 h-px bg-zinc-800" />
+        <p className="px-3 py-1 text-[10px] text-zinc-600">Favourites live on the rail above.</p>
       </div>
     )
   }
@@ -81,8 +113,8 @@ export default memo(function DrawingToolbar() {
       aria-label="Drawing tools"
       data-tour="drawing-toolbar"
       className="flex h-full w-[49px] shrink-0 flex-col items-center gap-0.5 rounded-2xl border border-white/5 bg-zinc-900/50 px-1.5 py-2 shadow-lg shadow-black/20"
+      onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Select / pan */}
       <IconButton
         variant="ghost"
         tooltip="Select / pan"
@@ -95,7 +127,6 @@ export default memo(function DrawingToolbar() {
       </IconButton>
       <div className="my-1 h-px w-7 bg-zinc-800" aria-hidden />
 
-      {/* Favourites rail */}
       {FAVOURITE_TOOLS.map((tool) => (
         <IconButton
           key={tool.kind}
@@ -111,25 +142,30 @@ export default memo(function DrawingToolbar() {
       ))}
       <div className="my-1 h-px w-7 bg-zinc-800" aria-hidden />
 
-      {/* Grouped tool submenus */}
-      {DRAWING_TOOL_GROUPS.map((group) => (
-        <div key={group.id} className="relative">
-          <IconButton
-            variant="ghost"
-            tooltip={group.label}
-            tooltipSide="right"
-            disabled={disabled}
-            active={openGroupId === group.id}
-            onClick={() => setOpenGroupId(openGroupId === group.id ? null : group.id)}
-          >
-            <group.icon className="h-5 w-5" strokeWidth={1.25} />
-          </IconButton>
-          {openGroupId === group.id && renderGroupSubmenu(group)}
-        </div>
-      ))}
+      {DRAWING_TOOL_GROUPS.map((group) => {
+        const defaultTool = group.tools[0]?.kind
+        const groupArmed = group.tools.some((t) => t.kind === armedTool)
+        return (
+          <div key={group.id} className="relative">
+            <IconButton
+              variant="ghost"
+              tooltip={`${group.label} (dbl-click for menu)`}
+              tooltipSide="right"
+              disabled={disabled || !defaultTool}
+              active={openGroupId === group.id || groupArmed}
+              onClick={() => {
+                if (!defaultTool) return
+                onGroupClick(group.id, defaultTool)
+              }}
+            >
+              <group.icon className="h-5 w-5" strokeWidth={1.25} />
+            </IconButton>
+            {openGroupId === group.id && renderGroupSubmenu(group)}
+          </div>
+        )
+      })}
       <div className="my-1 h-px w-7 bg-zinc-800" aria-hidden />
 
-      {/* Magnet */}
       <IconButton
         variant="ghost"
         tooltip={`Magnet: ${magnet}`}
@@ -141,7 +177,6 @@ export default memo(function DrawingToolbar() {
         <Magnet className="h-5 w-5" strokeWidth={1.25} />
       </IconButton>
 
-      {/* Keep drawing */}
       <IconButton
         variant="ghost"
         tooltip="Keep drawing mode"
@@ -155,7 +190,6 @@ export default memo(function DrawingToolbar() {
 
       <div className="my-1 h-px w-7 bg-zinc-800" aria-hidden />
 
-      {/* Undo / redo */}
       <IconButton variant="ghost" tooltip="Undo" tooltipSide="right" disabled={!canUndo} onClick={undo}>
         <Undo2 className="h-5 w-5" strokeWidth={1.25} />
       </IconButton>
@@ -163,50 +197,102 @@ export default memo(function DrawingToolbar() {
         <Redo2 className="h-5 w-5" strokeWidth={1.25} />
       </IconButton>
 
-      {/* Lock */}
       <IconButton
         variant="ghost"
-        tooltip={locked ? 'Unlock drawings' : 'Lock drawings'}
+        tooltip={drawingsLocked ? 'Unlock all drawings' : 'Lock all drawings'}
         tooltipSide="right"
-        active={locked}
+        active={drawingsLocked}
         disabled={disabled}
-        onClick={() => setLocked((v) => !v)}
+        onClick={() => setDrawingsLocked(!drawingsLocked)}
       >
-        {locked ? <Lock className="h-5 w-5" /> : <LockOpen className="h-5 w-5" />}
+        {drawingsLocked ? <Lock className="h-5 w-5" /> : <LockOpen className="h-5 w-5" />}
       </IconButton>
 
-      {/* Hide / show */}
-      <IconButton
-        variant="ghost"
-        tooltip={drawingsVisible ? 'Hide all drawings' : 'Show all drawings'}
-        tooltipSide="right"
-        active={!drawingsVisible}
-        disabled={disabled}
-        onClick={() => setDrawingsVisible(!drawingsVisible)}
-      >
-        {drawingsVisible ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-      </IconButton>
+      <div className="relative">
+        <IconButton
+          variant="ghost"
+          tooltip="Hide…"
+          tooltipSide="right"
+          active={!drawingsVisible || hideMenuOpen}
+          disabled={disabled}
+          onClick={() => {
+            setHideMenuOpen((v) => !v)
+            setRemoveMenuOpen(false)
+          }}
+        >
+          {drawingsVisible ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+        </IconButton>
+        {hideMenuOpen && (
+          <div
+            role="menu"
+            className="absolute left-full top-0 z-[70] ml-1 min-w-[11rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+              onClick={() => {
+                setDrawingsVisible(!drawingsVisible)
+                setHideMenuOpen(false)
+              }}
+            >
+              {drawingsVisible ? 'Hide all drawings' : 'Show all drawings'}
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* Clear */}
-      <IconButton
-        variant="ghost"
-        tooltip="Remove all drawings"
-        tooltipSide="right"
-        disabled={disabled}
-        onClick={() => {
-          setArmedTool(null)
-          bridge_clearAll()
-        }}
-      >
-        <Trash2 className="h-5 w-5" strokeWidth={1.25} />
-      </IconButton>
+      <div className="relative">
+        <IconButton
+          variant="ghost"
+          tooltip="Remove…"
+          tooltipSide="right"
+          active={removeMenuOpen}
+          disabled={disabled}
+          onClick={() => {
+            setRemoveMenuOpen((v) => !v)
+            setHideMenuOpen(false)
+          }}
+        >
+          <Trash2 className="h-5 w-5" strokeWidth={1.25} />
+        </IconButton>
+        {removeMenuOpen && (
+          <div
+            role="menu"
+            className="absolute left-full top-0 z-[70] ml-1 min-w-[11rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+              onClick={() => {
+                setArmedTool(null)
+                clearAllDrawings()
+                setRemoveMenuOpen(false)
+              }}
+            >
+              Remove all drawings
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800"
+              onClick={() => {
+                useReplayStore.setState({ activeIndicators: [] })
+                setRemoveMenuOpen(false)
+              }}
+            >
+              Remove all indicators
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="my-1 h-px w-7 bg-zinc-800" aria-hidden />
 
-      {/* Settings */}
       <IconButton
         variant="ghost"
-        tooltip="Drawing settings"
+        tooltip="Drawing defaults"
         tooltipSide="right"
         disabled={disabled}
         onClick={() => setDrawingDialogOpen(true, 'toolbar')}
@@ -218,10 +304,6 @@ export default memo(function DrawingToolbar() {
 })
 
 function Pen2(props: React.ComponentProps<'svg'>): ReactNode {
-  return <Pen2Inner {...props} />
-}
-
-function Pen2Inner(props: React.ComponentProps<'svg'>): ReactNode {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -239,17 +321,4 @@ function Pen2Inner(props: React.ComponentProps<'svg'>): ReactNode {
       <path d="m15 5 4 4" />
     </svg>
   )
-}
-
-function bridge_clearAll(): void {
-  // Delegate to the UI store's armed tool disarm + lib clear.
-  const ui = useDrawingUiStore.getState()
-  ui.setArmedTool(null)
-  ui.bumpRevision()
-  // The lib clear is done via the manager directly.
-  import('@/lib/drawings/drawingBridge').then((bridge) => {
-    bridge.getPrimary()?.clear()
-    bridge.getSecondary()?.clear()
-    ui.refreshUndoRedo()
-  })
 }
