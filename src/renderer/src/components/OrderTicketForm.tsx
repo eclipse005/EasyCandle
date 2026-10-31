@@ -280,7 +280,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             type="button"
             disabled={!canBuy}
             onClick={() => submit('long')}
-            className="inline-flex h-8 w-full items-center justify-center gap-1 rounded border border-emerald-500/70 bg-emerald-950/50 text-emerald-300 transition-colors enabled:hover:border-emerald-400 enabled:hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-8 w-full items-center justify-center gap-1 rounded border border-primary-500/80 bg-primary-500/90 text-white transition-colors enabled:hover:border-primary-400 enabled:hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowUpCircle className="h-4 w-4" />
             <span className="text-xs font-semibold">Buy</span>
@@ -308,7 +308,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             type="button"
             disabled={!canSell}
             onClick={() => submit('short')}
-            className="inline-flex h-8 w-full items-center justify-center gap-1 rounded border border-red-500/70 bg-red-950/50 text-red-300 transition-colors enabled:hover:border-red-400 enabled:hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-8 w-full items-center justify-center gap-1 rounded border border-red-400/80 bg-red-400/90 text-white transition-colors enabled:hover:border-red-300 enabled:hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowDownCircle className="h-4 w-4" />
             <span className="text-xs font-semibold">Sell</span>

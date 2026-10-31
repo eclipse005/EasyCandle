@@ -87,6 +87,7 @@ export default function ReplayControls() {
             tone="accent"
             tooltipSide="top"
             shortcut={['Space']}
+            className="!rounded-full"
           >
             <Play className="h-4 w-4 fill-current" />
           </IconButton>
@@ -98,6 +99,7 @@ export default function ReplayControls() {
             onClick={pause}
             tone="accent"
             tooltipSide="top"
+            className="!rounded-full"
           >
             <Pause className="h-4 w-4 fill-current" />
           </IconButton>
@@ -137,7 +139,7 @@ export default function ReplayControls() {
             className="inline-flex h-8 items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="text-zinc-500">Next</span>
-            <span className="font-medium text-amber-300">
+            <span className="font-medium text-primary-300">
               {driverPane === 'secondary'
                 ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · right`
                 : `${TIMEFRAMES[timeframe]?.label ?? timeframe} · left`}

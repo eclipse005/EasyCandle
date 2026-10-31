@@ -214,7 +214,7 @@ export default memo(function FloatingPanel({
         <button
           type="button"
           onClick={() => onMinimizedChange?.(false)}
-          className="inline-flex h-8 items-center gap-1.5 rounded border border-amber-500/40 bg-zinc-950/95 px-2.5 text-xs font-medium text-amber-300 shadow-lg shadow-black/40 hover:border-amber-400/70 hover:text-amber-200"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-primary-500/50 bg-zinc-900/95 px-2.5 text-xs font-medium text-primary-300 shadow-lg shadow-black/40 hover:border-primary-400 hover:text-primary-200"
         >
           <GripVertical className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
           {minimizedLabel ?? title ?? 'Controls'}
@@ -226,7 +226,7 @@ export default memo(function FloatingPanel({
   return (
     <div
       ref={panelRef}
-      className={`pointer-events-auto absolute z-20 max-w-[min(100%,42rem)] rounded border border-zinc-700/90 bg-zinc-950/95 shadow-lg dark:shadow-black/50 backdrop-blur-sm ${className}`}
+      className={`pointer-events-auto absolute z-20 max-w-[min(100%,42rem)] rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-lg shadow-black/50 backdrop-blur-sm ${className}`}
       style={style}
     >
       <div className="flex items-center gap-1 border-b border-zinc-800/90 px-1.5 py-1">
