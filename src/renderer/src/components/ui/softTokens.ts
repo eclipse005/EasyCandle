@@ -17,25 +17,25 @@ export const softSurface = {
 /** Type roles (Tailwind fontSize extensions from theme). */
 export const softType = {
   pageTitle: 'text-page-title text-zinc-50',
-  metric: 'text-metric tabular-nums text-zinc-50',
+  metric: 'text-metric font-bold tabular-nums text-zinc-50',
   section: 'text-section text-zinc-100',
   cardTitle: 'text-card-title text-zinc-100',
   body: 'text-body text-zinc-200',
   bodyMuted: 'text-body text-zinc-400',
-  tab: 'text-body font-medium',
+  tab: 'text-tab font-medium',
   caption: 'text-caption text-zinc-500',
   micro: 'text-micro text-zinc-600'
 } as const
 
 /** Spacing rhythm used by Soft* chrome. */
 export const softSpace = {
-  pageX: 'px-8',
-  pageY: 'py-8',
-  cardPad: 'px-6 py-6',
-  cardPadSm: 'px-5 py-5',
-  sectionGap: 'space-y-6',
-  stackGap: 'space-y-5',
-  rowGap: 'gap-4'
+  pageX: 'px-5',
+  pageY: 'py-6',
+  cardPad: 'px-7 py-7',
+  cardPadSm: 'px-6 py-6',
+  sectionGap: 'space-y-8',
+  stackGap: 'space-y-6',
+  rowGap: 'gap-5'
 } as const
 
 /** Nav / pill active states (FXR soft SaaS). */

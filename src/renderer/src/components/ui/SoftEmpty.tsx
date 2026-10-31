@@ -13,7 +13,7 @@ export default function SoftEmpty({
 }) {
   return (
     <SoftCard
-      className={cn('px-6 py-14 text-center leading-relaxed', softType.caption, className)}
+      className={cn('px-8 py-16 text-center text-body leading-relaxed', softType.bodyMuted, className)}
     >
       {children}
     </SoftCard>

@@ -24,16 +24,16 @@ export const UI_TOKENS = {
 export const TYPOGRAPHY = {
   fontFamily:
     "'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  /** ~30px — Testing page title */
-  pageTitle: { size: '1.875rem', weight: 600, tracking: '-0.03em', leading: 1.2 },
-  /** ~32px — metric figures */
-  metric: { size: '2rem', weight: 600, tracking: '-0.025em', leading: 1.1 },
-  section: { size: '1.0625rem', weight: 600, tracking: '-0.015em' },
-  cardTitle: { size: '0.9375rem', weight: 500 },
-  body: { size: '0.875rem', weight: 400 },
-  tab: { size: '0.875rem', weight: 500 },
-  caption: { size: '0.8125rem', weight: 400 },
-  micro: { size: '0.75rem', weight: 500 }
+  /** ~40px — Testing page title */
+  pageTitle: { size: '2.5rem', weight: 600, tracking: '-0.035em', leading: 1.15 },
+  /** ~44px — metric figures */
+  metric: { size: '2.75rem', weight: 700, tracking: '-0.03em', leading: 1.05 },
+  section: { size: '1.25rem', weight: 600, tracking: '-0.02em' },
+  cardTitle: { size: '1.125rem', weight: 600 },
+  body: { size: '1rem', weight: 400 },
+  tab: { size: '1rem', weight: 500 },
+  caption: { size: '0.9375rem', weight: 400 },
+  micro: { size: '0.8125rem', weight: 500 }
 } as const
 
 export type ChartPalette = {

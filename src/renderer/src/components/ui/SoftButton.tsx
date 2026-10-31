@@ -20,8 +20,8 @@ const VARIANT: Record<SoftButtonVariant, string> = {
 }
 
 const SIZE = {
-  sm: 'h-8 gap-1.5 rounded-xl px-3 text-caption font-medium',
-  md: 'h-9 gap-2 rounded-xl px-3.5 text-body font-medium'
+  sm: 'h-9 gap-1.5 rounded-xl px-3.5 text-caption font-medium',
+  md: 'h-11 gap-2 rounded-xl px-4 text-body font-medium'
 } as const
 
 /** Soft fill / soft hover buttons — type/radius from Soft tokens. */
