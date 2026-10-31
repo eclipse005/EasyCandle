@@ -17,6 +17,8 @@ export type LocalPerformance = {
   /** Sum of (last exit − first entry) across sessions that have trades (seconds). */
   historicalReplayedSec: number
   totalPnl: number
+  /** Last N calendar months of time invested (ms), oldest→newest. */
+  monthlyTimeInvested: { key: string; label: string; ms: number }[]
 }
 
 const MAX_SESSION_INVESTED_MS = 8 * 60 * 60 * 1000
@@ -62,7 +64,8 @@ export function computeLocalPerformance(sessions: Session[]): LocalPerformance {
     sellPct: decided ? sellCount / decided : null,
     timeInvestedMs,
     historicalReplayedSec,
-    totalPnl
+    totalPnl,
+    monthlyTimeInvested: monthlyTimeInvestedBuckets(list)
   }
 }
 
@@ -76,6 +79,43 @@ function sessionHistoricalSpanSec(trades: ClosedTrade[]): number {
   }
   if (!Number.isFinite(minEntry) || !Number.isFinite(maxExit) || maxExit <= minEntry) return 0
   return maxExit - minEntry
+}
+
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Bucket session wall time into calendar months (by updatedAt), last `count` months. */
+export function monthlyTimeInvestedBuckets(
+  sessions: Session[],
+  count = 4,
+  now = Date.now()
+): { key: string; label: string; ms: number }[] {
+  const end = new Date(now)
+  const buckets: { key: string; label: string; ms: number; year: number; month: number }[] = []
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(end.getFullYear(), end.getMonth() - i, 1)
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    buckets.push({
+      key: `${year}-${String(month + 1).padStart(2, '0')}`,
+      label: MONTH_LABELS[month] ?? String(month + 1),
+      ms: 0,
+      year,
+      month
+    })
+  }
+  const index = new Map(buckets.map((b, i) => [b.key, i]))
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    const updated = session.updatedAt ?? 0
+    if (!Number.isFinite(updated) || updated <= 0) continue
+    const d = new Date(updated)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const i = index.get(key)
+    if (i == null) continue
+    const span = Math.max(0, (session.updatedAt ?? 0) - (session.createdAt ?? 0))
+    buckets[i].ms += Math.min(span, MAX_SESSION_INVESTED_MS)
+  }
+  return buckets.map(({ key, label, ms }) => ({ key, label, ms }))
 }
 
 /** Format ms as "19 min" / "1d 17hr 58min" (FXR-ish). */

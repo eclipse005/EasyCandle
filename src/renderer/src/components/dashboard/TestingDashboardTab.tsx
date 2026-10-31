@@ -2,8 +2,9 @@ import { useMemo, type ReactNode } from 'react'
 import { BookOpen, Clock, Percent, Plus, Target } from 'lucide-react'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftButton from '@/components/ui/SoftButton'
+import SoftEmpty from '@/components/ui/SoftEmpty'
 import { cn } from '@/components/ui/cn'
-import { softSpace, softSurface, softType } from '@/components/ui/softTokens'
+import { softSpace, softType } from '@/components/ui/softTokens'
 import { useSessionStore } from '@/store/sessionStore'
 import {
   computeLocalPerformance,
@@ -16,8 +17,8 @@ import {
 const GITHUB_README = 'https://github.com/eclipse005/BarReplay#readme'
 
 /**
- * Testing → Dashboard: action cards + local IndexedDB performance metrics.
- * Empty-friendly zeros match FX Replay layout without paywall locks.
+ * Testing → Dashboard only (this pass): hero start card + local metrics +
+ * optional time-invested bars from IndexedDB sessions.
  */
 export default function TestingDashboardTab({
   onStartSession
@@ -26,6 +27,11 @@ export default function TestingDashboardTab({
 }): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
   const stats = useMemo(() => computeLocalPerformance(sessions), [sessions])
+  const maxMonthMs = useMemo(
+    () => Math.max(1, ...stats.monthlyTimeInvested.map((m) => m.ms)),
+    [stats.monthlyTimeInvested]
+  )
+  const hasMonthData = stats.monthlyTimeInvested.some((m) => m.ms > 0)
 
   return (
     <div className={softSpace.sectionGap}>
@@ -33,7 +39,7 @@ export default function TestingDashboardTab({
         <button
           type="button"
           onClick={onStartSession}
-          className="group flex items-start gap-3.5 rounded-2xl border border-primary-500/45 bg-zinc-900/50 px-4 py-4 text-left shadow-sm shadow-black/20 transition-colors hover:border-primary-400/60 hover:bg-zinc-900/70"
+          className="group flex items-start gap-3.5 rounded-2xl border border-primary-500/50 bg-zinc-900/55 px-4 py-4 text-left shadow-sm shadow-primary-950/30 transition-colors hover:border-primary-400/70 hover:bg-zinc-900/75"
         >
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
             <Plus className="h-4 w-4" aria-hidden />
@@ -48,27 +54,27 @@ export default function TestingDashboardTab({
           href={GITHUB_README}
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-zinc-900/35 px-4 py-4 text-left transition-colors hover:border-white/10 hover:bg-zinc-900/55"
+          className="group flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-zinc-900/30 px-4 py-4 text-left transition-colors hover:border-white/10 hover:bg-zinc-900/50"
         >
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-zinc-400 group-hover:text-zinc-200">
             <BookOpen className="h-4 w-4" aria-hidden />
           </span>
           <span className="min-w-0">
             <span className={cn('block', softType.cardTitle, 'text-zinc-200')}>Tutorials</span>
-            <span className={cn('mt-0.5 block', softType.caption)}>Learn more.</span>
+            <span className={cn('mt-0.5 block', softType.caption)}>Local help on GitHub.</span>
           </span>
         </a>
       </div>
 
-      <SoftCard className={softSpace.cardPad}>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className={softType.section}>Performance</h2>
-          <span className={softType.caption}>
-            {stats.sessionCount} session{stats.sessionCount === 1 ? '' : 's'} · local only
-          </span>
-        </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className={softType.section}>Performance</h2>
+        <span className={softType.caption}>
+          {stats.sessionCount} session{stats.sessionCount === 1 ? '' : 's'} · local only
+        </span>
+      </div>
 
-        <div className={cn('grid sm:grid-cols-2 xl:grid-cols-4', softSpace.rowGap)}>
+      <div className={cn('grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]', softSpace.rowGap)}>
+        <div className={cn('grid sm:grid-cols-2', softSpace.rowGap)}>
           <MetricCard
             icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
             label="Time invested"
@@ -114,18 +120,48 @@ export default function TestingDashboardTab({
           />
         </div>
 
-        {stats.sessionCount === 0 ? (
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/[0.06] bg-zinc-950/40 px-4 py-3">
-            <p className={softType.caption}>
-              Import a CSV dataset, then start a backtesting session to fill these cards.
-            </p>
-            <SoftButton variant="primary" size="sm" onClick={onStartSession}>
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Start a session
-            </SoftButton>
+        <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[220px] flex-col')}>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className={softType.cardTitle}>Time invested</h3>
+            <span className={softType.micro}>by month</span>
           </div>
-        ) : null}
-      </SoftCard>
+          {hasMonthData ? (
+            <div className="flex min-h-0 flex-1 items-end gap-3 px-1 pb-1 pt-4">
+              {stats.monthlyTimeInvested.map((m) => {
+                const height = Math.max(4, Math.round((m.ms / maxMonthMs) * 100))
+                return (
+                  <div key={m.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <div className="flex h-36 w-full items-end justify-center">
+                      <div
+                        className="w-[70%] max-w-[3rem] rounded-t-lg bg-gradient-to-t from-amber-600 via-amber-400 to-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.35)]"
+                        style={{ height: `${height}%` }}
+                        title={`${m.label}: ${formatDurationMs(m.ms)}`}
+                      />
+                    </div>
+                    <span className={softType.caption}>{m.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <p className={cn('text-center', softType.caption)}>
+                Month bars fill as you open and update local sessions.
+              </p>
+            </div>
+          )}
+        </SoftCard>
+      </div>
+
+      {stats.sessionCount === 0 ? (
+        <SoftEmpty>
+          <p className="mb-3">Import a CSV dataset, then start a backtesting session to fill these cards.</p>
+          <SoftButton variant="primary" size="sm" onClick={onStartSession}>
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Start a session
+          </SoftButton>
+        </SoftEmpty>
+      ) : null}
     </div>
   )
 }
@@ -142,13 +178,13 @@ function MetricCard({
   footer?: ReactNode
 }): ReactNode {
   return (
-    <div className={cn(softSurface.inset, softSpace.cardPadSm)}>
+    <SoftCard elevated className={softSpace.cardPadSm}>
       <div className={cn('flex items-center gap-1.5', softType.caption)}>
         <span className="opacity-70">{icon}</span>
         {label}
       </div>
       <div className={cn('mt-2 font-sans', softType.metric)}>{value}</div>
       {footer}
-    </div>
+    </SoftCard>
   )
 }

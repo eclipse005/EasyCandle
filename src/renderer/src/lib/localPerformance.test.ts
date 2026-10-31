@@ -74,6 +74,7 @@ describe('localPerformance', () => {
     expect(stats.winRate).toBeCloseTo(0.5)
     expect(stats.historicalReplayedSec).toBe(7200)
     expect(formatDurationMs(stats.timeInvestedMs)).toBe('19 min')
+    expect(stats.monthlyTimeInvested.length).toBe(4)
   })
 
   it('flattens closed trades newest-first', () => {
