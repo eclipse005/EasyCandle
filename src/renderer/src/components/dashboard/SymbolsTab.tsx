@@ -263,21 +263,21 @@ export default function SymbolsTab(): ReactNode {
                   elevated
                   className="flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden px-3 py-1.5"
                 >
-                  <div className="flex min-w-0 shrink items-center gap-1.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                     <span
-                      className="max-w-[5.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
+                      className="min-w-0 shrink-0 truncate text-body font-semibold text-zinc-50"
                       title={row.label !== row.symbol ? row.label : undefined}
                     >
                       {row.symbol}
                     </span>
                     <span
-                      className="min-w-0 max-w-[9.5rem] truncate text-left text-micro text-zinc-400"
+                      className="min-w-0 flex-1 truncate text-left text-micro text-zinc-400"
                       title={metaTip}
                     >
                       {metaText}
                     </span>
                   </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <div className="flex flex-none items-center gap-2">
                     <label
                       className="flex shrink-0 items-center justify-start gap-1"
                       title={lotLabel}
@@ -298,7 +298,7 @@ export default function SymbolsTab(): ReactNode {
                           setContractSize(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[8rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[7rem] shrink-0 text-caption tabular-nums',
                           userSize != null ? filledField : emptyField
                         )}
                       />
@@ -322,7 +322,7 @@ export default function SymbolsTab(): ReactNode {
                           setSpread(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[5.75rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[5rem] shrink-0 text-caption tabular-nums',
                           spec.spread != null ? filledField : emptyField
                         )}
                       />
@@ -346,7 +346,7 @@ export default function SymbolsTab(): ReactNode {
                           setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[5.75rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[5rem] shrink-0 text-caption tabular-nums',
                           spec.commissionPerLot != null ? filledField : emptyField
                         )}
                       />
