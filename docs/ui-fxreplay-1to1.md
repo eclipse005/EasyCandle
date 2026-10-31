@@ -80,6 +80,16 @@
 - [x] Chart overlays: bottom-left instant Buy (blue) / Sell (red) + qty → `paperBuy`/`paperSell`; bottom-right equity + session PnL
 - [x] Floating replay bar: dark card pill (`rounded-2xl`), blue circular play; scrubber deferred
 - [x] Blotter tab labels: Open positions / Pending orders / Closed positions (Order History retained)
-- [ ] Ticket field reorder (Sell|Buy → risk chips → type) — **P1**
-- [ ] Chart entry/SL/TP label polish — **P1**
+- [x] Ticket field reorder (Sell|Buy → risk chips → type) — **P1**
+- [x] Chart entry/SL/TP label polish — **P1**
 - [ ] Dashboard productization — **P2**
+
+## P1 shipped (2026-10-31)
+
+- [x] Order ticket field order: Sell|Buy → risk basis → risk % chips → Est. loss/profit/R:R → Market|Limit|Stop → size+entry → SL/TP → full-width Place order
+- [x] Buy segment + Place order use primary blue; Sell segment uses down/red when selected
+- [x] Stop Limit labeled **Stop** in the type segment (underlying `stopLimit` unchanged)
+- [x] Chart trade overlay tags: entry/qty/connector primary `#0260FD`, TP/pnl up `#06A77D`, SL orange, short/loss `#ED6A5A`
+- [ ] Replay scrubber — deferred
+- [ ] Dashboard productization — **P2**
+- [ ] Shortcuts panel + light Journal — **P3**
