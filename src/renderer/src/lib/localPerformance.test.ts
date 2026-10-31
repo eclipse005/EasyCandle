@@ -3,6 +3,7 @@ import type { Session } from '@/store/sessionStore'
 import type { ClosedTrade } from '@/lib/paperTrade'
 import {
   aggregateClosedTrades,
+  aggregateTrades,
   computeLocalPerformance,
   formatDurationMs,
   formatWinRatePct
@@ -93,4 +94,40 @@ describe('localPerformance', () => {
     expect(rows.map((r) => r.id)).toEqual(['2', '1'])
     expect(rows[0].sessionName).toBe('Beta')
   })
+  it('includes open positions and pending orders', () => {
+    const rows = aggregateTrades([
+      session({
+        id: 'a',
+        name: 'Alpha',
+        closedTrades: [trade({ id: 'c1', side: 'long', pnl: 1, exitTime: 30 })],
+        positions: [
+          {
+            id: 'o1',
+            side: 'long',
+            entryPrice: 1.1,
+            entryTime: 20,
+            lots: 1,
+            takeProfit: null,
+            stopLoss: null
+          }
+        ],
+        pendingOrders: [
+          {
+            id: 'p1',
+            side: 'short',
+            kind: 'limit',
+            price: 1.2,
+            placedTime: 25,
+            lots: 0.5,
+            takeProfit: null,
+            stopLoss: null
+          }
+        ]
+      })
+    ])
+    expect(rows.map((r) => r.status)).toEqual(['closed', 'pending', 'open'])
+    expect(rows.find((r) => r.id === 'o1')?.status).toBe('open')
+    expect(rows.find((r) => r.id === 'p1')?.pendingKind).toBe('limit')
+  })
+
 })

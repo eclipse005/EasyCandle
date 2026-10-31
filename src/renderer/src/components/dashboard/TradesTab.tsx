@@ -11,21 +11,32 @@ import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
 import { useSessionStore } from '@/store/sessionStore'
-import { aggregateClosedTrades, type AggregatedTradeRow } from '@/lib/localPerformance'
+import {
+  aggregateTrades,
+  type AggregatedTradeRow,
+  type TradeRowStatus
+} from '@/lib/localPerformance'
 
 type SideFilter = 'all' | 'long' | 'short'
-type SortKey = 'exit' | 'entry' | 'pnl' | 'symbol'
+type StatusFilter = 'all' | TradeRowStatus
+type SortKey = 'time' | 'entry' | 'pnl' | 'symbol'
 
 const PAGE_SIZES = [10, 25, 50] as const
 
 function entryTypeLabel(row: AggregatedTradeRow): string {
+  if (row.status === 'pending') {
+    if (row.pendingKind === 'stopLimit') return 'stop-limit'
+    return 'limit'
+  }
   if (row.pendingKind === 'limit') return 'limit'
   if (row.pendingKind === 'stopLimit') return 'stop-limit'
   return 'market'
 }
 
 function returnPct(row: AggregatedTradeRow): number | null {
-  if (!(row.entryPrice > 0) || !Number.isFinite(row.exitPrice)) return null
+  if (row.exitPrice == null || !(row.entryPrice > 0) || !Number.isFinite(row.exitPrice)) {
+    return null
+  }
   const raw =
     row.side === 'long'
       ? (row.exitPrice - row.entryPrice) / row.entryPrice
@@ -34,7 +45,9 @@ function returnPct(row: AggregatedTradeRow): number | null {
 }
 
 function returnR(row: AggregatedTradeRow): number | null {
-  if (row.stopLoss == null || !Number.isFinite(row.stopLoss)) return null
+  if (row.exitPrice == null || row.stopLoss == null || !Number.isFinite(row.stopLoss)) {
+    return null
+  }
   const risk =
     row.side === 'long'
       ? row.entryPrice - row.stopLoss
@@ -47,15 +60,27 @@ function returnR(row: AggregatedTradeRow): number | null {
   return move / risk
 }
 
-/** Aggregate closed trades across local sessions — FXR-ish table + filters. */
+function statusBadge(status: TradeRowStatus): { label: string; className: string } {
+  switch (status) {
+    case 'open':
+      return { label: 'Open', className: 'bg-teal-500/15 text-teal-300' }
+    case 'pending':
+      return { label: 'Pending', className: 'bg-amber-500/15 text-amber-300' }
+    default:
+      return { label: 'Closed', className: 'bg-zinc-800/80 text-zinc-300' }
+  }
+}
+
+/** Aggregate open / pending / closed trades across local sessions — FXR-ish. */
 export default function TradesTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
-  const allRows = useMemo(() => aggregateClosedTrades(sessions), [sessions])
+  const allRows = useMemo(() => aggregateTrades(sessions), [sessions])
 
   const [sessionFilter, setSessionFilter] = useState<string>('all')
   const [sideFilter, setSideFilter] = useState<SideFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [query, setQuery] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('exit')
+  const [sortKey, setSortKey] = useState<SortKey>('time')
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(10)
   const [page, setPage] = useState(0)
 
@@ -74,13 +99,17 @@ export default function TradesTab(): ReactNode {
     if (sideFilter !== 'all') {
       rows = rows.filter((r) => r.side === sideFilter)
     }
+    if (statusFilter !== 'all') {
+      rows = rows.filter((r) => r.status === statusFilter)
+    }
     if (q) {
       rows = rows.filter(
         (r) =>
           r.sessionName.toLowerCase().includes(q) ||
           r.symbol.toLowerCase().includes(q) ||
           entryTypeLabel(r).includes(q) ||
-          formatExitReason(r.exitReason).toLowerCase().includes(q)
+          r.status.includes(q) ||
+          (r.exitReason ? formatExitReason(r.exitReason).toLowerCase().includes(q) : false)
       )
     }
     const sorted = [...rows]
@@ -89,16 +118,19 @@ export default function TradesTab(): ReactNode {
         case 'entry':
           return b.entryTime - a.entryTime
         case 'pnl':
-          return b.pnl - a.pnl
+          return (b.pnl ?? Number.NEGATIVE_INFINITY) - (a.pnl ?? Number.NEGATIVE_INFINITY)
         case 'symbol':
-          return a.symbol.localeCompare(b.symbol) || b.exitTime - a.exitTime
-        case 'exit':
-        default:
-          return b.exitTime - a.exitTime
+          return a.symbol.localeCompare(b.symbol) || b.entryTime - a.entryTime
+        case 'time':
+        default: {
+          const ta = a.exitTime ?? a.entryTime
+          const tb = b.exitTime ?? b.entryTime
+          return tb - ta
+        }
       }
     })
     return sorted
-  }, [allRows, sessionFilter, sideFilter, query, sortKey])
+  }, [allRows, sessionFilter, sideFilter, statusFilter, query, sortKey])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, pageCount - 1)
@@ -107,7 +139,7 @@ export default function TradesTab(): ReactNode {
   if (allRows.length === 0) {
     return (
       <SoftEmpty>
-        No closed trades yet — open a session and take paper trades to see them here.
+        No trades yet — open a session and take paper trades (open, pending, or closed show here).
       </SoftEmpty>
     )
   }
@@ -134,6 +166,22 @@ export default function TradesTab(): ReactNode {
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
+          <span className={cn('mb-1.5 block', softType.caption)}>Type</span>
+          <SoftSelect
+            className="h-11 text-body"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as StatusFilter)
+              setPage(0)
+            }}
+          >
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="pending">Pending</option>
+            <option value="closed">Closed</option>
+          </SoftSelect>
+        </label>
+        <label className="min-w-[8rem]">
           <span className={cn('mb-1.5 block', softType.caption)}>Side</span>
           <SoftSelect
             className="h-11 text-body"
@@ -155,7 +203,7 @@ export default function TradesTab(): ReactNode {
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
           >
-            <option value="exit">Exit time</option>
+            <option value="time">Latest</option>
             <option value="entry">Entry time</option>
             <option value="pnl">PnL</option>
             <option value="symbol">Symbol</option>
@@ -206,24 +254,25 @@ export default function TradesTab(): ReactNode {
                 const precision = resolvePricePrecision(row.symbol)
                 const pct = returnPct(row)
                 const rMult = returnR(row)
+                const badge = statusBadge(row.status)
                 return (
                   <tr
-                    key={`${row.sessionId}:${row.id}`}
+                    key={`${row.sessionId}:${row.status}:${row.id}`}
                     className="border-b border-white/[0.04] text-body text-zinc-300 last:border-0"
                   >
                     <td className="max-w-[10rem] truncate px-4 py-3 text-zinc-200">
                       {row.sessionName}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded-lg bg-zinc-800/80 px-2 py-0.5 text-caption text-zinc-300">
-                        Closed
+                      <span className={cn('rounded-lg px-2 py-0.5 text-caption font-medium', badge.className)}>
+                        {badge.label}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
                       {formatUtcCandleTime(row.entryTime)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
-                      {formatUtcCandleTime(row.exitTime)}
+                      {row.exitTime != null ? formatUtcCandleTime(row.exitTime) : '—'}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-zinc-200">{row.symbol}</td>
                     <td className="px-4 py-3">
@@ -247,15 +296,19 @@ export default function TradesTab(): ReactNode {
                       {formatAssetPrice(row.entryPrice, precision)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-zinc-400">
-                      {formatAssetPrice(row.exitPrice, precision)}
+                      {row.exitPrice != null ? formatAssetPrice(row.exitPrice, precision) : '—'}
                     </td>
                     <td
                       className={cn(
                         'px-4 py-3 text-right tabular-nums font-medium',
-                        row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        row.pnl == null
+                          ? 'text-zinc-600'
+                          : row.pnl >= 0
+                            ? 'text-emerald-400'
+                            : 'text-red-400'
                       )}
                     >
-                      {formatPnlCcy(row.pnl, quote)}
+                      {row.pnl == null ? 'N/A' : formatPnlCcy(row.pnl, quote)}
                     </td>
                     <td
                       className={cn(
@@ -267,7 +320,7 @@ export default function TradesTab(): ReactNode {
                             : 'text-red-400'
                       )}
                     >
-                      {pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                      {pct == null ? 'N/A' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
                     </td>
                     <td
                       className={cn(
@@ -279,10 +332,10 @@ export default function TradesTab(): ReactNode {
                             : 'text-red-400'
                       )}
                     >
-                      {rMult == null ? '—' : `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R`}
+                      {rMult == null ? 'N/A' : `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R`}
                     </td>
                     <td className="px-4 py-3 text-caption text-zinc-500">
-                      {formatExitReason(row.exitReason)}
+                      {row.exitReason ? formatExitReason(row.exitReason) : '—'}
                       {row.note ? (
                         <span className="mt-0.5 block truncate text-zinc-600" title={row.note}>
                           {row.note}
@@ -343,7 +396,6 @@ export default function TradesTab(): ReactNode {
           </span>
         </div>
       </SoftCard>
-
     </section>
   )
 }

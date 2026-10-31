@@ -92,4 +92,6 @@ Shipped on `main` / https://barreplay.pages.dev/:
 | Session report win rate excludes forced flatten | **Have** (0.1.2) |
 | Chart fit last bar right | **Have** (0.1.2) |
 | Soft* large type on blotter / report | **Have** (0.1.3) |
+| Trades open/pending/closed + Type filter | **Have** (0.1.4) |
+| Sessions → Analytics jump | **Have** (0.1.4) |
 | Live / Battles / Prop / Upgrade / cloud sync | **Skipped** (needs backend) |

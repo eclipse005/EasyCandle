@@ -146,25 +146,106 @@ export function formatPct(rate: number | null): string {
   return `${(rate * 100).toFixed(2)}%`
 }
 
-/** Flatten closed trades across sessions for the Trades table. */
-export type AggregatedTradeRow = ClosedTrade & {
+/** Working / closed trade row for the Testing → Trades table (FXR-ish). */
+export type TradeRowStatus = 'open' | 'pending' | 'closed'
+
+export type AggregatedTradeRow = {
+  id: string
   sessionId: string
   sessionName: string
   symbol: string
+  status: TradeRowStatus
+  side: ClosedTrade['side']
+  entryPrice: number
+  entryTime: number
+  exitPrice: number | null
+  exitTime: number | null
+  lots: number
+  pnl: number | null
+  exitReason: ClosedTrade['exitReason'] | null
+  takeProfit: number | null
+  stopLoss: number | null
+  pendingKind?: ClosedTrade['pendingKind']
+  note?: string
+  commission?: number
 }
 
-export function aggregateClosedTrades(sessions: Session[]): AggregatedTradeRow[] {
+/** Closed + open positions + pending orders across local sessions. */
+export function aggregateTrades(sessions: Session[]): AggregatedTradeRow[] {
   const rows: AggregatedTradeRow[] = []
   for (const session of Array.isArray(sessions) ? sessions : []) {
     for (const trade of session.closedTrades ?? []) {
       rows.push({
-        ...trade,
+        id: trade.id,
         sessionId: session.id,
         sessionName: session.name,
-        symbol: session.symbol
+        symbol: session.symbol,
+        status: 'closed',
+        side: trade.side,
+        entryPrice: trade.entryPrice,
+        entryTime: trade.entryTime,
+        exitPrice: trade.exitPrice,
+        exitTime: trade.exitTime,
+        lots: trade.lots,
+        pnl: trade.pnl,
+        exitReason: trade.exitReason,
+        takeProfit: trade.takeProfit,
+        stopLoss: trade.stopLoss,
+        pendingKind: trade.pendingKind,
+        note: trade.note,
+        commission: trade.commission
+      })
+    }
+    for (const pos of session.positions ?? []) {
+      rows.push({
+        id: pos.id,
+        sessionId: session.id,
+        sessionName: session.name,
+        symbol: session.symbol,
+        status: 'open',
+        side: pos.side,
+        entryPrice: pos.entryPrice,
+        entryTime: pos.entryTime,
+        exitPrice: null,
+        exitTime: null,
+        lots: pos.lots,
+        pnl: null,
+        exitReason: null,
+        takeProfit: pos.takeProfit,
+        stopLoss: pos.stopLoss,
+        pendingKind: pos.pendingKind
+      })
+    }
+    for (const pending of session.pendingOrders ?? []) {
+      rows.push({
+        id: pending.id,
+        sessionId: session.id,
+        sessionName: session.name,
+        symbol: session.symbol,
+        status: 'pending',
+        side: pending.side,
+        entryPrice: pending.price,
+        entryTime: pending.placedTime,
+        exitPrice: null,
+        exitTime: null,
+        lots: pending.lots,
+        pnl: null,
+        exitReason: null,
+        takeProfit: pending.takeProfit,
+        stopLoss: pending.stopLoss,
+        pendingKind: pending.kind
       })
     }
   }
-  rows.sort((a, b) => b.exitTime - a.exitTime)
+  rows.sort((a, b) => {
+    const ta = a.exitTime ?? a.entryTime
+    const tb = b.exitTime ?? b.entryTime
+    return tb - ta
+  })
   return rows
+}
+
+/** Closed trades only (newest exit first). */
+export function aggregateClosedTrades(sessions: Session[]): AggregatedTradeRow[] {
+  return aggregateTrades(sessions).filter((r) => r.status === 'closed')
 }

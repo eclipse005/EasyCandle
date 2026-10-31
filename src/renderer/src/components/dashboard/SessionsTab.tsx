@@ -19,6 +19,7 @@ import { formatPnl } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
 import { useSessionStore } from '@/store/sessionStore'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 
 /** Testing → Sessions: FXR-style picker, overview, charts, metric chips (local only). */
@@ -33,6 +34,7 @@ export default function SessionsTab({
   const loadSession = useSessionStore((s) => s.loadSession)
   const deleteSession = useSessionStore((s) => s.deleteSession)
   const strategies = useStrategiesStore((s) => s.strategies)
+  const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
 
   const ordered = useMemo(
     () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
@@ -157,6 +159,12 @@ export default function SessionsTab({
         <SoftButton variant="primary" onClick={onNewSession}>
           <Plus className="h-5 w-5" aria-hidden />
           New session
+        </SoftButton>
+        <SoftButton
+          variant="secondary"
+          onClick={() => setTestingTab('analytics')}
+        >
+          Analytics
         </SoftButton>
         {selected ? (
           <SoftButton
