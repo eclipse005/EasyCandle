@@ -84,7 +84,7 @@ export default function PaneChrome({
               : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
           }`}
         >
-          {isDriver ? `Next · ${TIMEFRAMES[timeframe]?.label ?? timeframe}` : 'Use for next'}
+          {isDriver ? `Timestep · ${TIMEFRAMES[timeframe]?.label ?? timeframe}` : 'Set Timestep'}
         </button>
       )}
     </div>

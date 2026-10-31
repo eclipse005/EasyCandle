@@ -4,6 +4,7 @@ import {
   ChevronsRight,
   CirclePause,
   Gauge,
+  Link2,
   LogOut,
   Pause,
   Play,
@@ -36,6 +37,23 @@ function indexFromClientX(
 ): number {
   const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)))
   return Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
+}
+
+function sortedCoverageDays(days: Set<string> | ReadonlySet<string>): string[] {
+  return [...days].sort()
+}
+
+function nextCoverageDay(
+  days: Set<string> | ReadonlySet<string>,
+  fromDay: string | null | undefined
+): string | null {
+  const sorted = sortedCoverageDays(days)
+  if (sorted.length === 0) return null
+  if (!fromDay) return sorted[0] ?? null
+  for (const day of sorted) {
+    if (day > fromDay) return day
+  }
+  return null
 }
 
 export default function ReplayControls() {
@@ -77,6 +95,14 @@ export default function ReplayControls() {
     () => (importMeta ? coverageDaysFromMetas([importMeta]) : new Set<string>()),
     [importMeta]
   )
+  const currentDay = currentCandle
+    ? toSessionParts(currentCandle.time, timezone).date
+    : null
+  const upcomingDays = useMemo(() => {
+    const sorted = sortedCoverageDays(coverageDays)
+    if (!currentDay) return sorted.slice(0, 8)
+    return sorted.filter((day) => day >= currentDay).slice(0, 8)
+  }, [coverageDays, currentDay])
 
   const seed = currentCandle
     ? toSessionParts(currentCandle.time, timezone)
@@ -188,6 +214,31 @@ export default function ReplayControls() {
     await jumpToTime(seconds)
   }
 
+  async function goToDayOpen(day: string): Promise<void> {
+    setJumpError(null)
+    if (coverageDays.size > 0 && !isDayCovered(coverageDays, day)) {
+      setJumpError('That day has no K-line data in this dataset.')
+      return
+    }
+    const seconds = parseSessionParts(day, '00:00', timezone)
+    if (seconds == null) {
+      setJumpError('Enter a valid date.')
+      return
+    }
+    setJumpDate(day)
+    setJumpTime('00:00')
+    await jumpToTime(seconds)
+  }
+
+  async function goToNextDayOpen(): Promise<void> {
+    const next = nextCoverageDay(coverageDays, currentDay)
+    if (!next) {
+      setJumpError(t('replay.noNextDay'))
+      return
+    }
+    await goToDayOpen(next)
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <div className="flex items-center gap-1">
@@ -239,25 +290,36 @@ export default function ReplayControls() {
       </div>
 
       {chartSplit && (
-        <Tooltip text={t('replay.toggleNext')} kbds={['Tab']} side="top">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={(event) => {
-              setDriverPane(driverPane === 'primary' ? 'secondary' : 'primary')
-              event.currentTarget.blur()
-            }}
-            aria-label={t('replay.toggleNext')}
-            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <span className="text-zinc-500">{t('replay.next')}</span>
-            <span className="font-medium text-primary-300">
-              {driverPane === 'secondary'
-                ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · right`
-                : `${TIMEFRAMES[timeframe]?.label ?? timeframe} · left`}
+        <div className="flex items-center gap-1">
+          <Tooltip text={t('replay.toggleNext')} kbds={['Tab']} side="top">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={(event) => {
+                setDriverPane(driverPane === 'primary' ? 'secondary' : 'primary')
+                event.currentTarget.blur()
+              }}
+              aria-label={t('replay.toggleNext')}
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span className="text-zinc-500">{t('replay.next')}</span>
+              <span className="font-medium text-primary-300">
+                {driverPane === 'secondary'
+                  ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · right`
+                  : `${TIMEFRAMES[timeframe]?.label ?? timeframe} · left`}
+              </span>
+            </button>
+          </Tooltip>
+          <Tooltip text={t('replay.syncTip')} side="top">
+            <span
+              className="inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-900/60 bg-emerald-950/40 px-2 text-[11px] font-medium text-emerald-300"
+              aria-label={t('replay.syncOn')}
+            >
+              <Link2 className="h-3.5 w-3.5" aria-hidden />
+              {t('replay.syncOn')}
             </span>
-          </button>
-        </Tooltip>
+          </Tooltip>
+        </div>
       )}
 
       <div className="flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 text-xs text-zinc-400">
@@ -394,6 +456,50 @@ export default function ReplayControls() {
                 : ''}
             </span>
           ) : null}
+          <div className="flex flex-col gap-1 border-t border-zinc-800 pt-2">
+            <button
+              type="button"
+              disabled={busy || nextCoverageDay(coverageDays, currentDay) == null}
+              onClick={() => void goToNextDayOpen()}
+              className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 transition-colors enabled:hover:border-primary-500/40 enabled:hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {t('replay.goToNextDay')}
+            </button>
+            {upcomingDays.length > 0 ? (
+              <div className="max-h-36 overflow-auto rounded-xl border border-zinc-800">
+                <table className="w-full text-left text-[11px] text-zinc-300">
+                  <thead className="sticky top-0 bg-zinc-950 text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+                    <tr>
+                      <th className="px-2 py-1.5 font-medium">{t('replay.sessionDays')}</th>
+                      <th className="px-2 py-1.5 text-right font-medium">{t('replay.goToDayOpen')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upcomingDays.map((day) => (
+                      <tr key={day} className="border-t border-zinc-900">
+                        <td className="px-2 py-1 tabular-nums">
+                          {day}
+                          {day === currentDay ? (
+                            <span className="ml-1 text-[10px] text-primary-400">now</span>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-1 text-right">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void goToDayOpen(day)}
+                            className="rounded-lg px-1.5 py-0.5 text-primary-300 hover:bg-zinc-800 disabled:opacity-40"
+                          >
+                            Open
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
           {jumpError && <span className="text-xs text-red-400">{jumpError}</span>}
         </form>
       </Dropdown>
