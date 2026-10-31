@@ -14,8 +14,8 @@ import type { Candle } from '@shared/candleUtils'
 import { formatAssetPrice } from '@shared/pricePrecision'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 
-const UP_COLOR = '#22c55e'
-const DOWN_COLOR = '#ef4444'
+const UP_COLOR = '#06A77D'
+const DOWN_COLOR = '#ED6A5A'
 
 function toBar(candle: Candle): BarData<Time> {
   return {

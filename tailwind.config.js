@@ -26,7 +26,8 @@ module.exports = {
         amber: scale('amber'),
         red: scale('red'),
         emerald: scale('emerald'),
-        sky: scale('sky')
+        sky: scale('sky'),
+        primary: scale('primary')
       }
     }
   },

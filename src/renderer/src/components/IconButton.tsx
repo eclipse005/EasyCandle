@@ -44,30 +44,39 @@ export default memo(function IconButton({
       ? 'enabled:hover:bg-red-950/70 enabled:hover:text-red-300'
       : 'enabled:hover:bg-zinc-800 enabled:hover:text-zinc-100'
     : tone === 'accent'
-      ? 'enabled:hover:border-amber-500/70 enabled:hover:text-amber-300'
+      ? 'enabled:hover:border-primary-400 enabled:hover:bg-primary-400 enabled:hover:text-white'
       : tone === 'danger'
         ? 'enabled:hover:border-red-500/60 enabled:hover:text-red-300'
         : tone === 'success'
           ? 'enabled:hover:border-emerald-500/60 enabled:hover:text-emerald-300'
           : 'enabled:hover:border-zinc-500 enabled:hover:text-zinc-100'
 
-  const activeClass = ghost
-    ? active
-      ? tone === 'danger'
-        ? 'bg-red-950/70 text-red-300'
-        : 'bg-zinc-800 text-amber-300'
-      : 'bg-transparent text-zinc-400'
-    : active
-      ? tone === 'success'
-        ? 'border-emerald-500/70 bg-emerald-950/50 text-emerald-300'
-        : tone === 'danger'
-          ? 'border-red-500/70 bg-red-950/50 text-red-300'
-          : 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-      : 'border-zinc-700 bg-zinc-900/80 text-zinc-300'
+  let activeClass: string
+  if (ghost) {
+    if (active) {
+      activeClass =
+        tone === 'danger' ? 'bg-red-950/70 text-red-300' : 'bg-zinc-800 text-primary-300'
+    } else {
+      activeClass = 'bg-transparent text-zinc-400'
+    }
+  } else if (tone === 'accent') {
+    // Primary blue chrome for play / primary actions (FX Replay accent).
+    activeClass = active
+      ? 'border-primary-500 bg-primary-500 text-white'
+      : 'border-primary-500/80 bg-primary-500/90 text-white'
+  } else if (active) {
+    if (tone === 'success') {
+      activeClass = 'border-emerald-500/70 bg-emerald-950/50 text-emerald-300'
+    } else if (tone === 'danger') {
+      activeClass = 'border-red-500/70 bg-red-950/50 text-red-300'
+    } else {
+      activeClass = 'border-primary-500/70 bg-primary-950/50 text-primary-300'
+    }
+  } else {
+    activeClass = 'border-zinc-700 bg-zinc-900/80 text-zinc-300'
+  }
 
-  const chrome = ghost
-    ? 'rounded border-0'
-    : 'rounded border'
+  const chrome = ghost ? 'rounded border-0' : 'rounded border'
 
   const button = (
     <button

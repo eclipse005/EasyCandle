@@ -1981,7 +1981,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
           const to = toXY(trade.exitTime, trade.exitPrice)
           if (!from || !to) return null
 
-          const color = trade.pnl >= 0 ? '#22c55e' : '#ef4444'
+          const color = trade.pnl >= 0 ? '#06A77D' : '#ED6A5A'
           const samePoint = Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5
 
           return (

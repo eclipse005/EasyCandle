@@ -2,6 +2,16 @@ export type Theme = 'dark' | 'light'
 
 export const THEME_STORAGE_KEY = 'easy-candle:theme'
 
+/** FX Replay–aligned UI tokens (dark canvas). Interactive chrome uses primary blue; wordmark may stay amber. */
+export const UI_TOKENS = {
+  page: '#030303',
+  card: '#131415',
+  border: '#414347',
+  primary: '#0260FD',
+  up: '#06A77D',
+  down: '#ED6A5A'
+} as const
+
 export type ChartPalette = {
   background: string
   text: string
@@ -16,14 +26,14 @@ export type ChartPalette = {
 
 export const CHART_PALETTES: Record<Theme, ChartPalette> = {
   dark: {
-    background: '#09090b',
+    background: UI_TOKENS.page,
     text: '#a1a1aa',
-    grid: '#27272a',
-    scaleBorder: '#3f3f46',
+    grid: '#1c1d1f',
+    scaleBorder: UI_TOKENS.border,
     watermark: 'rgba(255, 255, 255, 0.05)',
-    handleFill: '#0B0E11',
+    handleFill: UI_TOKENS.card,
     hintFill: '#1a1d24',
-    hintStroke: '#3f4654',
+    hintStroke: UI_TOKENS.border,
     hintText: '#e5e7eb'
   },
   light: {

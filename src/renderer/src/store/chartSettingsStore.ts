@@ -7,13 +7,13 @@ const STORAGE_KEY = 'easy-candle:chart-settings'
 
 /** Series / crosshair colors not present in the theme palette. */
 export const SERIES_DEFAULT_COLORS = {
-  upColor: '#22c55e',
-  downColor: '#ef4444',
-  wickUpColor: '#22c55e',
-  wickDownColor: '#ef4444',
-  lineColor: '#22c55e',
-  borderUpColor: '#16a34a',
-  borderDownColor: '#dc2626'
+  upColor: '#06A77D',
+  downColor: '#ED6A5A',
+  wickUpColor: '#06A77D',
+  wickDownColor: '#ED6A5A',
+  lineColor: '#06A77D',
+  borderUpColor: '#058F6B',
+  borderDownColor: '#D45A4C'
 }
 
 /** Colors the user has explicitly overridden (theme still drives the rest). */

@@ -1027,7 +1027,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       tradeMarkers.push({
         time: candle.time,
         position: pending.side === 'long' ? 'belowBar' : 'aboveBar',
-        color: pending.side === 'long' ? '#22c55e' : '#ef4444',
+        color: pending.side === 'long' ? '#06A77D' : '#ED6A5A',
         shape: pending.side === 'long' ? 'arrowUp' : 'arrowDown',
         text: pending.side === 'long' ? 'B' : 'S'
       })
@@ -1822,7 +1822,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     const marker: TradeMarker = {
       time: candle.time,
       position: side === 'long' ? 'belowBar' : 'aboveBar',
-      color: side === 'long' ? '#22c55e' : '#ef4444',
+      color: side === 'long' ? '#06A77D' : '#ED6A5A',
       shape: side === 'long' ? 'arrowUp' : 'arrowDown',
       text: side === 'long' ? 'B' : 'S'
     }
