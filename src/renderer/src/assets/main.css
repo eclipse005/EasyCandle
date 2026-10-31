@@ -109,6 +109,12 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+
+  /* Soft motion — calm SaaS (no bounce) */
+  --motion-fast: 150ms;
+  --motion-tab: 220ms;
+  --motion-expand: 280ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root[data-theme='light'] {
@@ -339,4 +345,37 @@ select option {
 .release-notes-html summary {
   cursor: pointer;
   color: rgb(var(--zinc-300));
+}
+
+/* Page / tab content enter — soft fade + 4px rise */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-page-enter {
+  animation: page-enter var(--motion-tab) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .motion-page-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

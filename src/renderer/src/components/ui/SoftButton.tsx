@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/components/ui/cn'
+import { softMotion } from '@/components/ui/softTokens'
 
 export type SoftButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
@@ -24,7 +25,7 @@ const SIZE = {
   md: 'h-11 gap-2 rounded-xl px-4 text-body font-medium'
 } as const
 
-/** Soft fill / soft hover buttons — type/radius from Soft tokens. */
+/** Soft fill / ghost hover buttons — type/radius from Soft tokens. */
 export default function SoftButton({
   children,
   variant = 'secondary',
@@ -37,7 +38,9 @@ export default function SoftButton({
     <button
       type={type}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        'inline-flex shrink-0 items-center justify-center disabled:cursor-not-allowed disabled:opacity-40',
+        softMotion.press,
+        'active:scale-[0.98]',
         SIZE[size],
         VARIANT[variant],
         className

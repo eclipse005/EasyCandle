@@ -17,7 +17,7 @@ import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput, SoftSelect, SoftTextarea } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
-import { softSpace, softType } from '@/components/ui/softTokens'
+import { softMotion, softSpace, softType } from '@/components/ui/softTokens'
 import { idbGet } from '@/lib/importIdb'
 import {
   computeSessionAnalytics,
@@ -414,59 +414,73 @@ function SessionCard({
           />
         ) : null}
 
-        {expanded ? (
-          <div className="space-y-5 border-t border-white/[0.06] pt-5">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <MiniChartCard title="Equity">
-                <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
-              </MiniChartCard>
-              <MiniChartCard title="Monthly">
-                <BarSparkline
-                  buckets={analytics.monthly}
-                  positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
+        <div
+          className={cn(
+            'grid',
+            softMotion.expandGrid,
+            expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          )}
+        >
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                'space-y-5 border-t border-white/[0.06] pt-5',
+                'transition-opacity duration-[var(--motion-expand)] ease-[var(--ease-out)]',
+                expanded ? 'opacity-100' : 'opacity-0'
+              )}
+            >
+              <div className="grid gap-4 lg:grid-cols-3">
+                <MiniChartCard title="Equity">
+                  <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
+                </MiniChartCard>
+                <MiniChartCard title="Monthly">
+                  <BarSparkline
+                    buckets={analytics.monthly}
+                    positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
+                  />
+                </MiniChartCard>
+                <MiniChartCard title="Daily">
+                  <BarSparkline
+                    buckets={analytics.daily}
+                    positiveClass="from-sky-600 via-sky-400 to-sky-200"
+                    shortLabels
+                  />
+                </MiniChartCard>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <MetricChip
+                  label="Total PnL"
+                  value={formatPnlCcy(analytics.totalPnl, quote)}
+                  tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
                 />
-              </MiniChartCard>
-              <MiniChartCard title="Daily">
-                <BarSparkline
-                  buckets={analytics.daily}
-                  positiveClass="from-sky-600 via-sky-400 to-sky-200"
-                  shortLabels
+                <MetricChip
+                  label="Win Rate"
+                  value={
+                    analytics.winRate == null
+                      ? '—'
+                      : `${Math.round(analytics.winRate * 1000) / 10}%`
+                  }
                 />
-              </MiniChartCard>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              <MetricChip
-                label="Total PnL"
-                value={formatPnlCcy(analytics.totalPnl, quote)}
-                tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
-              />
-              <MetricChip
-                label="Win Rate"
-                value={
-                  analytics.winRate == null
-                    ? '—'
-                    : `${Math.round(analytics.winRate * 1000) / 10}%`
-                }
-              />
-              <MetricChip label="Risk/Reward" value={formatRiskRewardRatio(analytics.riskReward)} />
-              <MetricChip
-                label="Month"
-                value={formatPnl(analytics.monthPnl)}
-                tone={chipTone(analytics.monthPnl)}
-              />
-              <MetricChip
-                label="Week"
-                value={formatPnl(analytics.weekPnl)}
-                tone={chipTone(analytics.weekPnl)}
-              />
-              <MetricChip
-                label="Day"
-                value={formatPnl(analytics.dayPnl)}
-                tone={chipTone(analytics.dayPnl)}
-              />
+                <MetricChip label="Risk/Reward" value={formatRiskRewardRatio(analytics.riskReward)} />
+                <MetricChip
+                  label="Month"
+                  value={formatPnl(analytics.monthPnl)}
+                  tone={chipTone(analytics.monthPnl)}
+                />
+                <MetricChip
+                  label="Week"
+                  value={formatPnl(analytics.weekPnl)}
+                  tone={chipTone(analytics.weekPnl)}
+                />
+                <MetricChip
+                  label="Day"
+                  value={formatPnl(analytics.dayPnl)}
+                  tone={chipTone(analytics.dayPnl)}
+                />
+              </div>
             </div>
           </div>
-        ) : null}
+        </div>
       </div>
     </SoftCard>
   )

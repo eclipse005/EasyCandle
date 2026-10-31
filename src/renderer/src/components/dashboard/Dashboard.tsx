@@ -1,4 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode
+} from 'react'
 import {
   CircleDollarSign,
   Database,
@@ -31,7 +38,7 @@ import SessionReportDialog from '@/components/SessionReportDialog'
 import AboutDialog from '@/components/AboutDialog'
 import iconUrl from '@/assets/barreplay-icon.svg'
 import { cn } from '@/components/ui/cn'
-import { softNav, softType } from '@/components/ui/softTokens'
+import { softMotion, softNav, softType } from '@/components/ui/softTokens'
 
 const SIDEBAR_PRIMARY: { id: SidebarNav; label: string; icon: typeof FlaskConical }[] = [
   { id: 'testing', label: 'Testing', icon: FlaskConical },
@@ -62,25 +69,130 @@ function SidebarNavButton({
   active,
   icon: Icon,
   label,
-  onClick
+  onClick,
+  className,
+  trailingPad
 }: {
   active: boolean
   icon: typeof FlaskConical
   label: string
   onClick: () => void
+  className?: string
+  /** Extra right padding so absolute trailing text (version) does not collide. */
+  trailingPad?: boolean
 }): ReactNode {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-body font-medium transition-colors',
-        active ? softNav.pillActive : softNav.pillIdle
+        'relative flex w-full items-center gap-3 overflow-hidden rounded-xl px-3.5 py-3 text-body font-medium',
+        softMotion.colorsFast,
+        active ? softNav.pillActive : softNav.pillIdle,
+        trailingPad && 'pr-14',
+        className
       )}
     >
+      <span
+        aria-hidden
+        className={cn(
+          'absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-zinc-100',
+          softMotion.indicator,
+          active ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
+        )}
+      />
       <Icon className="h-5 w-5 shrink-0 opacity-80" aria-hidden />
-      {label}
+      <span className="min-w-0 truncate">{label}</span>
     </button>
+  )
+}
+
+function TestingTabList({
+  testingTab,
+  setTestingTab
+}: {
+  testingTab: TestingTab
+  setTestingTab: (t: TestingTab) => void
+}): ReactNode {
+  const listRef = useRef<HTMLDivElement>(null)
+  const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const [underline, setUnderline] = useState({ left: 0, width: 0, ready: false })
+
+  const measure = useCallback(() => {
+    const list = listRef.current
+    const idx = TESTING_TABS.findIndex((t) => t.id === testingTab)
+    const btn = btnRefs.current[idx]
+    if (!list || !btn) return
+    const listRect = list.getBoundingClientRect()
+    const btnRect = btn.getBoundingClientRect()
+    setUnderline({
+      left: btnRect.left - listRect.left + list.scrollLeft,
+      width: btnRect.width,
+      ready: true
+    })
+  }, [testingTab])
+
+  useLayoutEffect(() => {
+    measure()
+  }, [measure])
+
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => measure())
+    ro.observe(list)
+    for (const btn of btnRefs.current) {
+      if (btn) ro.observe(btn)
+    }
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [measure])
+
+  return (
+    <div
+      ref={listRef}
+      className="relative mt-6 flex items-center gap-8 border-b border-white/[0.06]"
+      role="tablist"
+      aria-label="Testing sections"
+    >
+      {TESTING_TABS.map((tab, i) => {
+        const active = testingTab === tab.id
+        const Icon = tab.icon
+        return (
+          <button
+            key={tab.id}
+            ref={(el) => {
+              btnRefs.current[i] = el
+            }}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setTestingTab(tab.id)}
+            className={cn(
+              'relative -mb-px inline-flex items-center gap-2.5 pb-3.5',
+              softMotion.colorsFast,
+              softType.tab,
+              active ? softNav.tabActive : softNav.tabIdle
+            )}
+          >
+            <Icon className="h-5 w-5 opacity-80" aria-hidden />
+            {tab.label}
+          </button>
+        )
+      })}
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute bottom-0 h-0.5 rounded-full bg-zinc-100',
+          softMotion.underline,
+          underline.ready ? 'opacity-100' : 'opacity-0'
+        )}
+        style={{ left: underline.left, width: underline.width }}
+      />
+    </div>
   )
 }
 
@@ -186,16 +298,28 @@ export default function Dashboard(): ReactNode {
           ))}
         </nav>
 
-        <div className="mt-auto space-y-2 border-t border-white/[0.05] pt-3">
-          <SidebarNavButton
-            active={sidebarNav === 'settings'}
-            icon={Settings}
-            label="Settings"
-            onClick={() => setSidebarNav('settings')}
-          />
-          {version ? (
-            <p className={cn("px-3", softType.micro)}>v{version}</p>
-          ) : null}
+        {/* Footer: Settings left + version right on the SAME row */}
+        <div className="mt-auto border-t border-white/[0.05] pt-3">
+          <div className="relative flex items-center">
+            <SidebarNavButton
+              active={sidebarNav === 'settings'}
+              icon={Settings}
+              label="Settings"
+              onClick={() => setSidebarNav('settings')}
+              trailingPad={Boolean(version)}
+              className="flex-1 min-w-0"
+            />
+            {version ? (
+              <span
+                className={cn(
+                  'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 tabular-nums',
+                  softType.micro
+                )}
+              >
+                v{version}
+              </span>
+            ) : null}
+          </div>
         </div>
       </aside>
 
@@ -205,44 +329,17 @@ export default function Dashboard(): ReactNode {
             <h1 className={softType.pageTitle}>{PAGE_TITLES[sidebarNav]}</h1>
 
             {sidebarNav === 'testing' ? (
-              <div
-                className="mt-6 flex items-center gap-8 border-b border-white/[0.06]"
-                role="tablist"
-                aria-label="Testing sections"
-              >
-                {TESTING_TABS.map((tab) => {
-                  const active = testingTab === tab.id
-                  const Icon = tab.icon
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setTestingTab(tab.id)}
-                      className={cn(
-                        'relative -mb-px inline-flex items-center gap-2.5 pb-3.5 transition-colors',
-                        softType.tab,
-                        active ? softNav.tabActive : softNav.tabIdle
-                      )}
-                    >
-                      <Icon className="h-5 w-5 opacity-80" aria-hidden />
-                      {tab.label}
-                      {active ? (
-                        <span
-                          className={softNav.tabUnderline}
-                          aria-hidden
-                        />
-                      ) : null}
-                    </button>
-                  )
-                })}
-              </div>
+              <TestingTabList testingTab={testingTab} setTestingTab={setTestingTab} />
             ) : (
               <div className="mt-5 border-b border-white/[0.04]" />
             )}
 
-            <div className="mt-8">{mainBody}</div>
+            <div
+              key={`${sidebarNav}-${testingTab}`}
+              className="motion-page-enter mt-8"
+            >
+              {mainBody}
+            </div>
           </div>
         </main>
       </div>

@@ -46,3 +46,18 @@ export const softNav = {
   tabIdle: 'text-zinc-500 hover:text-zinc-300',
   tabUnderline: 'absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-zinc-100'
 } as const
+
+/** Motion durations / easings (mirror CSS vars in main.css). Pure CSS — no framer. */
+export const softMotion = {
+  /** class fragments using CSS custom properties */
+  fast: 'duration-[var(--motion-fast)] ease-[var(--ease-out)]',
+  tab: 'duration-[var(--motion-tab)] ease-[var(--ease-out)]',
+  expand: 'duration-[var(--motion-expand)] ease-[var(--ease-out)]',
+  /** combined transition helpers */
+  colorsFast: 'transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)]',
+  press: 'transition-[colors,transform,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]',
+  expandGrid: 'transition-[grid-template-rows] duration-[var(--motion-expand)] ease-[var(--ease-out)]',
+  underline: 'transition-[left,width] duration-[var(--motion-tab)] ease-[var(--ease-out)]',
+  indicator: 'transition-[opacity,transform] duration-[var(--motion-fast)] ease-[var(--ease-out)]'
+} as const
+

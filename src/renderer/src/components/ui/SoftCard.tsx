@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/components/ui/cn'
-import { softSurface } from '@/components/ui/softTokens'
+import { softMotion, softSurface } from '@/components/ui/softTokens'
 
 type SoftCardProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
@@ -17,7 +17,11 @@ export default function SoftCard({
 }: SoftCardProps) {
   return (
     <div
-      className={cn(elevated ? softSurface.cardElevated : softSurface.card, className)}
+      className={cn(
+        elevated ? softSurface.cardElevated : softSurface.card,
+        softMotion.colorsFast,
+        className
+      )}
       {...rest}
     >
       {children}
