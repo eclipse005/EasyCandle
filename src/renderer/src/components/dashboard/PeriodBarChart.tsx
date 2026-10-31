@@ -43,6 +43,7 @@ function weekdayAxisLabel(
 /**
  * Localized monthly / weekday PnL bars with float value on hover
  * (no native title tooltip) and a light selected hover state.
+ * Hover hit area is the bar body only — gaps/columns do not activate.
  */
 export default function PeriodBarChart({
   buckets,
@@ -66,7 +67,7 @@ export default function PeriodBarChart({
   }
 
   return (
-    <div className={cn('flex min-h-[8rem] flex-1 items-end px-1 pb-1 pt-2', gapClassName)}>
+    <div className={cn('flex min-h-[8rem] flex-1 items-end overflow-visible px-1 pb-1 pt-7', gapClassName)}>
       {buckets.map((b) => {
         const height = Math.max(b.pnl === 0 ? 0 : 6, Math.round((Math.abs(b.pnl) / maxAbs) * 100))
         const label =
@@ -77,21 +78,18 @@ export default function PeriodBarChart({
         return (
           <div
             key={b.key}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
-            onMouseEnter={() => setHovered(b.key)}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(b.key)}
-            onBlur={() => setHovered(null)}
+            className="pointer-events-none flex min-w-0 flex-1 flex-col items-center gap-1.5 overflow-visible"
           >
-            <div className={cn('flex w-full items-end justify-center', trackClassName)}>
+            <div className={cn('relative flex w-full items-end justify-center overflow-visible', trackClassName)}>
               <div
-                className={cn('relative w-[70%]', barMaxClassName)}
+                className={cn('relative w-[70%] overflow-visible', barMaxClassName)}
                 style={{ height: `${height}%` }}
               >
                 {active ? (
                   <span
                     className={cn(
-                      'pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2',
+                      // Float clearly above the bar: bottom-full + gap clears scale-y-105 growth
+                      'pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 -translate-x-1/2 -translate-y-1',
                       'whitespace-nowrap rounded-md bg-zinc-950/90 px-1.5 py-0.5',
                       'text-[10px] font-semibold tabular-nums text-zinc-100 shadow-lg shadow-black/40',
                       'opacity-100 transition-opacity duration-150'
@@ -100,14 +98,20 @@ export default function PeriodBarChart({
                     {pnlText}
                   </span>
                 ) : null}
+                {/* Hit target = bar body width only; column/gaps do not select */}
                 <div
                   className={cn(
-                    'h-full w-full origin-bottom rounded-t-lg bg-gradient-to-t transition duration-150 ease-out',
+                    'pointer-events-auto h-full w-full origin-bottom cursor-pointer rounded-t-lg bg-gradient-to-t transition duration-150 ease-out',
                     up ? positiveClass : 'from-red-700 via-red-500 to-red-300',
                     active && 'scale-x-110 scale-y-105 brightness-125 ring-1 ring-white/25'
                   )}
                   role="img"
+                  tabIndex={0}
                   aria-label={`${label}: ${pnlText}`}
+                  onMouseEnter={() => setHovered(b.key)}
+                  onMouseLeave={() => setHovered(null)}
+                  onFocus={() => setHovered(b.key)}
+                  onBlur={() => setHovered(null)}
                 />
               </div>
             </div>
