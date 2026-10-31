@@ -407,6 +407,12 @@ function SessionCard({
               variant="primary"
               size="sm"
               aria-label={`Go to chart for ${session.name}`}
+              disabled={!session.importId || datasetMeta == null}
+              title={
+                !session.importId || datasetMeta == null
+                  ? t('sessions.noMarketData')
+                  : undefined
+              }
               onClick={onGoChart}
             >
               <Play className="h-4 w-4 fill-current" aria-hidden />

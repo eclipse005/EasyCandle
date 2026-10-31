@@ -52,7 +52,7 @@ export default function SoftConfirmDialog({
       }
     >
       {description != null ? (
-        <p className="text-caption leading-relaxed text-zinc-300">{description}</p>
+        <div className="text-caption leading-relaxed text-zinc-300">{description}</div>
       ) : (
         <p className="sr-only">Confirm this action.</p>
       )}

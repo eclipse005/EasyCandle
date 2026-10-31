@@ -51,10 +51,11 @@ export default function ChartTimezoneSelect() {
   }, [query])
 
   return (
+    <div className="pointer-events-none">
     <Dropdown
       align="end"
       placement="top"
-      menuClassName="w-72 py-0"
+      menuClassName="pointer-events-auto w-72 py-0"
       trigger={({ open, toggle }) => (
         <button
           type="button"
@@ -62,7 +63,8 @@ export default function ChartTimezoneSelect() {
           aria-label="Chart timezone"
           aria-expanded={open}
           title={sessionTimezoneTitle(timezone)}
-          className="inline-flex h-5 items-center gap-0.5 rounded bg-zinc-950/80 px-1.5 text-[10px] font-medium tabular-nums text-zinc-400 backdrop-blur-sm transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          onPointerDown={(event) => event.stopPropagation()}
+          className="pointer-events-auto inline-flex h-5 items-center gap-0.5 rounded bg-zinc-950/80 px-1.5 text-[10px] font-medium tabular-nums text-zinc-400 backdrop-blur-sm transition-colors hover:bg-zinc-800 hover:text-zinc-200"
         >
           {triggerLabel}
           <ChevronUp
@@ -132,5 +134,6 @@ export default function ChartTimezoneSelect() {
         </div>
       )}
     </Dropdown>
+    </div>
   )
 }

@@ -50,6 +50,8 @@ export default function ReplayControls() {
   const setSpeed = useReplayStore((s) => s.setSpeed)
   const setDriverPane = useReplayStore((s) => s.setDriverPane)
   const jumpToTime = useReplayStore((s) => s.jumpToTime)
+  const seekToIndex = useReplayStore((s) => s.seekToIndex)
+  const bufferLength = useReplayStore((s) => s.bufferLength)
   const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
   const pauseOnTpSl = useReplayStore((s) => s.pauseOnTpSl)
   const setPauseOnTpSl = useReplayStore((s) => s.setPauseOnTpSl)
@@ -269,6 +271,37 @@ export default function ReplayControls() {
           {jumpError && <span className="text-xs text-red-400">{jumpError}</span>}
         </form>
       </Dropdown>
+
+      {bufferLength > 0 ? (
+        <div className="ml-0.5 flex min-w-[7.5rem] max-w-[11rem] flex-1 items-center gap-1.5">
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={t('replay.progressAria')}
+            title={t('replay.progressTip')}
+            className="group relative h-8 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={(event) => {
+              if (busy || bufferLength <= 0) return
+              const rect = event.currentTarget.getBoundingClientRect()
+              const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)))
+              const idx = Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
+              seekToIndex(idx)
+              event.currentTarget.blur()
+            }}
+          >
+            <span
+              className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-primary-500/35"
+              style={{
+                width: `calc(${Math.min(100, ((driverIndex + 1) / bufferLength) * 100)}% - 0.25rem)`
+              }}
+              aria-hidden
+            />
+            <span className="relative z-[1] text-[10px] font-medium tabular-nums text-zinc-400 group-hover:text-zinc-200">
+              {driverIndex + 1}/{bufferLength}
+            </span>
+          </button>
+        </div>
+      ) : null}
 
       <IconButton
         tooltip={t('replay.saveClose')}

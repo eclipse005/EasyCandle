@@ -1,0 +1,216 @@
+/**
+ * Approximate local usage + graded clears for Settings → Storage.
+ * IndexedDB holds market datasets; sessions / strategies / prefs live in localStorage.
+ */
+
+import { idbClearAllImportStores, idbGetAll } from '@/lib/importIdb'
+import { clearImportMemoryCaches } from '@/lib/webApiBridge'
+import { clearAllSessionNotes } from '@/lib/sessionNotes'
+import { ACCOUNT_TIMEZONE_STORAGE_KEY } from '@/store/accountPrefsStore'
+import { useSessionStore } from '@/store/sessionStore'
+import { useStrategiesStore } from '@/store/strategiesStore'
+import { useReplayStore } from '@/store/replayStore'
+import { LOCALE_STORAGE_KEY } from '@/i18n/messages'
+import { THEME_STORAGE_KEY } from '@/lib/theme'
+import type { ImportedDatasetMeta } from '@shared/importTypes'
+
+/** Approx structured-clone size per OHLC bar in IDB. */
+const BYTES_PER_CANDLE_EST = 56
+
+/** Keys preserved by default on “clear all” (language / theme / account TZ). */
+export const PRESERVED_SETTINGS_KEYS = [
+  LOCALE_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  ACCOUNT_TIMEZONE_STORAGE_KEY
+] as const
+
+const BACKTEST_LOCAL_KEYS = [
+  'bar-replay:sessions',
+  'bar-replay:strategies',
+  'bar-replay:session-notes'
+] as const
+
+const OTHER_APP_LOCAL_KEYS = [
+  'bar-replay:ui-layout',
+  'bar-replay:drawing-settings',
+  'bar-replay:chart-settings',
+  'bar-replay:symbol-visibility',
+  'bar-replay:symbol-params',
+  'bar-replay:pause-on-tp-sl',
+  'bar-replay:timeframe-favorites',
+  'bar-replay:charttype-favorites'
+] as const
+
+export type LocalUsageBreakdown = {
+  totalBytes: number
+  marketBytes: number
+  backtestBytes: number
+  otherBytes: number
+  approximate: boolean
+}
+
+function utf16Bytes(value: string): number {
+  return value.length * 2
+}
+
+function localStorageBytesForKeys(keys: readonly string[]): number {
+  let sum = 0
+  try {
+    for (const key of keys) {
+      const raw = localStorage.getItem(key)
+      if (raw != null) sum += utf16Bytes(key) + utf16Bytes(raw)
+    }
+  } catch {
+    // private mode
+  }
+  return sum
+}
+
+function estimateMarketBytesFromMetas(metas: ImportedDatasetMeta[]): number {
+  let candles = 0
+  for (const meta of metas) {
+    const tfStats = meta.timeframes ? Object.values(meta.timeframes) : []
+    if (tfStats.length > 0) {
+      for (const tf of tfStats) {
+        candles += Math.max(0, Number(tf.candleCount) || 0)
+      }
+    } else {
+      candles += Math.max(0, Number(meta.candleCount) || 0)
+    }
+  }
+  const metaOverhead = metas.length * 2048
+  return candles * BYTES_PER_CANDLE_EST + metaOverhead
+}
+
+export function formatApproxBytes(bytes: number): { value: string; unit: 'KB' | 'MB' } {
+  const safe = Math.max(0, Math.round(bytes))
+  if (safe < 1024 * 1024) {
+    const kb = safe === 0 ? 0 : Math.max(1, Math.round(safe / 1024))
+    return { value: String(kb), unit: 'KB' }
+  }
+  const mb = safe / (1024 * 1024)
+  const rounded = mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10
+  return { value: String(rounded), unit: 'MB' }
+}
+
+/** Sum known stores — approximate, labeled as such in UI. */
+export async function estimateLocalUsage(): Promise<LocalUsageBreakdown> {
+  let metas: ImportedDatasetMeta[] = []
+  try {
+    metas = await idbGetAll<ImportedDatasetMeta>('metas')
+  } catch {
+    metas = []
+  }
+  const marketBytes = estimateMarketBytesFromMetas(metas)
+  const backtestBytes = localStorageBytesForKeys(BACKTEST_LOCAL_KEYS)
+  const otherBytes = localStorageBytesForKeys([
+    ...OTHER_APP_LOCAL_KEYS,
+    ...PRESERVED_SETTINGS_KEYS
+  ])
+  return {
+    totalBytes: marketBytes + backtestBytes + otherBytes,
+    marketBytes,
+    backtestBytes,
+    otherBytes,
+    approximate: true
+  }
+}
+
+async function leaveActiveReplay(): Promise<void> {
+  const session = useSessionStore.getState()
+  if (session.activeSessionId) {
+    await session.closeActiveSession()
+    return
+  }
+  const replay = useReplayStore.getState()
+  if (replay.mode === 'replay') {
+    replay.resetReplayState()
+  }
+}
+
+/** Wipe IndexedDB market datasets; keep sessions/settings. Sessions may become orphaned. */
+export async function clearMarketDataOnly(): Promise<void> {
+  await leaveActiveReplay()
+  await idbClearAllImportStores()
+  clearImportMemoryCaches()
+  useReplayStore.setState({
+    importedList: [],
+    importMeta: null,
+    importedSourceCandles: []
+  })
+  await useReplayStore.getState().refreshImportedList()
+}
+
+/** Clear sessions, trades, strategies, session notes. Keep market data + settings. */
+export async function clearBacktestRecordsOnly(): Promise<void> {
+  await leaveActiveReplay()
+  useSessionStore.setState({ sessions: [], activeSessionId: null })
+  try {
+    localStorage.removeItem('bar-replay:sessions')
+  } catch {
+    /* ignore */
+  }
+  useStrategiesStore.setState({ strategies: [] })
+  try {
+    localStorage.removeItem('bar-replay:strategies')
+  } catch {
+    /* ignore */
+  }
+  clearAllSessionNotes()
+  useReplayStore.setState({
+    positions: [],
+    pendingOrders: [],
+    closedTrades: [],
+    orderHistory: [],
+    tradeMarkers: [],
+    sessionReport: null
+  })
+}
+
+/**
+ * Wipe local app data. By default preserves Language / Appearance / Account TZ.
+ * Pass resetSettings=true to also clear those three.
+ */
+export async function clearAllLocalAppData(opts?: { resetSettings?: boolean }): Promise<void> {
+  const resetSettings = opts?.resetSettings === true
+  const preserved: Record<string, string> = {}
+  if (!resetSettings) {
+    try {
+      for (const key of PRESERVED_SETTINGS_KEYS) {
+        const v = localStorage.getItem(key)
+        if (v != null) preserved[key] = v
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  await clearMarketDataOnly()
+  await clearBacktestRecordsOnly()
+
+  for (const key of OTHER_APP_LOCAL_KEYS) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (resetSettings) {
+    for (const key of PRESERVED_SETTINGS_KEYS) {
+      try {
+        localStorage.removeItem(key)
+      } catch {
+        /* ignore */
+      }
+    }
+  } else {
+    try {
+      for (const [key, value] of Object.entries(preserved)) {
+        localStorage.setItem(key, value)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+}

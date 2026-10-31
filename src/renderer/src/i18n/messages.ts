@@ -35,6 +35,27 @@ const en = {
   'settings.github': 'GitHub',
   'settings.version': 'Version {version}',
 
+  'settings.storage': 'Storage',
+  'settings.storageHint': 'Local browser data — approximate size.',
+  'settings.storageUsageValue': '~{value} {unit}',
+  'settings.storageUsageUnknown': 'Unknown',
+  'settings.storageClearMarket': 'Clear market data',
+  'settings.storageClearBacktest': 'Clear backtest records',
+  'settings.storageClearAll': 'Clear all local data',
+  'settings.storageClearMarketTitle': 'Clear market data?',
+  'settings.storageClearMarketBody':
+    'Deletes all imported datasets and candle files. Sessions stay but cannot open chart until you re-import. This cannot be undone.',
+  'settings.storageClearBacktestTitle': 'Clear backtest records?',
+  'settings.storageClearBacktestBody':
+    'Deletes sessions, trades, strategies, and notes. Market data and settings stay. This cannot be undone.',
+  'settings.storageClearAllTitle': 'Clear all local data?',
+  'settings.storageClearAllBodyKeep':
+    'Wipes market data, sessions, trades, and local prefs. Language, theme, and account timezone are kept. This cannot be undone.',
+  'settings.storageClearAllBodyReset':
+    'Wipes market data, sessions, trades, prefs, language, theme, and account timezone. This cannot be undone.',
+  'settings.storageAlsoResetSettings': 'Also reset language, theme, and account timezone',
+  'settings.storageConfirmClear': 'Clear',
+
   'dashboard.backtestingSession': 'Backtesting session',
   'dashboard.startSession': 'Start a session.',
   'dashboard.tutorials': 'Tutorials',
@@ -135,6 +156,7 @@ const en = {
   'sessions.deleteTitle': 'Delete session',
   'sessions.deleteBody': 'Delete the session “{name}”? This cannot be undone.',
   'sessions.goToChart': 'Go to chart',
+  'sessions.noMarketData': 'Market data missing — re-import to open',
   'sessions.summary': 'Summary',
   'sessions.notes': 'Notes',
   'sessions.notesPlaceholder': 'Notes for this session…',
@@ -298,6 +320,8 @@ const en = {
   'replay.toggleNext': 'Toggle next-candle pane',
   'replay.pauseOnTpSl': 'Pause after price hits TP or SL',
   'replay.saveClose': 'Save & close session',
+  'replay.progressAria': 'Replay progress — click to jump',
+  'replay.progressTip': 'Click to jump within the loaded window',
 
   'about.tagline': 'Replay charts and paper-trade without risk.',
   'about.timezoneNote':
@@ -351,6 +375,27 @@ const zh: Record<MessageKey, string> = {
   'settings.aboutButton': '关于 {app}',
   'settings.github': 'GitHub',
   'settings.version': '版本 {version}',
+
+  'settings.storage': '本地数据',
+  'settings.storageHint': '浏览器本地占用 — 约为估算值。',
+  'settings.storageUsageValue': '约 {value} {unit}',
+  'settings.storageUsageUnknown': '未知',
+  'settings.storageClearMarket': '清除行情数据',
+  'settings.storageClearBacktest': '清除回测记录',
+  'settings.storageClearAll': '清除全部本地数据',
+  'settings.storageClearMarketTitle': '清除行情数据？',
+  'settings.storageClearMarketBody':
+    '将删除全部已导入数据集与 K 线。会话会保留，但需重新导入后才能打开图表。此操作不可撤销。',
+  'settings.storageClearBacktestTitle': '清除回测记录？',
+  'settings.storageClearBacktestBody':
+    '将删除会话、成交、策略与备注。行情数据与设置会保留。此操作不可撤销。',
+  'settings.storageClearAllTitle': '清除全部本地数据？',
+  'settings.storageClearAllBodyKeep':
+    '将清除行情、会话、成交与本地偏好。语言、主题与账户时区默认保留。此操作不可撤销。',
+  'settings.storageClearAllBodyReset':
+    '将清除行情、会话、成交、偏好，以及语言、主题与账户时区。此操作不可撤销。',
+  'settings.storageAlsoResetSettings': '同时重置语言、主题与账户时区',
+  'settings.storageConfirmClear': '清除',
 
   'dashboard.backtestingSession': '回测会话',
   'dashboard.startSession': '开始一个会话。',
@@ -450,6 +495,7 @@ const zh: Record<MessageKey, string> = {
   'sessions.deleteTitle': '删除会话',
   'sessions.deleteBody': '删除会话“{name}”？此操作无法撤销。',
   'sessions.goToChart': '进入图表',
+  'sessions.noMarketData': '行情数据缺失 — 请重新导入后再打开',
   'sessions.summary': '汇总',
   'sessions.notes': '笔记',
   'sessions.notesPlaceholder': '此会话的笔记…',
@@ -613,6 +659,8 @@ const zh: Record<MessageKey, string> = {
   'replay.toggleNext': '切换下一周期图表面板',
   'replay.pauseOnTpSl': '触及止盈/止损后暂停',
   'replay.saveClose': '保存并关闭会话',
+  'replay.progressAria': '回放进度 — 点击跳转',
+  'replay.progressTip': '点击在已加载窗口内跳转',
 
   'about.tagline': '回放图表并无风险模拟交易。',
   'about.timezoneNote':

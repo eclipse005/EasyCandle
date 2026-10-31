@@ -195,3 +195,24 @@ export async function idbDeleteImportDataset(id: string): Promise<boolean> {
     db?.close()
   }
 }
+
+/** Clear every import object store (metas / candles / sources). */
+export async function idbClearAllImportStores(): Promise<boolean> {
+  let db: IDBDatabase | null = null
+  try {
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(['metas', 'sources', 'candles'], 'readwrite')
+      tx.objectStore('metas').clear()
+      tx.objectStore('sources').clear()
+      tx.objectStore('candles').clear()
+      tx.oncomplete = () => resolve(true)
+      tx.onerror = () => resolve(false)
+      tx.onabort = () => resolve(false)
+    })
+  } catch {
+    return false
+  } finally {
+    db?.close()
+  }
+}

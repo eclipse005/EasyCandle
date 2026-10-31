@@ -39,6 +39,14 @@ const memorySources = new Map<string, string>()
 // In-flight selected files cache for import modal
 const pendingFileCache = new Map<string, { content?: string; file?: File; fileName: string }>()
 
+/** Drop in-memory import fallbacks (Settings graded clear). */
+export function clearImportMemoryCaches(): void {
+  memoryMetas.clear()
+  memoryCandles.clear()
+  memorySources.clear()
+  pendingFileCache.clear()
+}
+
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import LevelPriceControl, { parseLevelPrice } from '@/components/LevelPriceControl'
 import RiskRewardControl from '@/components/RiskRewardControl'
 import Tooltip from '@/components/Tooltip'
@@ -199,6 +199,16 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
     return 'flex-1 rounded px-2 py-1.5 text-xs font-semibold transition-colors bg-zinc-800 text-zinc-100'
   }
 
+  function onFormKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    if (target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return
+    if (!canPlace) return
+    event.preventDefault()
+    submit()
+  }
+
   const placeTooltip = !canPlace
     ? !canSubmit
       ? 'Waiting for price data'
@@ -230,7 +240,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
   const showEst = estLoss != null || estProfit != null || estRr != null
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" onKeyDown={onFormKeyDown}>
       {/* 1. Sell | Buy */}
       <div
         role="group"

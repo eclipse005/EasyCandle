@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { ExternalLink, Moon, Sun } from 'lucide-react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Database, ExternalLink, Moon, Sun } from 'lucide-react'
 import SoftCard from '@/components/ui/SoftCard'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import { SoftSelect } from '@/components/ui/SoftInput'
 import SoftButton from '@/components/ui/SoftButton'
 import { softSpace, softType } from '@/components/ui/softTokens'
@@ -15,10 +16,19 @@ import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
 import { LOCALE_OPTIONS, type Locale } from '@/i18n/messages'
 import { APP_NAME } from '@shared/appName'
+import {
+  clearAllLocalAppData,
+  clearBacktestRecordsOnly,
+  clearMarketDataOnly,
+  estimateLocalUsage,
+  formatApproxBytes
+} from '@/lib/localData'
 
 const GITHUB_URL = 'https://github.com/eclipse005/BarReplay'
 
-/** Settings — Language / Appearance / Account timezone / About Soft SaaS layout. */
+type ClearKind = 'market' | 'backtest' | 'all' | null
+
+/** Settings — Language / Appearance / About / Account TZ / Storage Soft SaaS layout. */
 export default function SettingsPanel(): ReactNode {
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -29,9 +39,69 @@ export default function SettingsPanel(): ReactNode {
   const [version, setVersion] = useState('')
   const accountZoneLabel = chartTimezoneById(accountTimezone).city
 
+  const [usageLabel, setUsageLabel] = useState<string>('—')
+  const [usageBusy, setUsageBusy] = useState(false)
+  const [clearKind, setClearKind] = useState<ClearKind>(null)
+  const [clearBusy, setClearBusy] = useState(false)
+  const [alsoResetSettings, setAlsoResetSettings] = useState(false)
+
+  const refreshUsage = useCallback(async () => {
+    setUsageBusy(true)
+    try {
+      const usage = await estimateLocalUsage()
+      const fmt = formatApproxBytes(usage.totalBytes)
+      setUsageLabel(
+        t('settings.storageUsageValue', { value: fmt.value, unit: fmt.unit })
+      )
+    } catch {
+      setUsageLabel(t('settings.storageUsageUnknown'))
+    } finally {
+      setUsageBusy(false)
+    }
+  }, [t])
+
   useEffect(() => {
     void window.api.getAppVersion().then(setVersion)
   }, [])
+
+  useEffect(() => {
+    void refreshUsage()
+  }, [refreshUsage])
+
+  async function runClear(): Promise<void> {
+    if (!clearKind) return
+    setClearBusy(true)
+    try {
+      if (clearKind === 'market') await clearMarketDataOnly()
+      else if (clearKind === 'backtest') await clearBacktestRecordsOnly()
+      else await clearAllLocalAppData({ resetSettings: alsoResetSettings })
+      setClearKind(null)
+      setAlsoResetSettings(false)
+      await refreshUsage()
+    } finally {
+      setClearBusy(false)
+    }
+  }
+
+  const confirmTitle =
+    clearKind === 'market'
+      ? t('settings.storageClearMarketTitle')
+      : clearKind === 'backtest'
+        ? t('settings.storageClearBacktestTitle')
+        : clearKind === 'all'
+          ? t('settings.storageClearAllTitle')
+          : ''
+
+  const confirmBody =
+    clearKind === 'market'
+      ? t('settings.storageClearMarketBody')
+      : clearKind === 'backtest'
+        ? t('settings.storageClearBacktestBody')
+        : clearKind === 'all'
+          ? alsoResetSettings
+            ? t('settings.storageClearAllBodyReset')
+            : t('settings.storageClearAllBodyKeep')
+          : undefined
 
   return (
     <div className={`mx-auto w-full max-w-4xl ${softSpace.stackGap}`}>
@@ -91,7 +161,7 @@ export default function SettingsPanel(): ReactNode {
           </div>
         </SoftCard>
 
-        {/* Bottom-left / under Language: About */}
+        {/* Under Language: About */}
         <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-1 md:row-start-2')}>
           <h2 className={softType.section}>{t('settings.about')}</h2>
           <p className={`mt-1 leading-relaxed ${softType.bodyMuted}`}>
@@ -118,7 +188,7 @@ export default function SettingsPanel(): ReactNode {
           ) : null}
         </SoftCard>
 
-        {/* Bottom-right / under Appearance: Account timezone */}
+        {/* Under Appearance: Account timezone */}
         <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-2 md:row-start-2')}>
           <h2 className={softType.section}>{t('settings.accountTimezone')}</h2>
           <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.accountTimezoneHint')}</p>
@@ -141,7 +211,94 @@ export default function SettingsPanel(): ReactNode {
             </SoftSelect>
           </label>
         </SoftCard>
+
+        {/* Full-width row: Storage / 本地数据 */}
+        <SoftCard className={cn(softSpace.cardPadSm, 'md:col-span-2 md:col-start-1 md:row-start-3')}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className={softType.section}>{t('settings.storage')}</h2>
+              <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.storageHint')}</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2">
+              <Database className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+              <span className="text-caption font-medium tabular-nums text-zinc-200">
+                {usageBusy ? '…' : usageLabel}
+              </span>
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              disabled={clearBusy}
+              onClick={() => {
+                setAlsoResetSettings(false)
+                setClearKind('market')
+              }}
+            >
+              {t('settings.storageClearMarket')}
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              disabled={clearBusy}
+              onClick={() => {
+                setAlsoResetSettings(false)
+                setClearKind('backtest')
+              }}
+            >
+              {t('settings.storageClearBacktest')}
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="danger"
+              disabled={clearBusy}
+              onClick={() => {
+                setAlsoResetSettings(false)
+                setClearKind('all')
+              }}
+            >
+              {t('settings.storageClearAll')}
+            </SoftButton>
+          </div>
+        </SoftCard>
       </div>
+
+      <SoftConfirmDialog
+        open={clearKind != null}
+        title={confirmTitle}
+        description={
+          clearKind === 'all' ? (
+            <span className="flex flex-col gap-3">
+              <span>{confirmBody}</span>
+              <label className="flex cursor-pointer items-start gap-2 text-caption text-zinc-400">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-zinc-600 bg-zinc-900"
+                  checked={alsoResetSettings}
+                  disabled={clearBusy}
+                  onChange={(e) => setAlsoResetSettings(e.target.checked)}
+                />
+                <span>{t('settings.storageAlsoResetSettings')}</span>
+              </label>
+            </span>
+          ) : (
+            confirmBody
+          )
+        }
+        confirmLabel={t('settings.storageConfirmClear')}
+        cancelLabel={t('common.cancel')}
+        busy={clearBusy}
+        onCancel={() => {
+          if (!clearBusy) {
+            setClearKind(null)
+            setAlsoResetSettings(false)
+          }
+        }}
+        onConfirm={() => {
+          void runClear()
+        }}
+      />
     </div>
   )
 }

@@ -112,9 +112,7 @@ export default function AppShell({
                 bottom: 4
               }}
             >
-              <div className="pointer-events-auto">
-                <ChartTimezoneSelect />
-              </div>
+              <ChartTimezoneSelect />
             </div>
             {showReplayControls && inReplay && <FloatingReplayBar />}
             {chartFullscreen && inReplay && <FloatingTradeBar />}

@@ -49,3 +49,12 @@ export function clearSessionNote(sessionId: string): void {
   delete map[sessionId]
   writeAll(map)
 }
+
+/** Drop every per-session note (Settings → clear backtest / all). */
+export function clearAllSessionNotes(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* quota / private mode — ignore */
+  }
+}

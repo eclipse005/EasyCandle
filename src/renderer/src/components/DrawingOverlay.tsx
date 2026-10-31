@@ -2020,7 +2020,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
           }
 
           return (
-            <g key={`trade-${trade.id}-${trade.exitTime}`}>
+            <g key={`trade-${trade.id}-${trade.exitTime}`} className="pointer-events-none">
               {!samePoint && (
                 <>
                   <line
@@ -2172,6 +2172,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
               stroke={sideColor}
               strokeWidth={TRADE_OVERLAY.entryWidth}
               strokeDasharray={isPending ? TRADE_OVERLAY.levelDash : TRADE_OVERLAY.entryDash}
+              className="pointer-events-none"
             />
             {isPending && canEditTrade && (
               <rect
@@ -2194,6 +2195,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
                 stroke={TRADE_OVERLAY.tpLine}
                 strokeWidth={TRADE_OVERLAY.levelWidth}
                 strokeDasharray={TRADE_OVERLAY.levelDash}
+                className="pointer-events-none"
               />
             )}
 
@@ -2206,6 +2208,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
                 stroke={TRADE_OVERLAY.slLine}
                 strokeWidth={TRADE_OVERLAY.levelWidth}
                 strokeDasharray={TRADE_OVERLAY.levelDash}
+                className="pointer-events-none"
               />
             )}
 
