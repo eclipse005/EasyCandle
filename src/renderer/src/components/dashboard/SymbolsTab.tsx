@@ -261,97 +261,96 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden px-3 py-1.5"
+                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(3.5rem,1.25fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)]"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                  {/* Name first: ticker never truncates; meta may (fixed w so max-content stays bounded). */}
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className="min-w-0 shrink-0 truncate text-body font-semibold text-zinc-50"
+                      className="shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
                       title={row.label !== row.symbol ? row.label : undefined}
                     >
                       {row.symbol}
                     </span>
                     <span
-                      className="min-w-0 flex-1 truncate text-left text-micro text-zinc-400"
+                      className="w-[5.5rem] truncate text-left text-micro text-zinc-400"
                       title={metaTip}
                     >
                       {metaText}
                     </span>
                   </div>
-                  <div className="flex flex-none items-center gap-2">
-                    <label
-                      className="flex shrink-0 items-center justify-start gap-1"
+                  <label
+                    className="flex min-w-0 items-center justify-start gap-1"
+                    title={lotLabel}
+                  >
+                    <span className={cn('shrink-0', softType.micro)} title={lotLabel}>
+                      {t('symbols.contract')}
+                    </span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={String(info.contractSize)}
+                      aria-label={`Contract size for ${row.symbol}`}
                       title={lotLabel}
-                    >
-                      <span className={cn('shrink-0', softType.micro)} title={lotLabel}>
-                        {t('symbols.contract')}
-                      </span>
-                      <SoftInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder={String(info.contractSize)}
-                        aria-label={`Contract size for ${row.symbol}`}
-                        title={lotLabel}
-                        value={userSize ?? ''}
-                        onChange={(event) => {
-                          const text = event.target.value.trim()
-                          setContractSize(row.symbol, text === '' ? null : Number(text))
-                        }}
-                        className={cn(
-                          'h-8 w-[7rem] shrink-0 text-caption tabular-nums',
-                          userSize != null ? filledField : emptyField
-                        )}
-                      />
-                    </label>
-                    <label className="flex shrink-0 items-center justify-start gap-1">
-                      <span className={cn('shrink-0', softType.micro)}>{t('symbols.spread')}</span>
-                      <SoftInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder="0"
-                        aria-label={`Spread for ${row.symbol}`}
-                        title={
-                          spec.spread == null
-                            ? 'Empty — no spread (0)'
-                            : 'Full bid–ask width in price units'
-                        }
-                        value={spec.spread ?? ''}
-                        onChange={(event) => {
-                          const text = event.target.value.trim()
-                          setSpread(row.symbol, text === '' ? null : Number(text))
-                        }}
-                        className={cn(
-                          'h-8 w-[5rem] shrink-0 text-caption tabular-nums',
-                          spec.spread != null ? filledField : emptyField
-                        )}
-                      />
-                    </label>
-                    <label className="flex shrink-0 items-center justify-start gap-1">
-                      <span className={cn('shrink-0', softType.micro)}>{t('symbols.comm')}</span>
-                      <SoftInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder="0"
-                        aria-label={`Commission per lot for ${row.symbol}`}
-                        title={
-                          spec.commissionPerLot == null
-                            ? `Empty — no commission (0 ${quote})`
-                            : `Round-turn commission in ${quote} per 1.0 lot`
-                        }
-                        value={spec.commissionPerLot ?? ''}
-                        onChange={(event) => {
-                          const text = event.target.value.trim()
-                          setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
-                        }}
-                        className={cn(
-                          'h-8 w-[5rem] shrink-0 text-caption tabular-nums',
-                          spec.commissionPerLot != null ? filledField : emptyField
-                        )}
-                      />
-                    </label>
-                  </div>
+                      value={userSize ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setContractSize(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        userSize != null ? filledField : emptyField
+                      )}
+                    />
+                  </label>
+                  <label className="flex min-w-0 items-center justify-start gap-1">
+                    <span className={cn('shrink-0', softType.micro)}>{t('symbols.spread')}</span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      aria-label={`Spread for ${row.symbol}`}
+                      title={
+                        spec.spread == null
+                          ? 'Empty — no spread (0)'
+                          : 'Full bid–ask width in price units'
+                      }
+                      value={spec.spread ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setSpread(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        spec.spread != null ? filledField : emptyField
+                      )}
+                    />
+                  </label>
+                  <label className="flex min-w-0 items-center justify-start gap-1">
+                    <span className={cn('shrink-0', softType.micro)}>{t('symbols.comm')}</span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      aria-label={`Commission per lot for ${row.symbol}`}
+                      title={
+                        spec.commissionPerLot == null
+                          ? `Empty — no commission (0 ${quote})`
+                          : `Round-turn commission in ${quote} per 1.0 lot`
+                      }
+                      value={spec.commissionPerLot ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        spec.commissionPerLot != null ? filledField : emptyField
+                      )}
+                    />
+                  </label>
                 </SoftCard>
               )
             })}
