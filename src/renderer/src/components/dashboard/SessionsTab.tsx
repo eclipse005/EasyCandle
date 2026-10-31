@@ -1,27 +1,44 @@
 import { useMemo, type ReactNode } from 'react'
-import { Play, Plus, Trash2 } from 'lucide-react'
-import { cumulativeRealizedPnl } from '@/lib/paperTrade'
+import { BarChart3, Play, Plus, Trash2 } from 'lucide-react'
+import { cumulativeRealizedPnl, summarizeSession } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import type { SessionReport } from '@/store/replayStore'
+
+function sessionToReport(session: Session): SessionReport | null {
+  if (!session.closedTrades.length) return null
+  return {
+    symbol: session.symbol,
+    timeframe: session.timeframe,
+    trades: session.closedTrades,
+    summary: summarizeSession(session.closedTrades),
+    closedOpenOnExit: false,
+    startingBalance: session.startingBalance
+  }
+}
 
 function SessionCard({
   session,
   strategyName,
   onOpen,
-  onDelete
+  onDelete,
+  onReport
 }: {
   session: Session
   strategyName: string | null
   onOpen: () => void
   onDelete: () => void
+  onReport: () => void
 }) {
   const quote = quoteCurrencyForSymbol(session.symbol)
   const pnl = cumulativeRealizedPnl(session.closedTrades)
   const wins = session.closedTrades.filter((t) => t.pnl > 0).length
   const playhead =
     session.replayTime != null ? formatUtcCandleTime(session.replayTime) : 'not started'
+  const hasReport = session.closedTrades.length > 0
 
   return (
     <div className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
@@ -47,6 +64,17 @@ function SessionCard({
         {formatPnlCcy(pnl, quote)}
       </span>
       <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          aria-label={`Open performance for ${session.name}`}
+          disabled={!hasReport}
+          title={hasReport ? 'Equity curve & session report' : 'No closed trades yet'}
+          onClick={onReport}
+          className="inline-flex h-7 items-center gap-1 rounded border border-zinc-700 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <BarChart3 className="h-3 w-3" aria-hidden />
+          Report
+        </button>
         <button
           type="button"
           aria-label={`Open session ${session.name}`}
@@ -89,6 +117,7 @@ export default function SessionsTab({
   const loadSession = useSessionStore((s) => s.loadSession)
   const deleteSession = useSessionStore((s) => s.deleteSession)
   const strategies = useStrategiesStore((s) => s.strategies)
+  const setPreviewSessionReport = useUiLayoutStore((s) => s.setPreviewSessionReport)
 
   const ordered = useMemo(
     () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
@@ -125,6 +154,10 @@ export default function SessionsTab({
               strategyName={strategyName(session.strategyId)}
               onOpen={() => void loadSession(session.id)}
               onDelete={() => deleteSession(session.id)}
+              onReport={() => {
+                const report = sessionToReport(session)
+                if (report) setPreviewSessionReport(report)
+              }}
             />
           ))}
           {summary && ordered.length > visible.length ? (

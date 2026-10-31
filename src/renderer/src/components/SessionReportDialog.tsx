@@ -1,6 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Download, X } from 'lucide-react'
-import { formatExitReason, formatPositionSize, formatWinRate, tradesToCsv, type SideReport } from '@/lib/paperTrade'
+import {
+  equityCurve,
+  formatExitReason,
+  formatPositionSize,
+  formatWinRate,
+  tradesToCsv,
+  type EquityPoint,
+  type SideReport
+} from '@/lib/paperTrade'
 import { accountPnlFromQuote, formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
@@ -48,6 +56,56 @@ function ReportBlock({ title, report, quote }: { title: string; report: SideRepo
   )
 }
 
+function EquityCurveChart({
+  points,
+  quote
+}: {
+  points: EquityPoint[]
+  quote: string
+}) {
+  if (points.length < 2) return null
+  const width = 560
+  const height = 120
+  const padX = 8
+  const padY = 10
+  const equities = points.map((p) => p.equity)
+  const minE = Math.min(...equities)
+  const maxE = Math.max(...equities)
+  const span = maxE - minE || 1
+  const coords = points.map((p, i) => {
+    const x = padX + (i / (points.length - 1)) * (width - padX * 2)
+    const y = padY + (1 - (p.equity - minE) / span) * (height - padY * 2)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const last = points[points.length - 1]
+  const up = last.equity >= points[0].equity
+  return (
+    <div className="mb-4 rounded border border-zinc-800/80 bg-zinc-900/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Equity curve</h3>
+        <span className={`text-[11px] tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+          {formatPnlCcy(last.equity, quote)}
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-28 w-full"
+        role="img"
+        aria-label="Session equity curve"
+      >
+        <polyline
+          fill="none"
+          stroke={up ? '#34d399' : '#f87171'}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          points={coords.join(' ')}
+        />
+      </svg>
+    </div>
+  )
+}
+
 export default function SessionReportDialog() {
   const sessionReport = useReplayStore((s) => s.sessionReport)
   const dismissSessionReport = useReplayStore((s) => s.dismissSessionReport)
@@ -76,6 +134,12 @@ export default function SessionReportDialog() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [report, dismiss])
+
+  const curve = useMemo(() => {
+    if (!report) return []
+    const start = report.startingBalance ?? 100000
+    return equityCurve(start, report.trades)
+  }, [report])
 
   if (!report) return null
 
@@ -164,40 +228,47 @@ export default function SessionReportDialog() {
             <ReportBlock title="Short" report={summary.short} quote={quoteCurrency} />
           </div>
 
+          <EquityCurveChart points={curve} quote={quoteCurrency} />
+
           <h3 className="mb-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500">Trades</h3>
           <ul className="divide-y divide-zinc-800/80 text-[11px]">
             {trades.map((trade) => (
               <li
                 key={`${trade.id}-${trade.exitTime}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums text-zinc-400"
+                className="flex flex-col gap-0.5 py-1.5 text-zinc-400"
               >
-                <span
-                  className={
-                    trade.side === 'long'
-                      ? 'font-semibold text-emerald-400/90'
-                      : 'font-semibold text-red-400/90'
-                  }
-                >
-                  {trade.side.toUpperCase()}
-                </span>
-                <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
-                <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
-                  {formatExitReason(trade.exitReason)}
-                </span>
-                <span>
-                  {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}
-                  {formatAssetPrice(trade.exitPrice, pricePrecision)}
-                </span>
-                <span className="text-zinc-600">
-                  {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
-                </span>
-                <span
-                  className={`ml-auto font-medium ${
-                    trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
-                  }`}
-                >
-                  {formatPnlCcy(trade.pnl, quoteCurrency)}
-                </span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
+                  <span
+                    className={
+                      trade.side === 'long'
+                        ? 'font-semibold text-emerald-400/90'
+                        : 'font-semibold text-red-400/90'
+                    }
+                  >
+                    {trade.side.toUpperCase()}
+                  </span>
+                  <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
+                  <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+                    {formatExitReason(trade.exitReason)}
+                  </span>
+                  <span>
+                    {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}
+                    {formatAssetPrice(trade.exitPrice, pricePrecision)}
+                  </span>
+                  <span className="text-zinc-600">
+                    {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
+                  </span>
+                  <span
+                    className={`ml-auto font-medium ${
+                      trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    {formatPnlCcy(trade.pnl, quoteCurrency)}
+                  </span>
+                </div>
+                {trade.note ? (
+                  <p className="pl-0.5 text-[10px] italic text-zinc-500">{trade.note}</p>
+                ) : null}
               </li>
             ))}
           </ul>

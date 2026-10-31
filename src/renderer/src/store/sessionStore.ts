@@ -708,8 +708,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       useReplayStore.getState().setSpeed(1)
       // A stale report from a previously closed session must not pop here.
       useReplayStore.setState({ sessionReport: null })
-      // A stale report from a previously closed session must not pop here.
-      useReplayStore.setState({ sessionReport: null })
 
       const snap = chartSnapshot()
       const symbol = snap.symbol || 'Session'
@@ -727,7 +725,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       }
       set((s) => ({ sessions: [...s.sessions, session], activeSessionId: session.id }))
       persistLive()
-      return session.id    } finally {
+      return session.id
+    } finally {
       suppressAutoSave -= 1
     }
   },
@@ -735,11 +734,17 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   async closeActiveSession() {
     const id = get().activeSessionId
     if (id == null) return
+    const session = get().sessions.find((s) => s.id === id)
     suppressAutoSave += 1
     try {
       // Flatten open trades and build the report — sessionReport is kept in
       // the store so the Dashboard can show it before the user dismisses it.
-      useReplayStore.getState().finalizeSessionTrades()
+      const report = useReplayStore.getState().finalizeSessionTrades()
+      if (report && session) {
+        useReplayStore.setState({
+          sessionReport: { ...report, startingBalance: session.startingBalance }
+        })
+      }
       updateSessionSnapshot(id, chartSnapshot())
       // Return the chart store to its neutral state while on the dashboard:
       // otherwise the lingering replay mode would keep the import button on

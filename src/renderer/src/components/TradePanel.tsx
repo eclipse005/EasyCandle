@@ -227,45 +227,59 @@ function ClosedPositionRow({
   trade,
   symbol,
   pricePrecision,
-  onLocate
+  onLocate,
+  onNoteChange
 }: {
   trade: ClosedTrade
   symbol: string
   pricePrecision: number
   onLocate: () => void
+  onNoteChange: (note: string) => void
 }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums text-zinc-400">
-      <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        Closed
-      </span>
-      <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
-      <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
-      <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
-        {formatExitReason(trade.exitReason)}
-      </span>
-      <span>
-        {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}
-        {formatAssetPrice(trade.exitPrice, pricePrecision)}
-      </span>
-      <span className="text-zinc-600">
-        {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
-      </span>
-      <Tooltip text="Scroll the chart to the entry time" side="top">
-        <button
-          type="button"
-          aria-label={`Scroll the chart to ${formatUtcCandleTime(trade.entryTime)}`}
-          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-          onClick={onLocate}
+    <li className="flex flex-col gap-0.5 py-1.5 text-zinc-400">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
+        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          Closed
+        </span>
+        <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
+        <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
+        <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+          {formatExitReason(trade.exitReason)}
+        </span>
+        <span>
+          {formatAssetPrice(trade.entryPrice, pricePrecision)} →{' '}
+          {formatAssetPrice(trade.exitPrice, pricePrecision)}
+        </span>
+        <span className="text-zinc-600">
+          {formatUtcCandleTime(trade.entryTime)} → {formatUtcCandleTime(trade.exitTime)}
+        </span>
+        <Tooltip text="Scroll the chart to the entry time" side="top">
+          <button
+            type="button"
+            aria-label={`Scroll the chart to ${formatUtcCandleTime(trade.entryTime)}`}
+            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            onClick={onLocate}
+          >
+            <Crosshair className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </Tooltip>
+        <span
+          className={`ml-auto font-medium ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
         >
-          <Crosshair className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      </Tooltip>
-      <span
-        className={`ml-auto font-medium ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-      >
-        {formatPnlCcy(trade.pnl, quoteCurrencyForSymbol(symbol))}
-      </span>
+          {formatPnlCcy(trade.pnl, quoteCurrencyForSymbol(symbol))}
+        </span>
+      </div>
+      <input
+        type="text"
+        defaultValue={trade.note ?? ''}
+        key={`${trade.id}-${trade.exitTime}-${trade.note ?? ''}`}
+        placeholder="Add note…"
+        aria-label="Trade note"
+        maxLength={500}
+        onBlur={(event) => onNoteChange(event.currentTarget.value)}
+        className="h-6 w-full rounded border border-transparent bg-transparent px-1 text-[10px] text-zinc-400 outline-none placeholder:text-zinc-700 hover:border-zinc-800 focus:border-zinc-700 focus:bg-zinc-900/60"
+      />
     </li>
   )
 }
@@ -283,6 +297,7 @@ export default function TradePanel() {
   const cancelPending = useReplayStore((s) => s.cancelPending)
   const closedTrades = useReplayStore((s) => s.closedTrades)
   const focusChartTime = useReplayStore((s) => s.focusChartTime)
+  const setClosedTradeNote = useReplayStore((s) => s.setClosedTradeNote)
   const orderHistory = useReplayStore((s) => s.orderHistory)
   const currentCandle = useReplayStore(selectPriceFollowCandle)
   const riskReward = useReplayStore((s) => s.riskReward)
@@ -423,6 +438,7 @@ export default function TradePanel() {
               symbol={symbol}
               pricePrecision={pricePrecision}
               onLocate={() => void focusChartTime(trade.entryTime)}
+              onNoteChange={(note) => setClosedTradeNote(trade.id, note)}
             />
           ))}
         </HistoryList>
@@ -434,7 +450,7 @@ export default function TradePanel() {
   return (
     <div
       inert={preview || undefined}
-      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-800 bg-zinc-950/90 pb-1 ${
+      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-800 bg-zinc-950/90 pb-12 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >
