@@ -68,7 +68,7 @@ export default function LevelPriceControl({
   return (
     <div
       className={`flex items-center gap-1 rounded border bg-zinc-900/60 px-1.5 py-0.5 ${
-        picking ? 'border-amber-500/70' : 'border-zinc-800'
+        picking ? 'border-primary-500/70' : 'border-zinc-700'
       }`}
       title={title}
     >
@@ -105,7 +105,7 @@ export default function LevelPriceControl({
           onClick={onPickClick}
           className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             picking
-              ? 'bg-amber-950/60 text-amber-300'
+              ? 'bg-primary-950/60 text-primary-300'
               : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'
           }`}
         >

@@ -16,7 +16,7 @@ export default function OrderTicket() {
         preview ? 'pointer-events-none' : ''
       }`}
     >
-      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
+      <div className="shrink-0 border-b border-zinc-700/80 px-3 py-2">
         <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Order ticket</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">

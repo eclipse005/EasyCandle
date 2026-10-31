@@ -15,7 +15,7 @@ export default function RiskRewardControl() {
 
   return (
     <div
-      className="flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-1"
+      className="flex flex-col gap-1 rounded border border-zinc-700 bg-zinc-900/60 px-1.5 py-1"
       title="R:R guide for first SL/TP placement and when you change this value. After that you can drag levels freely."
     >
       <div className="flex items-center gap-1">
@@ -55,7 +55,7 @@ export default function RiskRewardControl() {
               onClick={() => setRiskReward(clampRiskReward(preset))}
               className={`h-6 min-w-0 flex-1 rounded text-[10px] font-semibold tabular-nums transition-colors ${
                 active
-                  ? 'bg-amber-950/60 text-amber-300'
+                  ? 'bg-primary-950/50 text-primary-300 ring-1 ring-inset ring-primary-500/60'
                   : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200'
               }`}
             >
