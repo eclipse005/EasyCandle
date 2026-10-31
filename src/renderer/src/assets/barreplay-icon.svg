@@ -1,25 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>BarReplay Icon</title>
-  <rect width="512" height="512" rx="96" fill="#030303"/>
-  <!-- Green bullish candle -->
-  <line x1="168" y1="120" x2="168" y2="392" stroke="#06A77D" stroke-width="14" stroke-linecap="round"/>
-  <rect x="128" y="176" width="80" height="168" rx="12" fill="#06A77D"/>
-  <!-- Red bearish candle -->
-  <line x1="344" y1="104" x2="344" y2="408" stroke="#ED6A5A" stroke-width="14" stroke-linecap="round"/>
-  <rect x="304" y="152" width="80" height="200" rx="12" fill="#ED6A5A"/>
-  <!-- Blue flask neck + rim bridging candles -->
-  <path d="M220 148
-           C220 118 236 96 256 96
-           C276 96 292 118 292 148
-           L292 210
-           C292 228 278 242 256 242
-           C234 242 220 228 220 210 Z"
-        fill="none" stroke="#0260FD" stroke-width="22" stroke-linejoin="round"/>
-  <path d="M200 96 H312" fill="none" stroke="#0260FD" stroke-width="22" stroke-linecap="round"/>
-  <!-- Flask bowl negative space between bodies -->
-  <path d="M208 280
-           C208 330 228 372 256 372
-           C284 372 304 330 304 280
-           L304 248 H208 Z"
-        fill="none" stroke="#0260FD" stroke-width="18" stroke-linejoin="round" opacity="0.95"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">BarReplay Icon</title>
+  <!-- Black rounded square -->
+  <rect width="512" height="512" rx="72" fill="#000000"/>
+  <!-- Five K-line candles: 3 green / 2 red, mountain arc + white play triangle -->
+  <g stroke-linecap="round">
+    <!-- G1 leftmost (shortest) -->
+    <line x1="96" y1="220" x2="96" y2="382" stroke="#00C897" stroke-width="8"/>
+    <rect x="70" y="251" width="52" height="95" rx="4" fill="#00C897"/>
+    <!-- G2 -->
+    <line x1="173" y1="151" x2="173" y2="342" stroke="#00C897" stroke-width="8"/>
+    <rect x="147" y="183" width="52" height="124" rx="4" fill="#00C897"/>
+    <!-- G3 center (tallest) -->
+    <line x1="262" y1="100" x2="262" y2="320" stroke="#00C897" stroke-width="8"/>
+    <rect x="236" y="130" width="52" height="175" rx="4" fill="#00C897"/>
+    <!-- R1 -->
+    <line x1="339" y1="136" x2="339" y2="322" stroke="#FF2A2C" stroke-width="8"/>
+    <rect x="313" y="169" width="52" height="116" rx="4" fill="#FF2A2C"/>
+    <!-- R2 rightmost -->
+    <line x1="418" y1="205" x2="418" y2="382" stroke="#FF2A2C" stroke-width="8"/>
+    <rect x="392" y="239" width="52" height="105" rx="4" fill="#FF2A2C"/>
+  </g>
+  <!-- Play triangle (right-pointing) with black cutout border -->
+  <path d="M214 210 L318 265.5 L214 321 Z" fill="#000000"/>
+  <path d="M224 219 L308 265.5 L224 312 Z" fill="#FFFFFF"/>
 </svg>
