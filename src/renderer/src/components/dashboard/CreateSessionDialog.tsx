@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
 import {
   earliestCoverageDay,
   groupImportsBySymbol,
@@ -30,7 +29,8 @@ function dateInputFor(unixSeconds: number | null | undefined): string {
 
 /**
  * New-backtesting-session wizard: pick a **symbol** (not a single CSV),
- * timeframe, start date within coverage, balance, optional strategy.
+ * start date within coverage, balance, optional strategy.
+ * Chart timeframe defaults to 1m (switchable on the chart, like FX Replay).
  */
 export default function CreateSessionDialog({
   open,
@@ -44,7 +44,6 @@ export default function CreateSessionDialog({
   const symbolGroups = useMemo(() => groupImportsBySymbol(imports), [imports])
 
   const [symbolKey, setSymbolKey] = useState('')
-  const [timeframe, setTimeframe] = useState('1m')
   const [startDate, setStartDate] = useState('')
   const [balance, setBalance] = useState('100000')
   const [strategyId, setStrategyId] = useState('')
@@ -57,17 +56,6 @@ export default function CreateSessionDialog({
     [symbolGroups, symbolKey]
   )
 
-  const timeframes = useMemo(() => {
-    if (!group) return []
-    const available = new Set<string>()
-    for (const meta of group.files) {
-      for (const tf of IMPORT_STORED_TIMEFRAMES) {
-        if (meta.timeframes[tf] != null) available.add(tf)
-      }
-    }
-    return IMPORT_STORED_TIMEFRAMES.filter((tf) => available.has(tf))
-  }, [group])
-
   useEffect(() => {
     if (!open) return
     setError(null)
@@ -77,19 +65,12 @@ export default function CreateSessionDialog({
       (pref && symbolGroups.find((g) => g.key === pref)) || symbolGroups[0] || null
     if (initial) {
       setSymbolKey(initial.key)
-      const preferred =
-        initial.files.find((f) => f.timeframes[f.timeframe] != null)?.timeframe
-      const tf =
-        preferred ??
-        (initial.files[0]?.timeframes['1m'] != null ? '1m' : '1m')
-      setTimeframe(tf)
       const day =
         earliestCoverageDay(initial.coverageDays) ||
         dateInputFor(initial.firstTime)
       setStartDate(day)
     } else {
       setSymbolKey('')
-      setTimeframe('1m')
       setStartDate('')
     }
     setBalance('100000')
@@ -104,9 +85,6 @@ export default function CreateSessionDialog({
       earliestCoverageDay(group.coverageDays) ||
       dateInputFor(group.firstTime)
     setStartDate(day)
-    if (timeframes.length && !timeframes.includes(timeframe as (typeof timeframes)[number])) {
-      setTimeframe(timeframes[0] as string)
-    }
     // Only reclamp when symbol changes — not on every startDate edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, group?.key])
@@ -149,7 +127,7 @@ export default function CreateSessionDialog({
     void openSession({
       name,
       symbol: group.symbol,
-      timeframe,
+      timeframe: '1m',
       startDate: seconds,
       balance: balanceNumber,
       strategyId: strategyId || undefined
@@ -200,47 +178,30 @@ export default function CreateSessionDialog({
           </SoftSelect>
         </SoftLabel>
 
-        <div className="grid grid-cols-2 gap-3">
-          <SoftLabel caption="Timeframe">
-            <SoftSelect
-              value={timeframe}
-              disabled={busy || timeframes.length === 0}
-              aria-label="Timeframe"
-              onChange={(event) => setTimeframe(event.target.value)}
-            >
-              {timeframes.map((tf) => (
-                <option key={tf} value={tf}>
-                  {tf}
-                </option>
-              ))}
-            </SoftSelect>
-          </SoftLabel>
-
-          <SoftLabel caption="Start date">
-            {group ? (
-              <DateCoveragePopover
-                mode="pick"
-                coverageDays={group.coverageDays}
-                selectedDay={startDate}
-                disabled={busy}
-                placeholder="Pick a day with data"
-                initialMonth={startDate ? startDate.slice(0, 7) : undefined}
-                onSelectDay={(day) => {
-                  setError(null)
-                  setStartDate(day)
-                }}
-              />
-            ) : (
-              <SoftInput
-                type="text"
-                value=""
-                disabled
-                aria-label="Start date"
-                placeholder="Pick a day with data"
-              />
-            )}
-          </SoftLabel>
-        </div>
+        <SoftLabel caption="Start date">
+          {group ? (
+            <DateCoveragePopover
+              mode="pick"
+              coverageDays={group.coverageDays}
+              selectedDay={startDate}
+              disabled={busy}
+              placeholder="Pick a day with data"
+              initialMonth={startDate ? startDate.slice(0, 7) : undefined}
+              onSelectDay={(day) => {
+                setError(null)
+                setStartDate(day)
+              }}
+            />
+          ) : (
+            <SoftInput
+              type="text"
+              value=""
+              disabled
+              aria-label="Start date"
+              placeholder="Pick a day with data"
+            />
+          )}
+        </SoftLabel>
 
         <div className="grid grid-cols-2 gap-3">
           <SoftLabel caption="Initial balance">
