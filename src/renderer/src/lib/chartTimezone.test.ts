@@ -4,6 +4,7 @@ import {
   ChartTickMarkType,
   DEFAULT_CHART_TIMEZONE,
   formatSessionCandleTime,
+  listAccountTimezones,
   parseSessionParts,
   sanitizeTimezone,
   sessionUtcOffsetLabel,
@@ -50,6 +51,22 @@ describe('CHART_TIMEZONES', () => {
   })
 })
 
+
+describe('listAccountTimezones', () => {
+  it('keeps a short whole-hour city list with Shanghai and New York', () => {
+    const zones = listAccountTimezones()
+    expect(zones.length).toBeGreaterThanOrEqual(20)
+    expect(zones.length).toBeLessThanOrEqual(28)
+    const ids = new Set(zones.map((z) => z.id))
+    expect(ids.has('Asia/Shanghai')).toBe(true)
+    expect(ids.has('Asia/Tokyo')).toBe(true)
+    expect(ids.has('America/New_York')).toBe(true)
+    expect(ids.has('UTC')).toBe(true)
+    expect(ids.has('Europe/Paris')).toBe(true)
+    // Full IANA catalog stays on CHART_TIMEZONES; Account picker is curated.
+    expect(zones.length).toBeLessThan(CHART_TIMEZONES.length)
+  })
+})
 describe('formatSessionCandleTime', () => {
   it('keeps UTC wall-clock unchanged', () => {
     const time = utcSeconds(2018, 6, 25, 4, 0, 0)

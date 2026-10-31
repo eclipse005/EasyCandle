@@ -1,10 +1,10 @@
-/** Settings Account timezone — full IANA list with UTC offset, searchable Soft dropdown. */
+/** Settings Account timezone — ~24 whole-hour representatives, searchable Soft dropdown. */
 import { useMemo, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import Dropdown from '@/components/Dropdown'
 import {
-  CHART_TIMEZONES,
   chartTimezoneById,
+  listAccountTimezones,
   sessionUtcOffsetLabel,
   type ChartTimezone
 } from '@/lib/chartTimezone'
@@ -21,10 +21,6 @@ function matchesQuery(zone: ChartTimezone, needle: string, atSeconds: number): b
     offset.includes(needle) ||
     offset.replace('utc', '').includes(needle)
   )
-}
-
-function groupName(zone: ChartTimezone): string {
-  return zone.region.split(' / ')[0] || 'UTC'
 }
 
 /** Option label: `Shanghai (UTC+8)` — offset for “now” at open/render. */
@@ -47,23 +43,17 @@ export default function AccountTimezoneSelect(): ReactNode {
   const [atSeconds] = useState(() => Math.floor(Date.now() / 1000))
 
   const triggerLabel = accountTimezoneOptionLabel(accountTimezone, atSeconds)
-  const groups = useMemo(() => {
+  const zones = useMemo(() => {
+    const curated = listAccountTimezones(atSeconds)
+    const ids = new Set(curated.map((z) => z.id))
+    // Keep a previously saved non-curated IANA id visible until the user picks another.
+    const list =
+      ids.has(accountTimezone) || accountTimezone === 'Etc/UTC'
+        ? curated
+        : [chartTimezoneById(accountTimezone), ...curated]
     const needle = query.trim().toLowerCase()
-    const matches = needle
-      ? CHART_TIMEZONES.filter((zone) => matchesQuery(zone, needle, atSeconds))
-      : CHART_TIMEZONES
-    const out: { name: string; zones: ChartTimezone[] }[] = []
-    let current: { name: string; zones: ChartTimezone[] } | null = null
-    for (const zone of matches) {
-      const name = groupName(zone)
-      if (!current || current.name !== name) {
-        current = { name, zones: [] }
-        out.push(current)
-      }
-      current.zones.push(zone)
-    }
-    return out
-  }, [query, atSeconds])
+    return needle ? list.filter((zone) => matchesQuery(zone, needle, atSeconds)) : list
+  }, [query, atSeconds, accountTimezone])
 
   return (
     <div className="w-full max-w-sm">
@@ -110,44 +100,35 @@ export default function AccountTimezoneSelect(): ReactNode {
             />
           </div>
           <div className="max-h-72 overflow-y-auto py-1" role="listbox">
-            {groups.length === 0 && (
+            {zones.length === 0 && (
               <div className="px-3 py-2 text-caption text-zinc-500">{t('settings.timezoneEmpty')}</div>
             )}
-            {groups.map((group) => (
-              <div key={group.name}>
-                <div className="sticky top-0 bg-zinc-950/95 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500 backdrop-blur-sm">
-                  {group.name}
-                </div>
-                {group.zones.map((zone) => {
-                  const selected = zone.id === accountTimezone
-                  const label = accountTimezoneOptionLabel(zone.id, atSeconds)
-                  return (
-                    <button
-                      key={zone.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      onClick={() => {
-                        setAccountTimezone(zone.id)
-                        setQuery('')
-                        close()
-                      }}
-                      className={cn(
-                        'flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors',
-                        selected
-                          ? 'bg-primary-500/15 text-primary-200'
-                          : 'text-zinc-300 hover:bg-white/5 hover:text-zinc-100'
-                      )}
-                    >
-                      <span className="min-w-0 truncate text-caption font-medium">{label}</span>
-                      {zone.region ? (
-                        <span className="shrink-0 text-[10px] text-zinc-600">{zone.id}</span>
-                      ) : null}
-                    </button>
-                  )
-                })}
-              </div>
-            ))}
+            {zones.map((zone) => {
+              const selected = zone.id === accountTimezone
+              const label = accountTimezoneOptionLabel(zone.id, atSeconds)
+              return (
+                <button
+                  key={zone.id}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    setAccountTimezone(zone.id)
+                    setQuery('')
+                    close()
+                  }}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors',
+                    selected
+                      ? 'bg-primary-500/15 text-primary-200'
+                      : 'text-zinc-300 hover:bg-white/5 hover:text-zinc-100'
+                  )}
+                >
+                  <span className="min-w-0 truncate text-caption font-medium">{label}</span>
+                  <span className="shrink-0 text-[10px] text-zinc-600">{zone.id}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

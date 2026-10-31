@@ -177,6 +177,73 @@ export function chartTimezoneById(id: string): ChartTimezone {
   return { id: zoneId, city, region }
 }
 
+/**
+ * Settings Account timezone picker — one well-known city per whole-hour UTC
+ * offset (≈ UTC−11…UTC+12, plus +14). IANA id stays the stored value; UI shows
+ * `City (UTC±N)`. Half-hour zones (e.g. India) are omitted on purpose.
+ */
+const ACCOUNT_TIMEZONE_IDS: readonly string[] = [
+  'Pacific/Pago_Pago', // UTC-11
+  'Pacific/Honolulu', // UTC-10
+  'America/Anchorage', // UTC-9 / -8 DST
+  'America/Los_Angeles', // UTC-8 / -7 DST
+  'America/Denver', // UTC-7 / -6 DST
+  'America/Chicago', // UTC-6 / -5 DST
+  'America/New_York', // UTC-5 / -4 DST
+  'America/Halifax', // UTC-4 / -3 DST
+  'America/Sao_Paulo', // UTC-3
+  'America/Noronha', // UTC-2
+  'Atlantic/Cape_Verde', // UTC-1
+  'UTC', // UTC+0
+  'Europe/Paris', // UTC+1 / +2 DST
+  'Africa/Cairo', // UTC+2
+  'Europe/Moscow', // UTC+3
+  'Asia/Dubai', // UTC+4
+  'Asia/Karachi', // UTC+5
+  'Asia/Dhaka', // UTC+6
+  'Asia/Bangkok', // UTC+7
+  'Asia/Shanghai', // UTC+8
+  'Asia/Tokyo', // UTC+9
+  'Australia/Brisbane', // UTC+10
+  'Pacific/Noumea', // UTC+11
+  'Pacific/Auckland', // UTC+12 / +13 DST
+  'Pacific/Kiritimati' // UTC+14
+]
+
+function offsetMinutesAt(zoneId: string, atSeconds: number): number {
+  if (zoneId === 'UTC' || zoneId === 'Etc/UTC') return 0
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zoneId,
+      timeZoneName: 'shortOffset'
+    }).formatToParts(new Date(atSeconds * 1000))
+    const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT'
+    const m = raw.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/)
+    if (!m) return 0
+    const sign = m[1] === '-' ? -1 : 1
+    const hours = Number(m[2])
+    const mins = Number(m[3] ?? 0)
+    return sign * (hours * 60 + mins)
+  } catch {
+    return 0
+  }
+}
+
+/** Curated Account timezone options, sorted west→east by current offset. */
+export function listAccountTimezones(
+  atSeconds: number = Math.floor(Date.now() / 1000)
+): ChartTimezone[] {
+  const zones = ACCOUNT_TIMEZONE_IDS.map((id) => chartTimezoneById(id))
+  return zones.sort((a, b) => {
+    const oa = offsetMinutesAt(a.id, atSeconds)
+    const ob = offsetMinutesAt(b.id, atSeconds)
+    if (oa !== ob) return oa - ob
+    return a.city.localeCompare(b.city)
+  })
+}
+
+export const ACCOUNT_TIMEZONES: readonly ChartTimezone[] = listAccountTimezones()
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
