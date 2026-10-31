@@ -26,6 +26,7 @@ type PersistedLayout = {
   showReplayControls?: boolean
   showPaperTrade?: boolean
   hasCompletedTour?: boolean
+  tradeMarksVisible?: boolean
 }
 
 type UiLayoutState = {
@@ -41,6 +42,8 @@ type UiLayoutState = {
   showDrawingToolbar: boolean
   showReplayControls: boolean
   showPaperTrade: boolean
+  /** Trade entry/exit markers on the chart (FXR "Hide marks"). */
+  tradeMarksVisible: boolean
   shortcutsDialogOpen: boolean
   aboutDialogOpen: boolean
   importDataDialogOpen: boolean
@@ -76,6 +79,7 @@ type UiLayoutState = {
   toggleDrawingToolbar: () => void
   toggleReplayControls: () => void
   togglePaperTrade: () => void
+  setTradeMarksVisible: (value: boolean) => void
   setShortcutsDialogOpen: (value: boolean) => void
   setAboutDialogOpen: (value: boolean) => void
   setImportDataDialogOpen: (value: boolean) => void
@@ -137,6 +141,7 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   showDrawingToolbar: initial.showDrawingToolbar !== false,
   showReplayControls: initial.showReplayControls !== false,
   showPaperTrade: initial.showPaperTrade !== false,
+  tradeMarksVisible: initial.tradeMarksVisible !== false,
   shortcutsDialogOpen: false,
   aboutDialogOpen: false,
   importDataDialogOpen: false,
@@ -217,6 +222,11 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     const value = !get().showPaperTrade
     set({ showPaperTrade: value })
     persist({ showPaperTrade: value })
+  },
+
+  setTradeMarksVisible: (value) => {
+    set({ tradeMarksVisible: value })
+    persist({ tradeMarksVisible: value })
   },
 
   setShortcutsDialogOpen: (value) => {

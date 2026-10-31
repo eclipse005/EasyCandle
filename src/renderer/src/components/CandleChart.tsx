@@ -35,6 +35,8 @@ import {
   registerPrimaryChartView
 } from '@/lib/chart/chartViewBridge'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
+import { applyToolDefaultsOnAdd } from '@/lib/drawings/drawingActions'
+import { toLcdInterval } from '@/lib/drawings/drawingStyleBridge'
 import { useChartPaneModel } from '@/hooks/useChartPaneModel'
 import { themedWordmarkUrl } from '@/lib/chartWordmark'
 import type { ChartOverlay } from '@/lib/indicators'
@@ -524,6 +526,7 @@ export default function CandleChart({
       })
     })
     drawingManagerRef.current = manager
+    manager.setInterval(toLcdInterval(useReplayStore.getState().timeframe))
 
     const offChange = manager.on('change', () => {
       const uiNow = useDrawingUiStore.getState()
@@ -551,6 +554,10 @@ export default function CandleChart({
     }
     const restored = lastDrawingJSON()
     if (restored !== '[]') manager.importJSON(restored)
+    // Register after import so restored drawings keep their saved styles.
+    const offAdd = manager.on('add', (drawing) => {
+      if (isPrimary) applyToolDefaultsOnAdd(drawing)
+    })
     if (isPrimary) {
       useDrawingUiStore.getState().setSelectedIds(manager.selection())
       registerPrimaryChartView(
@@ -567,6 +574,7 @@ export default function CandleChart({
       offGesture()
       offTool()
       offSelection()
+      offAdd()
       if (isPrimary) {
         registerPrimaryChartView(null)
         useDrawingUiStore.getState().setSelectedIds([])
@@ -575,6 +583,11 @@ export default function CandleChart({
       drawingManagerRef.current = null
     }
   }, [chartReady, isPrimary])
+
+  // Keep LCD interval visibility in sync with the pane timeframe.
+  useEffect(() => {
+    drawingManagerRef.current?.setInterval(toLcdInterval(timeframe))
+  }, [timeframe])
 
   // Swap the series in place when the chart type changes so the crosshair,
   // price scale, markers, and drawing overlay all keep working.
@@ -760,10 +773,13 @@ export default function CandleChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartFocus?.revision])
 
+  const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
+
   function applyTradeMarkers(): void {
     const markersApi = markersRef.current
     if (!markersApi) return
-    const markers = Array.isArray(tradeMarkers) ? tradeMarkers : []
+    const markers =
+      tradeMarksVisible && Array.isArray(tradeMarkers) ? tradeMarkers : []
     const source = mode === 'replay' ? (visibleCandles ?? []) : (candles ?? [])
     const knownTimes = new Set(source.map((c) => c.time))
     const sorted = markers
@@ -774,7 +790,7 @@ export default function CandleChart({
 
   useEffect(() => {
     applyTradeMarkers()
-  }, [tradeMarkers, mode, candles, visibleCandles])
+  }, [tradeMarkers, tradeMarksVisible, mode, candles, visibleCandles])
 
   const seriesCandles = mode === 'replay' ? (visibleCandles ?? []) : (candles ?? [])
   const empty = seriesCandles.length === 0

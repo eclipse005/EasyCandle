@@ -5,13 +5,17 @@ import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import * as bridge from '@/lib/drawings/drawingBridge'
 import {
+  applySavedTemplate,
   bringDrawingToFront,
   clearAllDrawings,
   cloneDrawing,
   copyDrawing,
   hasDrawingClipboard,
+  listPresetsForDrawing,
   pasteDrawing,
   removeDrawing,
+  resetDrawingStyle,
+  saveTemplateAs,
   sendDrawingToBack,
   setDrawingHidden,
   setDrawingLocked
@@ -88,6 +92,10 @@ export default function ChartContextMenu({
   const setDrawingsVisible = useDrawingUiStore((s) => s.setDrawingsVisible)
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
   const [orderOpen, setOrderOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const setObjectTreeOpen = useDrawingUiStore((s) => s.setObjectTreeOpen)
+  const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
+  const setTradeMarksVisible = useUiLayoutStore((s) => s.setTradeMarksVisible)
 
   const priceText = point.price.toFixed(pricePrecision)
   const sizeText = formatTradeSizeForSymbol(tradeSize, symbol)
@@ -194,6 +202,38 @@ export default function ChartContextMenu({
                   onClose()
                 }}
               />
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <MenuItem label="Templates" hint="▸" onSelect={() => setTemplatesOpen((v) => !v)} />
+          {templatesOpen && (
+            <div className="mx-1 mb-1 rounded-xl border border-zinc-800 bg-zinc-900 py-1">
+              <MenuItem
+                label="Save as…"
+                onSelect={() => {
+                  const name = window.prompt('Template name')
+                  if (name && name.trim()) saveTemplateAs(drawingId, name.trim())
+                  onClose()
+                }}
+              />
+              <MenuItem
+                label="Reset style"
+                onSelect={() => {
+                  resetDrawingStyle(drawingId)
+                  onClose()
+                }}
+              />
+              {listPresetsForDrawing(drawingId).map((preset) => (
+                <MenuItem
+                  key={preset.id}
+                  label={preset.name}
+                  onSelect={() => {
+                    applySavedTemplate(drawingId, preset.id)
+                    onClose()
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -312,6 +352,29 @@ export default function ChartContextMenu({
         label="Remove indicators"
         onSelect={() => {
           useReplayStore.setState({ activeIndicators: [] })
+          onClose()
+        }}
+      />
+      <Divider />
+      <MenuItem
+        label="Object tree…"
+        onSelect={() => {
+          setObjectTreeOpen(true)
+          onClose()
+        }}
+      />
+      <MenuItem
+        label="Table view…"
+        onSelect={() => {
+          // Same panel — table layout of drawings (FXR empty-RMB parity).
+          setObjectTreeOpen(true)
+          onClose()
+        }}
+      />
+      <MenuItem
+        label={tradeMarksVisible ? 'Hide marks' : 'Show marks'}
+        onSelect={() => {
+          setTradeMarksVisible(!tradeMarksVisible)
           onClose()
         }}
       />

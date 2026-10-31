@@ -14,11 +14,15 @@ import Tooltip from '@/components/Tooltip'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import * as bridge from '@/lib/drawings/drawingBridge'
 import {
+  applySavedTemplate,
   bringDrawingToFront,
   cloneDrawing,
   copyDrawing,
+  listPresetsForDrawing,
   patchDrawingStyle,
   removeDrawing,
+  resetDrawingStyle,
+  saveTemplateAs,
   sendDrawingToBack,
   setDrawingHidden,
   setDrawingLocked
@@ -62,6 +66,7 @@ export default memo(function DrawingSelectionBar(): ReactNode {
   const revision = useDrawingUiStore((s) => s.revision)
   const openObjectDialog = useDrawingUiStore((s) => s.openObjectDialog)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
 
   const id = selectedIds[0] ?? null
@@ -259,6 +264,48 @@ export default memo(function DrawingSelectionBar(): ReactNode {
                 setMoreOpen(false)
               }}
             />
+            <div className="my-1 h-px bg-zinc-800" />
+            <MoreItem
+              label="Templates"
+              hint="▸"
+              icon={<Settings2 className="h-3.5 w-3.5" />}
+              onSelect={() => setTemplatesOpen((v) => !v)}
+            />
+            {templatesOpen && (
+              <div className="mx-1 mb-1 rounded-xl border border-zinc-800 bg-zinc-900 py-1">
+                <MoreItem
+                  label="Save as…"
+                  icon={<Copy className="h-3.5 w-3.5" />}
+                  onSelect={() => {
+                    const name = window.prompt('Template name')
+                    if (name && name.trim()) saveTemplateAs(id, name.trim())
+                    setMoreOpen(false)
+                    setTemplatesOpen(false)
+                  }}
+                />
+                <MoreItem
+                  label="Reset style"
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                  onSelect={() => {
+                    resetDrawingStyle(id)
+                    setMoreOpen(false)
+                    setTemplatesOpen(false)
+                  }}
+                />
+                {listPresetsForDrawing(id).map((preset) => (
+                  <MoreItem
+                    key={preset.id}
+                    label={preset.name}
+                    icon={<Copy className="h-3.5 w-3.5" />}
+                    onSelect={() => {
+                      applySavedTemplate(id, preset.id)
+                      setMoreOpen(false)
+                      setTemplatesOpen(false)
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

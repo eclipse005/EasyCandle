@@ -3,7 +3,15 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import * as bridge from '@/lib/drawings/drawingBridge'
-import { patchDrawing, patchDrawingStyle, setDrawingHidden, setDrawingLocked } from '@/lib/drawings/drawingActions'
+import {
+  patchDrawing,
+  patchDrawingStyle,
+  setDrawingHidden,
+  setDrawingLocked,
+  setDrawingVisibility
+} from '@/lib/drawings/drawingActions'
+import { timeframesFromVisibility } from '@/lib/drawings/drawingStyleBridge'
+import { TIMEFRAME_IDS } from '@shared/timeframes'
 
 type Tab = 'style' | 'text' | 'coordinates' | 'visibility'
 
@@ -247,9 +255,37 @@ export default function DrawingObjectDialog(): ReactElement | null {
                   className="h-4 w-4 accent-primary-500"
                 />
               </label>
+              <Field label="Show on intervals">
+                <div className="grid grid-cols-3 gap-1.5">
+                  {TIMEFRAME_IDS.map((tf) => {
+                    const enabled = timeframesFromVisibility(
+                      drawing.visibility as Parameters<typeof timeframesFromVisibility>[0]
+                    )
+                    const on = enabled.includes(tf)
+                    return (
+                      <label
+                        key={tf}
+                        className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-300"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...enabled, tf]
+                              : enabled.filter((idTf) => idTf !== tf)
+                            setDrawingVisibility(id, next.length > 0 ? next : enabled)
+                          }}
+                          className="h-3.5 w-3.5 accent-primary-500"
+                        />
+                        {tf}
+                      </label>
+                    )
+                  })}
+                </div>
+              </Field>
               <p className="text-[10px] leading-relaxed text-zinc-500">
-                Interval visibility (show on M1 / H1 / …) is not wired yet — drawings stay visible on
-                every timeframe.
+                Unchecked intervals hide this drawing when the chart is on that timeframe.
               </p>
             </>
           )}
