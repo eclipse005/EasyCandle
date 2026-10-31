@@ -222,102 +222,101 @@ export default function SymbolsTab(): ReactNode {
             const effective = userSize ?? info.contractSize
             const quote = quoteCurrencyForSymbol(row.symbol)
             const precision = spec.precision ?? resolvePricePrecision(row.symbol)
+            const daysPart = row.hasData
+              ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
+              : 'No data'
+            const metaText = `${quote} · p${precision} · ${daysPart}`
             return (
               <SoftCard
                 key={key}
                 elevated
-                className="flex flex-nowrap items-center gap-2 px-3 py-1.5"
+                className="flex flex-nowrap items-center px-3 py-1.5"
               >
-                <span
-                  className="w-[6.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
-                  title={row.label}
-                >
-                  {row.label}
-                </span>
-                <span className="w-[5.5rem] shrink-0 truncate text-left text-micro text-zinc-400">
-                  {`${quote} · p${precision}`}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className="w-[6.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
+                    title={row.label}
+                  >
+                    {row.label}
+                  </span>
+                  <span
+                    className="min-w-[11rem] w-[12.5rem] shrink-0 truncate text-left text-micro text-zinc-400"
+                    title={metaText}
+                  >
+                    {metaText}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-1" aria-hidden />
-                <label className="flex w-[8.75rem] shrink-0 items-center justify-start gap-1.5">
-                  <span className={cn('shrink-0', softType.micro)}>Contract</span>
-                  <SoftInput
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder={String(info.contractSize)}
-                    aria-label={`Contract size for ${row.symbol}`}
-                    value={userSize ?? ''}
-                    onChange={(event) => {
-                      const text = event.target.value.trim()
-                      setContractSize(row.symbol, text === '' ? null : Number(text))
-                    }}
+                <div className="flex shrink-0 items-center gap-3.5">
+                  <label className="flex w-[9rem] shrink-0 items-center justify-start gap-2">
+                    <span className={cn('shrink-0', softType.micro)}>Contract</span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={String(info.contractSize)}
+                      aria-label={`Contract size for ${row.symbol}`}
+                      value={userSize ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setContractSize(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 min-w-0 w-[5.5rem] text-caption tabular-nums',
+                        userSize != null ? 'border-primary-500/35' : undefined
+                      )}
+                    />
+                  </label>
+                  <label className="flex w-[7rem] shrink-0 items-center justify-start gap-2">
+                    <span className={cn('shrink-0', softType.micro)}>Spread</span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      aria-label={`Spread for ${row.symbol}`}
+                      title="Full bid–ask width in price units"
+                      value={spec.spread ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setSpread(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 min-w-0 w-16 text-caption tabular-nums',
+                        spec.spread != null ? 'border-primary-500/35' : undefined
+                      )}
+                    />
+                  </label>
+                  <label className="flex w-[7rem] shrink-0 items-center justify-start gap-2">
+                    <span className={cn('shrink-0', softType.micro)}>Comm</span>
+                    <SoftInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      aria-label={`Commission per lot for ${row.symbol}`}
+                      title={`Round-turn commission in ${quote} per 1.0 lot`}
+                      value={spec.commissionPerLot ?? ''}
+                      onChange={(event) => {
+                        const text = event.target.value.trim()
+                        setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
+                      }}
+                      className={cn(
+                        'h-8 min-w-0 w-16 text-caption tabular-nums',
+                        spec.commissionPerLot != null ? 'border-primary-500/35' : undefined
+                      )}
+                    />
+                  </label>
+                  <span
                     className={cn(
-                      'h-8 min-w-0 w-[5.5rem] text-caption tabular-nums',
-                      userSize != null ? 'border-primary-500/35' : undefined
+                      'w-[9rem] shrink-0 truncate text-right tabular-nums',
+                      softType.micro
                     )}
-                  />
-                </label>
-                <label className="flex w-[6.75rem] shrink-0 items-center justify-start gap-1.5">
-                  <span className={cn('shrink-0', softType.micro)}>Spread</span>
-                  <SoftInput
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="0"
-                    aria-label={`Spread for ${row.symbol}`}
-                    title="Full bid–ask width in price units"
-                    value={spec.spread ?? ''}
-                    onChange={(event) => {
-                      const text = event.target.value.trim()
-                      setSpread(row.symbol, text === '' ? null : Number(text))
-                    }}
-                    className={cn(
-                      'h-8 min-w-0 w-16 text-caption tabular-nums',
-                      spec.spread != null ? 'border-primary-500/35' : undefined
-                    )}
-                  />
-                </label>
-                <label className="flex w-[6.75rem] shrink-0 items-center justify-start gap-1.5">
-                  <span className={cn('shrink-0', softType.micro)}>Comm</span>
-                  <SoftInput
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="0"
-                    aria-label={`Commission per lot for ${row.symbol}`}
-                    title={`Round-turn commission in ${quote} per 1.0 lot`}
-                    value={spec.commissionPerLot ?? ''}
-                    onChange={(event) => {
-                      const text = event.target.value.trim()
-                      setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
-                    }}
-                    className={cn(
-                      'h-8 min-w-0 w-16 text-caption tabular-nums',
-                      spec.commissionPerLot != null ? 'border-primary-500/35' : undefined
-                    )}
-                  />
-                </label>
-                <span
-                  className={cn(
-                    'w-[8.5rem] shrink-0 truncate text-right tabular-nums',
-                    softType.micro
-                  )}
-                  title={`1 lot = ${formatContractSize(effective)} ${quote}`}
-                >
-                  1 lot = {formatContractSize(effective)} {quote}
-                </span>
-                <span
-                  className="min-w-[5rem] w-[5.5rem] shrink-0 truncate text-right text-micro tabular-nums text-zinc-400"
-                  title={
-                    row.hasData
-                      ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
-                      : 'No data'
-                  }
-                >
-                  {row.hasData
-                    ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
-                    : 'No data'}
-                </span>
+                    title={`1 lot = ${formatContractSize(effective)} ${quote}`}
+                  >
+                    1 lot = {formatContractSize(effective)} {quote}
+                  </span>
+                </div>
               </SoftCard>
             )
           })}

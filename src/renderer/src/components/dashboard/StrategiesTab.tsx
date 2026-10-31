@@ -11,6 +11,7 @@ import {
 import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftDialog from '@/components/ui/SoftDialog'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import SoftLabel from '@/components/ui/SoftLabel'
 import { SoftInput } from '@/components/ui/SoftInput'
@@ -276,6 +277,7 @@ export default function StrategiesTab(): ReactNode {
   const remove = useStrategiesStore((s) => s.remove)
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<Strategy | null>(null)
   const [newName, setNewName] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -392,19 +394,25 @@ export default function StrategiesTab(): ReactNode {
             <StrategyCard
               key={strategy.id}
               strategy={strategy}
-              onDelete={() => {
-                if (
-                  typeof window !== 'undefined' &&
-                  !window.confirm(`Delete strategy “${strategy.name}”?`)
-                ) {
-                  return
-                }
-                remove(strategy.id)
-              }}
+              onDelete={() => setPendingDelete(strategy)}
             />
           ))}
         </div>
       )}
+
+      <SoftConfirmDialog
+        open={pendingDelete != null}
+        title="Delete strategy"
+        description={
+          pendingDelete ? `Delete strategy “${pendingDelete.name}”?` : undefined
+        }
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          remove(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
 
       <SoftDialog
         open={createOpen}

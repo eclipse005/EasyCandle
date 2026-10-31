@@ -15,6 +15,7 @@ import ImportBatchConfirmModal, {
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftDialog from '@/components/ui/SoftDialog'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { cn } from '@/components/ui/cn'
 import { softType } from '@/components/ui/softTokens'
@@ -79,6 +80,8 @@ export default function SymbolDatasetsDialog({
   const [modalError, setModalError] = useState<string | null>(null)
   const [pending, setPending] = useState<ImportBatchItem[] | null>(null)
   const [message, setMessage] = useState<InlineMessage>(null)
+  const [pendingFileDelete, setPendingFileDelete] = useState<ImportedDatasetMeta | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const coverage = useMemo(() => coverageDaysFromMetas(files), [files])
   const panelSymbol = normalizeSymbol(symbol)
@@ -91,11 +94,19 @@ export default function SymbolDatasetsDialog({
     []
   )
 
-  async function deleteFile(id: string): Promise<void> {
-    const result = await window.api.deleteImport(id)
-    if (!result.ok) return
-    if (importMeta?.id === id) clearImportedDataset()
-    await refreshImportedList()
+  async function confirmDeleteFile(): Promise<void> {
+    if (!pendingFileDelete) return
+    setDeleteBusy(true)
+    try {
+      const id = pendingFileDelete.id
+      const result = await window.api.deleteImport(id)
+      if (!result.ok) return
+      if (importMeta?.id === id) clearImportedDataset()
+      await refreshImportedList()
+      setPendingFileDelete(null)
+    } finally {
+      setDeleteBusy(false)
+    }
   }
 
   async function prepareFromFiles(
@@ -392,7 +403,7 @@ export default function SymbolDatasetsDialog({
                         variant="ghost"
                         aria-label={`Delete ${meta.originalFileName}`}
                         disabled={importDisabled}
-                        onClick={() => void deleteFile(meta.id)}
+                        onClick={() => setPendingFileDelete(meta)}
                         className="!h-7 !w-7 shrink-0 !px-0 hover:text-red-300"
                       >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -434,6 +445,23 @@ export default function SymbolDatasetsDialog({
           />
         </div>
       </SoftDialog>
+
+      <SoftConfirmDialog
+        open={pendingFileDelete != null}
+        title="Delete file"
+        description={
+          pendingFileDelete
+            ? `Delete “${pendingFileDelete.originalFileName}”? This cannot be undone.`
+            : undefined
+        }
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setPendingFileDelete(null)
+        }}
+        onConfirm={() => {
+          void confirmDeleteFile()
+        }}
+      />
 
       <ImportBatchConfirmModal
         items={pending}

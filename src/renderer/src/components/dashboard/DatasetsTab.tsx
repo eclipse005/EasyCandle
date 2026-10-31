@@ -5,6 +5,7 @@ import { useReplayStore } from '@/store/replayStore'
 import ImportDataDialog from '@/components/ImportDataDialog'
 import SymbolDatasetsDialog from '@/components/dashboard/SymbolDatasetsDialog'
 import SoftButton from '@/components/ui/SoftButton'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { softType } from '@/components/ui/softTokens'
@@ -29,20 +30,28 @@ export default function DatasetsTab(): ReactNode {
     [groups, manageKey]
   )
 
-  async function deleteAllForSymbol(key: string, symbol: string, ids: string[]): Promise<void> {
-    if (
-      !window.confirm(
-        `Delete all ${ids.length} file${ids.length === 1 ? '' : 's'} for ${symbol}? This cannot be undone.`
-      )
-    ) {
-      return
+  const [pendingDelete, setPendingDelete] = useState<{
+    key: string
+    symbol: string
+    ids: string[]
+  } | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  async function confirmDeleteAll(): Promise<void> {
+    if (!pendingDelete) return
+    const { key, ids } = pendingDelete
+    setDeleteBusy(true)
+    try {
+      for (const id of ids) {
+        await window.api.deleteImport(id)
+        if (importMeta?.id === id) clearImportedDataset()
+      }
+      await refreshImportedList()
+      if (manageKey === key) setManageKey(null)
+      setPendingDelete(null)
+    } finally {
+      setDeleteBusy(false)
     }
-    for (const id of ids) {
-      await window.api.deleteImport(id)
-      if (importMeta?.id === id) clearImportedDataset()
-    }
-    await refreshImportedList()
-    if (manageKey === key) setManageKey(null)
   }
 
   return (
@@ -102,11 +111,11 @@ export default function DatasetsTab(): ReactNode {
                   variant="ghost"
                   aria-label={`Delete all files for ${group.symbol}`}
                   onClick={() =>
-                    void deleteAllForSymbol(
-                      group.key,
-                      group.symbol,
-                      group.files.map((f) => f.id)
-                    )
+                    setPendingDelete({
+                      key: group.key,
+                      symbol: group.symbol,
+                      ids: group.files.map((f) => f.id)
+                    })
                   }
                   className="!h-7 !w-7 !px-0 hover:text-red-300"
                 >
@@ -134,6 +143,23 @@ export default function DatasetsTab(): ReactNode {
         symbol={managing?.symbol ?? ''}
         files={managing?.files ?? []}
         onClose={() => setManageKey(null)}
+      />
+
+      <SoftConfirmDialog
+        open={pendingDelete != null}
+        title="Delete datasets"
+        description={
+          pendingDelete
+            ? `Delete all ${pendingDelete.ids.length} file${pendingDelete.ids.length === 1 ? '' : 's'} for ${pendingDelete.symbol}? This cannot be undone.`
+            : undefined
+        }
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setPendingDelete(null)
+        }}
+        onConfirm={() => {
+          void confirmDeleteAll()
+        }}
       />
     </section>
   )

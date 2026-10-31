@@ -13,6 +13,7 @@ import {
   Trash2
 } from 'lucide-react'
 import SoftButton from '@/components/ui/SoftButton'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput, SoftSelect, SoftTextarea } from '@/components/ui/SoftInput'
@@ -59,6 +60,7 @@ export default function SessionsTab({
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Session | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -193,20 +195,28 @@ export default function SessionsTab({
                 const id = duplicateSession(session.id)
                 if (id) setExpandedId(id)
               }}
-              onDelete={() => {
-                if (
-                  typeof window !== 'undefined' &&
-                  !window.confirm(`Delete session “${session.name}”? This cannot be undone.`)
-                ) {
-                  return
-                }
-                clearSessionNote(session.id)
-                deleteSession(session.id)
-              }}
+              onDelete={() => setPendingDelete(session)}
             />
           ))}
         </div>
       )}
+
+      <SoftConfirmDialog
+        open={pendingDelete != null}
+        title="Delete session"
+        description={
+          pendingDelete
+            ? `Delete session “${pendingDelete.name}”? This cannot be undone.`
+            : undefined
+        }
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          clearSessionNote(pendingDelete.id)
+          deleteSession(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
     </section>
   )
 }

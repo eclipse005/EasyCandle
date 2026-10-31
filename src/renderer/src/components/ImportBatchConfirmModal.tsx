@@ -554,18 +554,12 @@ export default function ImportBatchConfirmModal({
                     const end = toUtcParts(row.lastTime).date || '—'
                     const days =
                       row.status === 'ok' ? spanDays(row.firstTime, row.lastTime).toFixed(1) : '—'
-                    const preview = row.firstCandle ?? row.candles[0]
                     return (
                       <tr key={row.id} className="align-top text-zinc-300">
                         <td className="max-w-[10rem] px-3 py-2">
                           <p className="truncate font-medium text-zinc-100" title={row.fileName}>
                             {row.fileName}
                           </p>
-                          {row.status === 'ok' && preview ? (
-                            <p className="mt-0.5 truncate font-mono text-[10px] tabular-nums text-zinc-500">
-                              O {preview.open} H {preview.high} L {preview.low} C {preview.close}
-                            </p>
-                          ) : null}
                           {row.status === 'error' && row.error ? (
                             <p className="mt-0.5 text-[10px] leading-snug text-red-400">
                               {row.error}
