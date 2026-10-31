@@ -37,7 +37,7 @@ function formatReturnCcy(pnl: number | null | undefined, currency: string): stri
     .replace(/ ([A-Za-z]{3})$/, '\u00A0$1')
 }
 
-function entryTypeLabel(row: AggregatedTradeRow): string {
+function entryTypeOf(row: AggregatedTradeRow): Exclude<EntryTypeFilter, 'all'> {
   if (row.status === 'pending') {
     if (row.pendingKind === 'stopLimit') return 'stop-limit'
     return 'limit'
@@ -45,6 +45,12 @@ function entryTypeLabel(row: AggregatedTradeRow): string {
   if (row.pendingKind === 'limit') return 'limit'
   if (row.pendingKind === 'stopLimit') return 'stop-limit'
   return 'market'
+}
+
+const ENTRY_TYPE_KEYS: Record<Exclude<EntryTypeFilter, 'all'>, 'trades.market' | 'trades.limit' | 'trades.stopLimit'> = {
+  market: 'trades.market',
+  limit: 'trades.limit',
+  'stop-limit': 'trades.stopLimit'
 }
 
 function outcomeOf(row: AggregatedTradeRow): 'win' | 'loss' | 'be' | 'open' {
@@ -137,7 +143,7 @@ export default function TradesTab(): ReactNode {
     if (statusFilter !== 'all') rows = rows.filter((r) => r.status === statusFilter)
     if (outcomeFilter !== 'all') rows = rows.filter((r) => outcomeOf(r) === outcomeFilter)
     if (entryTypeFilter !== 'all') {
-      rows = rows.filter((r) => entryTypeLabel(r) === entryTypeFilter)
+      rows = rows.filter((r) => entryTypeOf(r) === entryTypeFilter)
     }
     if (assetFilter !== 'all') rows = rows.filter((r) => r.symbol === assetFilter)
     if (fromSec != null || toSec != null) {
@@ -153,7 +159,8 @@ export default function TradesTab(): ReactNode {
         (r) =>
           r.sessionName.toLowerCase().includes(q) ||
           r.symbol.toLowerCase().includes(q) ||
-          entryTypeLabel(r).includes(q) ||
+          entryTypeOf(r).includes(q) ||
+          t(ENTRY_TYPE_KEYS[entryTypeOf(r)]).toLowerCase().includes(q) ||
           r.status.includes(q) ||
           (r.exitReason ? formatExitReason(r.exitReason).toLowerCase().includes(q) : false)
       )
@@ -188,7 +195,8 @@ export default function TradesTab(): ReactNode {
     dateTo,
     query,
     sortKey,
-    accountTimezone
+    accountTimezone,
+    t
   ])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
@@ -455,7 +463,7 @@ export default function TradesTab(): ReactNode {
                     </td>
                     <td className="min-w-[7.5rem] whitespace-nowrap px-4 py-3">
                       <span className="inline-block whitespace-nowrap rounded-lg bg-zinc-800/60 px-2 py-0.5 text-caption text-zinc-400">
-                        {entryTypeLabel(row)}
+                        {t(ENTRY_TYPE_KEYS[entryTypeOf(row)])}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-zinc-400">

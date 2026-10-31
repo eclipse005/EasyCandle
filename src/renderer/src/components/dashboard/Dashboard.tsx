@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   LineChart,
   ListVideo,
-  Search,
   Settings,
   Table2
 } from 'lucide-react'
@@ -37,13 +36,13 @@ import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog'
 import SessionReportDialog from '@/components/SessionReportDialog'
 import AboutDialog from '@/components/AboutDialog'
 import Tooltip from '@/components/Tooltip'
-import Kbd from '@/components/Kbd'
-import { SoftInput } from '@/components/ui/SoftInput'
 import iconUrl from '@/assets/barreplay-icon.svg'
 import { cn } from '@/components/ui/cn'
 import { softMotion, softNav, softType } from '@/components/ui/softTokens'
 import { useT } from '@/i18n/useT'
 import type { MessageKey } from '@/i18n/messages'
+
+const SIDEBAR_EXPANDED_KEY = 'bar-replay:sidebar-expanded'
 
 const SIDEBAR_PRIMARY: { id: SidebarNav; labelKey: MessageKey; icon: typeof FlaskConical }[] = [
   { id: 'testing', labelKey: 'nav.testing', icon: FlaskConical },
@@ -70,61 +69,70 @@ const PAGE_TITLE_KEYS: Record<SidebarNav, MessageKey> = {
   settings: 'nav.settings'
 }
 
-type NavTarget = {
-  id: string
-  labelKey: MessageKey
-  icon: typeof FlaskConical
-  sidebar: SidebarNav
-  testingTab?: TestingTab
+function readSidebarExpanded(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_EXPANDED_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
-const NAV_SEARCH_TARGETS: NavTarget[] = [
-  ...SIDEBAR_PRIMARY.map((i) => ({ ...i, sidebar: i.id })),
-  ...SIDEBAR_SECONDARY.map((i) => ({ ...i, sidebar: i.id })),
-  { id: 'settings', labelKey: 'nav.settings', icon: Settings, sidebar: 'settings' },
-  ...TESTING_TABS.map((tab) => ({
-    id: `testing:${tab.id}`,
-    labelKey: tab.labelKey,
-    icon: tab.icon,
-    sidebar: 'testing' as SidebarNav,
-    testingTab: tab.id
-  }))
-]
+function writeSidebarExpanded(expanded: boolean): void {
+  try {
+    localStorage.setItem(SIDEBAR_EXPANDED_KEY, expanded ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
 
 function SidebarNavButton({
   active,
   icon: Icon,
   label,
-  onClick
+  onClick,
+  expanded,
+  className
 }: {
   active: boolean
   icon: typeof FlaskConical
   label: string
   onClick: () => void
+  expanded: boolean
+  className?: string
 }): ReactNode {
+  const button = (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'relative flex items-center rounded-xl',
+        softMotion.colorsFast,
+        active ? softNav.pillActive : softNav.pillIdle,
+        expanded
+          ? 'w-full gap-3 overflow-hidden px-3.5 py-3 text-body font-medium'
+          : 'h-11 w-11 justify-center',
+        className
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-zinc-100',
+          softMotion.indicator,
+          active ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
+        )}
+      />
+      <Icon className="h-5 w-5 shrink-0 opacity-80" aria-hidden />
+      {expanded ? <span className="min-w-0 truncate">{label}</span> : null}
+    </button>
+  )
+
+  if (expanded) return button
   return (
     <Tooltip text={label} side="right" sideOffset={10}>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        aria-current={active ? 'page' : undefined}
-        className={cn(
-          'relative flex h-11 w-11 items-center justify-center rounded-xl',
-          softMotion.colorsFast,
-          active ? softNav.pillActive : softNav.pillIdle
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn(
-            'absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-zinc-100',
-            softMotion.indicator,
-            active ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'
-          )}
-        />
-        <Icon className="h-5 w-5 shrink-0 opacity-80" aria-hidden />
-      </button>
+      {button}
     </Tooltip>
   )
 }
@@ -232,11 +240,7 @@ export default function Dashboard(): ReactNode {
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
   const [createOpen, setCreateOpen] = useState(false)
   const [version, setVersion] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchIndex, setSearchIndex] = useState(0)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const searchPanelRef = useRef<HTMLDivElement>(null)
+  const [sidebarExpanded, setSidebarExpanded] = useState(readSidebarExpanded)
 
   useEffect(() => {
     void refreshImportedList()
@@ -261,85 +265,13 @@ export default function Dashboard(): ReactNode {
     }
   }, [setSidebarNav, setTestingTab])
 
-  const goTo = useCallback(
-    (target: NavTarget) => {
-      setSidebarNav(target.sidebar)
-      if (target.testingTab) setTestingTab(target.testingTab)
-      setSearchOpen(false)
-      setSearchQuery('')
-      setSearchIndex(0)
-    },
-    [setSidebarNav, setTestingTab]
-  )
-
-  const openSearch = useCallback(() => {
-    setSearchOpen(true)
-    setSearchIndex(0)
-    requestAnimationFrame(() => searchInputRef.current?.focus())
-  }, [])
-
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false)
-    setSearchQuery('')
-    setSearchIndex(0)
-  }, [])
-
-  const searchResults = (() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return NAV_SEARCH_TARGETS
-    return NAV_SEARCH_TARGETS.filter((item) => {
-      const label = t(item.labelKey).toLowerCase()
-      return label.includes(q) || item.id.toLowerCase().includes(q)
+  const toggleSidebarExpanded = useCallback(() => {
+    setSidebarExpanded((prev) => {
+      const next = !prev
+      writeSidebarExpanded(next)
+      return next
     })
-  })()
-
-  useEffect(() => {
-    setSearchIndex((i) => (searchResults.length === 0 ? 0 : Math.min(i, searchResults.length - 1)))
-  }, [searchResults.length])
-
-  // ⌘K / Ctrl+K — open sidebar page search
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        if (searchOpen) closeSearch()
-        else openSearch()
-        return
-      }
-      if (!searchOpen) return
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        closeSearch()
-        return
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSearchIndex((i) => Math.min(i + 1, Math.max(searchResults.length - 1, 0)))
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSearchIndex((i) => Math.max(i - 1, 0))
-        return
-      }
-      if (e.key === 'Enter' && searchResults[searchIndex]) {
-        e.preventDefault()
-        goTo(searchResults[searchIndex])
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [searchOpen, searchResults, searchIndex, openSearch, closeSearch, goTo])
-
-  useEffect(() => {
-    if (!searchOpen) return
-    const onPointer = (e: MouseEvent) => {
-      const panel = searchPanelRef.current
-      if (panel && !panel.contains(e.target as Node)) closeSearch()
-    }
-    document.addEventListener('mousedown', onPointer)
-    return () => document.removeEventListener('mousedown', onPointer)
-  }, [searchOpen, closeSearch])
+  }, [])
 
   const openCreate = () => {
     setCreateOpen(true)
@@ -370,104 +302,63 @@ export default function Dashboard(): ReactNode {
     mainBody = <SettingsPanel />
   }
 
-  const modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
-    ? '⌘'
-    : 'Ctrl'
+  const logoToggleLabel = sidebarExpanded ? t('nav.collapse') : t('nav.expand')
 
   return (
     <div className="flex h-full overflow-hidden bg-zinc-950 font-sans text-zinc-200">
-      <aside className="relative flex w-[4.25rem] shrink-0 flex-col items-center border-r border-white/[0.05] bg-zinc-950 px-2 py-5">
-        <Tooltip text={APP_NAME} side="right" sideOffset={10}>
-          <div className="mb-4 flex h-11 w-11 items-center justify-center">
-            <img src={iconUrl} alt="" className="h-8 w-8 rounded-xl" aria-hidden />
-          </div>
-        </Tooltip>
-
-        <Tooltip text={t('nav.searchShortcut')} side="right" sideOffset={10} kbds={[`${modKey}K`]}>
+      <aside
+        className={cn(
+          'relative flex shrink-0 flex-col border-r border-white/[0.05] bg-zinc-950 py-5',
+          softMotion.colorsFast,
+          sidebarExpanded ? 'w-[260px] items-stretch px-3.5' : 'w-[4.25rem] items-center px-2'
+        )}
+      >
+        <Tooltip text={`${APP_NAME} — ${logoToggleLabel}`} side="right" sideOffset={10}>
           <button
             type="button"
-            aria-label={t('nav.search')}
-            aria-expanded={searchOpen}
-            onClick={() => (searchOpen ? closeSearch() : openSearch())}
+            onClick={toggleSidebarExpanded}
+            aria-label={logoToggleLabel}
+            aria-expanded={sidebarExpanded}
             className={cn(
-              'mb-3 flex h-11 w-11 items-center justify-center rounded-xl',
+              'mb-4 flex items-center rounded-xl',
               softMotion.colorsFast,
-              searchOpen ? softNav.pillActive : softNav.pillIdle
+              softNav.pillIdle,
+              sidebarExpanded ? 'w-full gap-3 px-2 py-1.5' : 'h-11 w-11 justify-center'
             )}
           >
-            <Search className="h-5 w-5 opacity-80" aria-hidden />
+            <img src={iconUrl} alt="" className="h-8 w-8 shrink-0 rounded-xl" aria-hidden />
+            {sidebarExpanded ? (
+              <span className="min-w-0 truncate text-[14px] font-semibold uppercase tracking-[0.08em] text-zinc-100">
+                {APP_NAME}
+              </span>
+            ) : null}
           </button>
         </Tooltip>
 
-        {searchOpen ? (
-          <div
-            ref={searchPanelRef}
-            className="absolute left-[calc(100%+0.5rem)] top-4 z-40 w-[18rem] rounded-2xl border border-white/[0.08] bg-zinc-950/95 p-2 shadow-2xl shadow-black/50 backdrop-blur-md"
-            role="dialog"
-            aria-label={t('nav.search')}
-          >
-            <SoftInput
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setSearchIndex(0)
-              }}
-              placeholder={t('nav.searchPlaceholder')}
-              aria-label={t('nav.search')}
-              className="h-10"
-              autoComplete="off"
-            />
-            <ul className="mt-1.5 max-h-[min(22rem,60vh)] overflow-y-auto" role="listbox">
-              {searchResults.length === 0 ? (
-                <li className={cn('px-3 py-3', softType.caption)}>{t('nav.searchEmpty')}</li>
-              ) : (
-                searchResults.map((item, i) => {
-                  const Icon = item.icon
-                  const active = i === searchIndex
-                  return (
-                    <li key={item.id} role="option" aria-selected={active}>
-                      <button
-                        type="button"
-                        onMouseEnter={() => setSearchIndex(i)}
-                        onClick={() => goTo(item)}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-body',
-                          softMotion.colorsFast,
-                          active ? 'bg-zinc-800/90 text-zinc-50' : 'text-zinc-300 hover:bg-zinc-900'
-                        )}
-                      >
-                        <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                        <span className="min-w-0 truncate">{t(item.labelKey)}</span>
-                      </button>
-                    </li>
-                  )
-                })
-              )}
-            </ul>
-            <p className={cn('flex items-center gap-1.5 px-2.5 pb-1 pt-1.5', softType.micro)}>
-              <Kbd>↑</Kbd>
-              <Kbd>↓</Kbd>
-              <span className="text-zinc-600">·</span>
-              <Kbd>↵</Kbd>
-              <span className="text-zinc-600">·</span>
-              <Kbd>Esc</Kbd>
-            </p>
-          </div>
-        ) : null}
-
-        <nav className="flex flex-1 flex-col items-center gap-1" aria-label="Primary">
+        <nav
+          className={cn(
+            'flex flex-1 flex-col gap-1',
+            sidebarExpanded ? 'items-stretch' : 'items-center'
+          )}
+          aria-label="Primary"
+        >
           {SIDEBAR_PRIMARY.map((item) => (
             <SidebarNavButton
               key={item.id}
               active={sidebarNav === item.id}
               icon={item.icon}
               label={t(item.labelKey)}
+              expanded={sidebarExpanded}
               onClick={() => setSidebarNav(item.id)}
             />
           ))}
 
-          <div className="my-2 h-px w-8 bg-white/[0.05]" />
+          <div
+            className={cn(
+              'my-2 border-t border-white/[0.05]',
+              sidebarExpanded ? 'mx-2' : 'h-px w-8 border-0 bg-white/[0.05]'
+            )}
+          />
 
           {SIDEBAR_SECONDARY.map((item) => (
             <SidebarNavButton
@@ -475,23 +366,55 @@ export default function Dashboard(): ReactNode {
               active={sidebarNav === item.id}
               icon={item.icon}
               label={t(item.labelKey)}
+              expanded={sidebarExpanded}
               onClick={() => setSidebarNav(item.id)}
             />
           ))}
         </nav>
 
-        <div className="mt-auto flex flex-col items-center gap-1 border-t border-white/[0.05] pt-3">
-          <SidebarNavButton
-            active={sidebarNav === 'settings'}
-            icon={Settings}
-            label={t('nav.settings')}
-            onClick={() => setSidebarNav('settings')}
-          />
-          {version ? (
-            <span className={cn('tabular-nums', softType.micro)} title={`v${version}`}>
-              v{version}
-            </span>
-          ) : null}
+        <div
+          className={cn(
+            'mt-auto border-t border-white/[0.05] pt-3',
+            sidebarExpanded ? '' : 'flex flex-col items-center gap-1'
+          )}
+        >
+          {sidebarExpanded ? (
+            <div className="relative flex items-center">
+              <SidebarNavButton
+                active={sidebarNav === 'settings'}
+                icon={Settings}
+                label={t('nav.settings')}
+                expanded
+                className={version ? 'pr-14' : undefined}
+                onClick={() => setSidebarNav('settings')}
+              />
+              {version ? (
+                <span
+                  className={cn(
+                    'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 tabular-nums',
+                    softType.micro
+                  )}
+                >
+                  v{version}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <SidebarNavButton
+                active={sidebarNav === 'settings'}
+                icon={Settings}
+                label={t('nav.settings')}
+                expanded={false}
+                onClick={() => setSidebarNav('settings')}
+              />
+              {version ? (
+                <span className={cn('tabular-nums', softType.micro)} title={`v${version}`}>
+                  v{version}
+                </span>
+              ) : null}
+            </>
+          )}
         </div>
       </aside>
 
