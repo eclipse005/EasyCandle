@@ -91,7 +91,8 @@ export default function AboutDialog() {
             Replay charts and paper-trade without risk.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-            Analytics and trade date filters bucket days in New York (ET).
+            Analytics / trade day cuts use New York (ET). Chart timezone (bottom-right) is
+            display-only and does not change stored data or buckets.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
             Charts built with{' '}

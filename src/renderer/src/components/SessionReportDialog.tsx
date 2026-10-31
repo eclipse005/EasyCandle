@@ -202,9 +202,16 @@ export default function SessionReportDialog() {
               Session performance
             </h2>
             <p className={cn("mt-1", softType.caption)}>
-              {symbol} · {timeframe} · {trades.length} closed trade
-              {trades.length === 1 ? '' : 's'}
-              {closedOpenOnExit ? ' · open flattened at exit (excluded from win rate)' : null}
+              {symbol} · {timeframe} · {summary.overall.count} closed trade
+              {summary.overall.count === 1 ? '' : 's'}
+              {closedOpenOnExit
+                ? (() => {
+                    const flattened = Math.max(0, trades.length - summary.overall.count)
+                    return flattened > 0
+                      ? ` · ${flattened} open flattened at exit (excluded from win rate)`
+                      : ' · open flattened at exit (excluded from win rate)'
+                  })()
+                : null}
               {sessionUsd != null ? ` · ≈ ${formatPnlCcy(sessionUsd, 'USD')}` : null}
               {sessionUsd == null && quoteCurrency !== 'USD'
                 ? ` · P/L in ${quoteCurrency}`

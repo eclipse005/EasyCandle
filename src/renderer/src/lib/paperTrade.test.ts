@@ -1169,6 +1169,26 @@ describe('summarizeSession / export', () => {
     expect(formatWinRate(0.5)).toBe('50.0%')
   })
 
+  it('session_exit excluded from W/L counts but kept in total PnL', () => {
+    const withFlat = [
+      ...sample,
+      flatClosed({
+        id: 'flat',
+        side: 'long',
+        entryPrice: 100,
+        entryTime: 9,
+        exitPrice: 101,
+        exitTime: 10,
+        pnl: 1,
+        exitReason: 'session_exit'
+      })
+    ]
+    const summary = summarizeSession(withFlat)
+    expect(withFlat.length).toBe(5)
+    expect(summary.overall.count).toBe(4)
+    expect(summary.overall.totalPnl).toBeCloseTo(6)
+  })
+
   it('exports CSV with header, exit reason, and levels', () => {
     const csv = tradesToCsv([sample[0]])
     const lines = csv.split('\n')
