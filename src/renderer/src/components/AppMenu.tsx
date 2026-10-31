@@ -195,7 +195,7 @@ export default function AppMenu() {
       type: 'item',
       label: 'GitHub (BarReplay)',
       icon: ExternalLink,
-      href: 'https://github.com/eclipse005/EasyCandle',
+      href: 'https://github.com/eclipse005/BarReplay',
       onSelect: () => {}
     }
   ]

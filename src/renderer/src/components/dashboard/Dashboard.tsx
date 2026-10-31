@@ -115,7 +115,7 @@ export default function Dashboard(): ReactNode {
         </nav>
 
         <a
-          href="https://github.com/eclipse005/EasyCandle"
+          href="https://github.com/eclipse005/BarReplay"
           target="_blank"
           rel="noopener noreferrer"
           title="BarReplay on GitHub"
