@@ -202,7 +202,7 @@ export default function SessionReportDialog() {
             <p className="mt-0.5 text-[11px] text-zinc-500">
               {symbol} · {timeframe} · {trades.length} closed trade
               {trades.length === 1 ? '' : 's'}
-              {closedOpenOnExit ? ' · open position closed at exit' : null}
+              {closedOpenOnExit ? ' · open flattened at exit (excluded from win rate)' : null}
               {sessionUsd != null ? ` · ≈ ${formatPnlCcy(sessionUsd, 'USD')}` : null}
               {sessionUsd == null && quoteCurrency !== 'USD'
                 ? ` · P/L in ${quoteCurrency}`

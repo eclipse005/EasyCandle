@@ -1,18 +1,110 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import SoftButton from '@/components/ui/SoftButton'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
+import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
+import { cn } from '@/components/ui/cn'
+import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatExitReason } from '@/lib/paperTrade'
 import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
+import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
 import { useSessionStore } from '@/store/sessionStore'
-import { aggregateClosedTrades } from '@/lib/localPerformance'
+import { aggregateClosedTrades, type AggregatedTradeRow } from '@/lib/localPerformance'
 
-/** Aggregate closed trades across all local sessions. */
+type SideFilter = 'all' | 'long' | 'short'
+type SortKey = 'exit' | 'entry' | 'pnl' | 'symbol'
+
+const PAGE_SIZES = [10, 25, 50] as const
+
+function entryTypeLabel(row: AggregatedTradeRow): string {
+  if (row.pendingKind === 'limit') return 'limit'
+  if (row.pendingKind === 'stopLimit') return 'stop-limit'
+  return 'market'
+}
+
+function returnPct(row: AggregatedTradeRow): number | null {
+  if (!(row.entryPrice > 0) || !Number.isFinite(row.exitPrice)) return null
+  const raw =
+    row.side === 'long'
+      ? (row.exitPrice - row.entryPrice) / row.entryPrice
+      : (row.entryPrice - row.exitPrice) / row.entryPrice
+  return raw * 100
+}
+
+function returnR(row: AggregatedTradeRow): number | null {
+  if (row.stopLoss == null || !Number.isFinite(row.stopLoss)) return null
+  const risk =
+    row.side === 'long'
+      ? row.entryPrice - row.stopLoss
+      : row.stopLoss - row.entryPrice
+  if (!(risk > 0)) return null
+  const move =
+    row.side === 'long'
+      ? row.exitPrice - row.entryPrice
+      : row.entryPrice - row.exitPrice
+  return move / risk
+}
+
+/** Aggregate closed trades across local sessions — FXR-ish table + filters. */
 export default function TradesTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
-  const rows = useMemo(() => aggregateClosedTrades(sessions), [sessions])
+  const allRows = useMemo(() => aggregateClosedTrades(sessions), [sessions])
 
-  if (rows.length === 0) {
+  const [sessionFilter, setSessionFilter] = useState<string>('all')
+  const [sideFilter, setSideFilter] = useState<SideFilter>('all')
+  const [query, setQuery] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('exit')
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(10)
+  const [page, setPage] = useState(0)
+
+  const sessionOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of sessions) map.set(s.id, s.name)
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [sessions])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    let rows = allRows
+    if (sessionFilter !== 'all') {
+      rows = rows.filter((r) => r.sessionId === sessionFilter)
+    }
+    if (sideFilter !== 'all') {
+      rows = rows.filter((r) => r.side === sideFilter)
+    }
+    if (q) {
+      rows = rows.filter(
+        (r) =>
+          r.sessionName.toLowerCase().includes(q) ||
+          r.symbol.toLowerCase().includes(q) ||
+          entryTypeLabel(r).includes(q) ||
+          formatExitReason(r.exitReason).toLowerCase().includes(q)
+      )
+    }
+    const sorted = [...rows]
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'entry':
+          return b.entryTime - a.entryTime
+        case 'pnl':
+          return b.pnl - a.pnl
+        case 'symbol':
+          return a.symbol.localeCompare(b.symbol) || b.exitTime - a.exitTime
+        case 'exit':
+        default:
+          return b.exitTime - a.exitTime
+      }
+    })
+    return sorted
+  }, [allRows, sessionFilter, sideFilter, query, sortKey])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePage = Math.min(page, pageCount - 1)
+  const pageRows = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize)
+
+  if (allRows.length === 0) {
     return (
       <SoftEmpty>
         No closed trades yet — open a session and take paper trades to see them here.
@@ -21,59 +113,237 @@ export default function TradesTab(): ReactNode {
   }
 
   return (
-    <SoftCard className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-white/[0.06] text-caption text-zinc-500">
-              <th className="px-4 py-3 font-medium">Exit</th>
-              <th className="px-4 py-3 font-medium">Session</th>
-              <th className="px-4 py-3 font-medium">Symbol</th>
-              <th className="px-4 py-3 font-medium">Side</th>
-              <th className="px-4 py-3 font-medium">Lots</th>
-              <th className="px-4 py-3 font-medium">Reason</th>
-              <th className="px-4 py-3 font-medium text-right">PnL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const quote = quoteCurrencyForSymbol(row.symbol)
-              return (
-                <tr
-                  key={`${row.sessionId}:${row.id}`}
-                  className="border-b border-white/[0.04] text-body text-zinc-300 last:border-0"
-                >
-                  <td className="whitespace-nowrap px-4 py-2.5 text-caption text-zinc-500">
-                    {formatUtcCandleTime(row.exitTime)}
-                  </td>
-                  <td className="max-w-[10rem] truncate px-4 py-2.5 text-zinc-200">
-                    {row.sessionName}
-                  </td>
-                  <td className="px-4 py-2.5 tabular-nums">{row.symbol}</td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className={
-                        row.side === 'long' ? 'text-emerald-400' : 'text-red-400'
-                      }
-                    >
-                      {row.side === 'long' ? 'Buy' : 'Sell'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 tabular-nums text-zinc-400">{row.lots}</td>
-                  <td className="px-4 py-2.5 text-zinc-500">{formatExitReason(row.exitReason)}</td>
-                  <td
-                    className={`px-4 py-2.5 text-right tabular-nums font-medium ${
-                      row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
-                    }`}
-                  >
-                    {formatPnlCcy(row.pnl, quote)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+    <section className={softSpace.sectionGap}>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="min-w-[10rem] flex-1">
+          <span className={cn('mb-1.5 block', softType.caption)}>Session</span>
+          <SoftSelect
+            className="h-11 text-body"
+            value={sessionFilter}
+            onChange={(e) => {
+              setSessionFilter(e.target.value)
+              setPage(0)
+            }}
+          >
+            <option value="all">All sessions</option>
+            {sessionOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </SoftSelect>
+        </label>
+        <label className="min-w-[8rem]">
+          <span className={cn('mb-1.5 block', softType.caption)}>Side</span>
+          <SoftSelect
+            className="h-11 text-body"
+            value={sideFilter}
+            onChange={(e) => {
+              setSideFilter(e.target.value as SideFilter)
+              setPage(0)
+            }}
+          >
+            <option value="all">All</option>
+            <option value="long">Buy</option>
+            <option value="short">Sell</option>
+          </SoftSelect>
+        </label>
+        <label className="min-w-[8rem]">
+          <span className={cn('mb-1.5 block', softType.caption)}>Sort</span>
+          <SoftSelect
+            className="h-11 text-body"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+          >
+            <option value="exit">Exit time</option>
+            <option value="entry">Entry time</option>
+            <option value="pnl">PnL</option>
+            <option value="symbol">Symbol</option>
+          </SoftSelect>
+        </label>
+        <label className="min-w-[12rem] flex-[2]">
+          <span className={cn('mb-1.5 block', softType.caption)}>Filter</span>
+          <SoftInput
+            className="h-11 text-body"
+            placeholder="Symbol, session, type…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setPage(0)
+            }}
+          />
+        </label>
       </div>
-    </SoftCard>
+
+      <p className={softType.caption}>
+        {filtered.length} trade{filtered.length === 1 ? '' : 's'}
+        {filtered.length !== allRows.length ? ` (of ${allRows.length})` : ''} · local only
+      </p>
+
+      <SoftCard className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-caption text-zinc-500">
+                <th className="px-4 py-3.5 font-medium">Session</th>
+                <th className="px-4 py-3.5 font-medium">Type</th>
+                <th className="px-4 py-3.5 font-medium">Entry (chart)</th>
+                <th className="px-4 py-3.5 font-medium">Exit (chart)</th>
+                <th className="px-4 py-3.5 font-medium">Asset</th>
+                <th className="px-4 py-3.5 font-medium">Side</th>
+                <th className="px-4 py-3.5 font-medium">Entry type</th>
+                <th className="px-4 py-3.5 font-medium text-right">Entry</th>
+                <th className="px-4 py-3.5 font-medium text-right">Exit</th>
+                <th className="px-4 py-3.5 font-medium text-right">Return ($)</th>
+                <th className="px-4 py-3.5 font-medium text-right">Return (%)</th>
+                <th className="px-4 py-3.5 font-medium text-right">Return (R)</th>
+                <th className="px-4 py-3.5 font-medium">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((row) => {
+                const quote = quoteCurrencyForSymbol(row.symbol)
+                const precision = resolvePricePrecision(row.symbol)
+                const pct = returnPct(row)
+                const rMult = returnR(row)
+                return (
+                  <tr
+                    key={`${row.sessionId}:${row.id}`}
+                    className="border-b border-white/[0.04] text-body text-zinc-300 last:border-0"
+                  >
+                    <td className="max-w-[10rem] truncate px-4 py-3 text-zinc-200">
+                      {row.sessionName}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-lg bg-zinc-800/80 px-2 py-0.5 text-caption text-zinc-300">
+                        Closed
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
+                      {formatUtcCandleTime(row.entryTime)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
+                      {formatUtcCandleTime(row.exitTime)}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-zinc-200">{row.symbol}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          'rounded-lg px-2 py-0.5 text-caption font-medium',
+                          row.side === 'long'
+                            ? 'bg-emerald-500/15 text-emerald-400'
+                            : 'bg-red-500/15 text-red-400'
+                        )}
+                      >
+                        {row.side === 'long' ? 'Buy' : 'Sell'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-lg bg-zinc-800/60 px-2 py-0.5 text-caption text-zinc-400">
+                        {entryTypeLabel(row)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-400">
+                      {formatAssetPrice(row.entryPrice, precision)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-zinc-400">
+                      {formatAssetPrice(row.exitPrice, precision)}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-right tabular-nums font-medium',
+                        row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      )}
+                    >
+                      {formatPnlCcy(row.pnl, quote)}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-right tabular-nums',
+                        pct == null
+                          ? 'text-zinc-600'
+                          : pct >= 0
+                            ? 'text-emerald-400'
+                            : 'text-red-400'
+                      )}
+                    >
+                      {pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-right tabular-nums',
+                        rMult == null
+                          ? 'text-zinc-600'
+                          : rMult >= 0
+                            ? 'text-emerald-400'
+                            : 'text-red-400'
+                      )}
+                    >
+                      {rMult == null ? '—' : `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R`}
+                    </td>
+                    <td className="px-4 py-3 text-caption text-zinc-500">
+                      {formatExitReason(row.exitReason)}
+                      {row.note ? (
+                        <span className="mt-0.5 block truncate text-zinc-600" title={row.note}>
+                          {row.note}
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              disabled={safePage <= 0}
+              aria-label="Previous page"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </SoftButton>
+            <span className={cn('min-w-[4rem] text-center', softType.body)}>
+              {safePage + 1} / {pageCount}
+            </span>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              disabled={safePage >= pageCount - 1}
+              aria-label="Next page"
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </SoftButton>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className={softType.caption}>Per page</span>
+            <SoftSelect
+              className="h-9 w-20"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number])
+                setPage(0)
+              }}
+            >
+              {PAGE_SIZES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </SoftSelect>
+          </label>
+          <span className={softType.caption}>
+            Showing {pageRows.length ? safePage * pageSize + 1 : 0}–
+            {safePage * pageSize + pageRows.length} of {filtered.length}
+          </span>
+        </div>
+      </SoftCard>
+
+    </section>
   )
 }

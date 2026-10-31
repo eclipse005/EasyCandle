@@ -107,6 +107,21 @@ export default function Dashboard(): ReactNode {
     void window.api.getAppVersion().then(setVersion)
   }, [])
 
+  // Deep-link: ?nav=testing|strategies|datasets|symbols|settings & ?tab=dashboard|sessions|trades|analytics
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const nav = params.get('nav')
+      const tab = params.get('tab')
+      const navs = new Set(['testing', 'strategies', 'datasets', 'symbols', 'settings'])
+      const tabs = new Set(['dashboard', 'sessions', 'trades', 'analytics'])
+      if (nav && navs.has(nav)) setSidebarNav(nav as SidebarNav)
+      if (tab && tabs.has(tab)) setTestingTab(tab as TestingTab)
+    } catch {
+      /* ignore */
+    }
+  }, [setSidebarNav, setTestingTab])
+
   const openCreate = (datasetId?: string) => {
     setCreateFor(datasetId ? (imports.find((m) => m.id === datasetId) ?? null) : null)
     setCreateOpen(true)

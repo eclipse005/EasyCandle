@@ -115,11 +115,12 @@ function focusLatestCandle(
 
   const last = candleCount - 1
   // Always show ~DEFAULT_VISIBLE_BARS total width regardless of candle count,
-  // with the playhead at ~20% from the left edge. This prevents single-candle
-  // sessions (replay start) from appearing as giant blocks.
+  // with the latest bar near the right (~15% empty to the right). Prevents
+  // single-candle sessions from appearing as giant blocks.
   const visibleBars = Math.max(leftBars, candleCount)
-  const from = last - Math.floor(visibleBars * 0.2)
-  const to = from + visibleBars
+  const rightPad = Math.max(4, Math.floor(visibleBars * 0.15))
+  const from = last - (visibleBars - rightPad)
+  const to = last + rightPad
 
   chart.timeScale().setVisibleLogicalRange({ from, to })
 }
