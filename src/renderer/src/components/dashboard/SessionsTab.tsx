@@ -39,7 +39,7 @@ import { useT } from '@/i18n/useT'
 
 type SortOrder = 'newest' | 'oldest'
 
-/** Testing → Sessions: FXR-style search, sort, expandable cards (local only). */
+/** Testing → Sessions: FXR-style search, sort, expandable cards. */
 export default function SessionsTab({
   onNewSession
 }: {
@@ -142,11 +142,6 @@ export default function SessionsTab({
           {t('sessions.new')}
         </SoftButton>
       </div>
-
-      <p className={softType.caption}>
-        {filtered.length} of {sessions.length} session{sessions.length === 1 ? '' : 's'} · local
-        only
-      </p>
 
       {filtered.length === 0 ? (
         <SoftEmpty>No sessions match “{query.trim()}”.</SoftEmpty>
