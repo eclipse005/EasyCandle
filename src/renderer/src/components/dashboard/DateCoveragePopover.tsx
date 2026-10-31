@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode
 } from 'react'
+import { createPortal } from 'react-dom'
 import { CalendarDays } from 'lucide-react'
 import { coverageSpanLabel } from '@shared/dateCoverage'
 import { cn } from '@/components/ui/cn'
@@ -37,9 +39,11 @@ export type DateCoveragePopoverProps = {
   caption?: string
 }
 
+type PanelPos = { top: number; left: number; width: number }
+
 /**
- * Compact date-field trigger + floating coverage calendar.
- * Keeps DateCoverageCalendar grid logic; avoids always filling half the dialog.
+ * Compact date-field trigger + floating coverage calendar (portaled so dialog
+ * overflow does not clip it).
  */
 export default function DateCoveragePopover({
   coverageDays,
@@ -54,7 +58,10 @@ export default function DateCoveragePopover({
   caption
 }: DateCoveragePopoverProps): ReactNode {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<PanelPos | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const derivedLabel = useMemo(() => {
     if (triggerLabel != null) return triggerLabel
@@ -71,15 +78,42 @@ export default function DateCoveragePopover({
 
   const close = useCallback(() => setOpen(false), [])
 
+  const placePanel = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const width = Math.min(window.innerWidth - 16, 296)
+    let left = rect.left
+    if (left + width > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - 8 - width)
+    }
+    const panelHeight = panelRef.current?.offsetHeight ?? 320
+    const below = rect.bottom + 6
+    const above = rect.top - 6 - panelHeight
+    const top =
+      below + panelHeight <= window.innerHeight - 8
+        ? below
+        : Math.max(8, above)
+    setPos({ top, left, width })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null)
+      return
+    }
+    placePanel()
+  }, [open, placePanel])
+
   useEffect(() => {
     if (!open) return undefined
 
     function onPointerDown(event: MouseEvent): void {
-      const root = rootRef.current
-      if (!root) return
-      if (event.target instanceof Node && !root.contains(event.target)) {
-        setOpen(false)
-      }
+      const t = event.target
+      if (!(t instanceof Node)) return
+      if (rootRef.current?.contains(t)) return
+      if (panelRef.current?.contains(t)) return
+      setOpen(false)
     }
 
     function onKey(event: KeyboardEvent): void {
@@ -89,13 +123,54 @@ export default function DateCoveragePopover({
       }
     }
 
+    function onReposition(): void {
+      placePanel()
+    }
+
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKey, true)
+    window.addEventListener('resize', onReposition)
+    window.addEventListener('scroll', onReposition, true)
     return () => {
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('resize', onReposition)
+      window.removeEventListener('scroll', onReposition, true)
     }
-  }, [open])
+  }, [open, placePanel])
+
+  const panel =
+    open && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-label="Date coverage calendar"
+            className="fixed z-[120] rounded-2xl border border-white/10 bg-zinc-950 p-3 shadow-2xl shadow-black/50"
+            style={
+              pos
+                ? { top: pos.top, left: pos.left, width: pos.width }
+                : { visibility: 'hidden', top: 0, left: 0, width: 296 }
+            }
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <DateCoverageCalendar
+              coverageDays={coverageDays}
+              selectedDay={selectedDay}
+              initialMonth={initialMonth}
+              onSelectDay={
+                onSelectDay
+                  ? (day) => {
+                      onSelectDay(day)
+                      close()
+                    }
+                  : undefined
+              }
+            />
+          </div>,
+          document.body
+        )
+      : null
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
@@ -103,6 +178,7 @@ export default function DateCoveragePopover({
         <p className={cn(softType.caption, 'mb-1.5 font-medium text-zinc-400')}>{caption}</p>
       ) : null}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         aria-haspopup="dialog"
@@ -121,29 +197,7 @@ export default function DateCoveragePopover({
         <CalendarDays className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
         <span className="min-w-0 flex-1 truncate tabular-nums">{derivedLabel}</span>
       </button>
-
-      {open ? (
-        <div
-          role="dialog"
-          aria-label="Date coverage calendar"
-          className="absolute left-0 top-[calc(100%+0.35rem)] z-[90] w-[min(100vw-2rem,18.5rem)] rounded-2xl border border-white/10 bg-zinc-950/98 p-3 shadow-2xl shadow-black/50"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <DateCoverageCalendar
-            coverageDays={coverageDays}
-            selectedDay={selectedDay}
-            initialMonth={initialMonth}
-            onSelectDay={
-              onSelectDay
-                ? (day) => {
-                    onSelectDay(day)
-                    close()
-                  }
-                : undefined
-            }
-          />
-        </div>
-      ) : null}
+      {panel}
     </div>
   )
 }

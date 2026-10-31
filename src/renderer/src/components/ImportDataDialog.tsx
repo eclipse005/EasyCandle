@@ -320,7 +320,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
               </button>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            <div className="space-y-4 px-4 py-4">
               <section>
                 <span className="text-[11px] font-medium text-zinc-400">Import CSV</span>
                 <button
