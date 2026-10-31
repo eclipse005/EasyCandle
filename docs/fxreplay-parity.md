@@ -74,3 +74,22 @@ Legend:
   (split+driver already covers the main case)
 - Rich journal (tags, screenshots, filters) — notes are intentionally light
 - Monte Carlo / streak analytics
+
+
+## Overnight push (v0.1.x, Oct 2026)
+
+Shipped on `main` / https://barreplay.pages.dev/:
+
+| Item | Status |
+|---|---|
+| Testing → Sessions (picker, Go to chart, equity/monthly/daily, chips, notes) | **Have** (0.1.1) |
+| Testing → Trades (filters, side/type/returns/prices, pagination) | **Have** (0.1.2) |
+| Testing → Analytics (RR, monthly/daily, by-side/symbol) | **Have** (0.1.2) |
+| Deep-link `?tab=` / `?nav=` | **Have** (0.1.2) |
+| Risk-% lot sizing from SL | **Have** (OrderTicket) |
+| Chart timezone + jump consistency | **Have** |
+| Symbol spread / commission editable | **Have** (Symbols) |
+| Session report win rate excludes forced flatten | **Have** (0.1.2) |
+| Chart fit last bar right | **Have** (0.1.2) |
+| Soft* large type on blotter / report | **Have** (0.1.3) |
+| Live / Battles / Prop / Upgrade / cloud sync | **Skipped** (needs backend) |

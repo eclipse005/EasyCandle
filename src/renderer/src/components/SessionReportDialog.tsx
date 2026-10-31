@@ -14,12 +14,14 @@ import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { formatAssetPrice, resolvePricePrecision } from '@shared/pricePrecision'
 import { useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { softType } from '@/components/ui/softTokens'
+import { cn } from '@/components/ui/cn'
 
 function ReportBlock({ title, report, quote }: { title: string; report: SideReport; quote: string }) {
   return (
     <section className="min-w-0 flex-1">
-      <h3 className="mb-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500">{title}</h3>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] tabular-nums">
+      <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>{title}</h3>
+      <dl className={cn("grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums", softType.caption)}>
         <div>
           <dt className="text-zinc-600">Trades</dt>
           <dd className="text-zinc-200">{report.count}</dd>
@@ -82,8 +84,8 @@ function EquityCurveChart({
   return (
     <div className="mb-4 rounded-xl border border-white/5 bg-zinc-900/50 p-3 shadow-lg shadow-black/10">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Equity curve</h3>
-        <span className={`text-[11px] tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+        <h3 className={cn("uppercase tracking-[0.14em]", softType.micro)}>Equity curve</h3>
+        <span className={`text-caption tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
           {formatPnlCcy(last.equity, quote)}
         </span>
       </div>
@@ -199,7 +201,7 @@ export default function SessionReportDialog() {
             <h2 id="session-report-title" className="text-sm font-semibold text-zinc-100">
               Session performance
             </h2>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
+            <p className={cn("mt-1", softType.caption)}>
               {symbol} · {timeframe} · {trades.length} closed trade
               {trades.length === 1 ? '' : 's'}
               {closedOpenOnExit ? ' · open flattened at exit (excluded from win rate)' : null}
@@ -230,8 +232,8 @@ export default function SessionReportDialog() {
 
           <EquityCurveChart points={curve} quote={quoteCurrency} />
 
-          <h3 className="mb-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500">Trades</h3>
-          <ul className="divide-y divide-zinc-800/80 text-[11px]">
+          <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>Trades</h3>
+          <ul className={cn("divide-y divide-zinc-800/80", softType.caption)}>
             {trades.map((trade) => (
               <li
                 key={`${trade.id}-${trade.exitTime}`}
@@ -248,7 +250,7 @@ export default function SessionReportDialog() {
                     {trade.side.toUpperCase()}
                   </span>
                   <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
-                  <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+                  <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro uppercase tracking-wide text-zinc-500">
                     {formatExitReason(trade.exitReason)}
                   </span>
                   <span>
@@ -267,7 +269,7 @@ export default function SessionReportDialog() {
                   </span>
                 </div>
                 {trade.note ? (
-                  <p className="pl-0.5 text-[10px] italic text-zinc-500">{trade.note}</p>
+                  <p className={cn("pl-0.5 italic", softType.micro)}>{trade.note}</p>
                 ) : null}
               </li>
             ))}
@@ -278,7 +280,7 @@ export default function SessionReportDialog() {
           <button
             type="button"
             onClick={exportCsv}
-            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-caption font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
             Export CSV
@@ -286,7 +288,7 @@ export default function SessionReportDialog() {
           <button
             type="button"
             onClick={dismiss}
-            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200"
+            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-caption font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200"
           >
             Done
           </button>

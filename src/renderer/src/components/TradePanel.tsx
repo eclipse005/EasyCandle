@@ -1,3 +1,4 @@
+import { cn } from '@/components/ui/cn'
 import { ChevronDown, ChevronUp, Crosshair } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import {
@@ -24,6 +25,7 @@ import { usePricePrecision } from '@/hooks/usePricePrecision'
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import Tooltip from '@/components/Tooltip'
+import { softType } from '@/components/ui/softTokens'
 
 type HistoryTab = 'positions' | 'openOrders' | 'orderHistory' | 'positionHistory'
 
@@ -35,7 +37,7 @@ const TABS: { id: HistoryTab; label: string }[] = [
 ]
 
 function tabClass(active: boolean): string {
-  return `shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+  return `shrink-0 rounded-lg px-2.5 py-1.5 text-caption font-medium transition-colors ${
     active
       ? 'bg-zinc-800/80 text-zinc-100'
       : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
@@ -49,11 +51,11 @@ function sideClass(side: 'long' | 'short', muted = false): string {
 }
 
 function EmptyRow({ children }: { children: ReactNode }) {
-  return <p className="py-1.5 text-[11px] text-zinc-600">{children}</p>
+  return <p className={cn("py-2", softType.caption)}>{children}</p>
 }
 
 function HistoryList({ children }: { children: ReactNode }) {
-  return <ul className="divide-y divide-zinc-800/80 text-[11px]">{children}</ul>
+  return <ul className={cn("divide-y divide-zinc-800/80", softType.caption)}>{children}</ul>
 }
 
 function PendingOrderRow({
@@ -78,7 +80,7 @@ function PendingOrderRow({
       }`}
     >
       <button type="button" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left" onClick={onSelect}>
-        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-primary-300/90">
+        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-micro font-medium text-primary-300/90">
           Working
         </span>
       <span className={sideClass(order.side)}>{formatOrderSideLabel(order.side, order.kind)}</span>
@@ -100,7 +102,7 @@ function PendingOrderRow({
       </button>
       <button
         type="button"
-        className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+        className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-micro font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
         onClick={onCancel}
       >
         Cancel
@@ -141,7 +143,7 @@ function OpenPositionRow({
         className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left"
         onClick={onSelect}
       >
-        <span className="rounded-md bg-primary-950/40 px-1.5 py-0.5 text-[10px] font-medium text-primary-300">
+        <span className="rounded-md bg-primary-950/40 px-1.5 py-0.5 text-micro font-medium text-primary-300">
           Open
         </span>
         <span className={sideClass(position.side)}>{position.side.toUpperCase()}</span>
@@ -171,7 +173,7 @@ function OpenPositionRow({
       </button>
       <button
         type="button"
-        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+        className="shrink-0 rounded px-1.5 py-0.5 text-micro font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
         onClick={onClose}
       >
         Close
@@ -193,7 +195,7 @@ function HistoricOrderRow({
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums text-zinc-400">
       <span
-        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+        className={`rounded px-1.5 py-0.5 text-micro font-medium ${
           canceled ? 'bg-zinc-900 text-zinc-500' : 'bg-zinc-900 text-emerald-400/80'
         }`}
       >
@@ -241,12 +243,12 @@ function ClosedPositionRow({
   return (
     <li className="flex flex-col gap-0.5 py-1.5 text-zinc-400">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
-        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-micro font-medium text-zinc-500">
           Closed
         </span>
         <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
         <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
-        <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] font-medium text-zinc-500">
+        <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-micro font-medium text-zinc-500">
           {formatExitReason(trade.exitReason)}
         </span>
         <span>
@@ -280,7 +282,7 @@ function ClosedPositionRow({
         aria-label="Trade note"
         maxLength={500}
         onBlur={(event) => onNoteChange(event.currentTarget.value)}
-        className="h-6 w-full rounded-xl border border-transparent bg-transparent px-1 text-[10px] text-zinc-400 outline-none placeholder:text-zinc-700 hover:border-zinc-800 focus:border-zinc-800 focus:bg-zinc-900/60"
+        className="h-6 w-full rounded-xl border border-transparent bg-transparent px-1 text-micro text-zinc-400 outline-none placeholder:text-zinc-700 hover:border-zinc-800 focus:border-zinc-800 focus:bg-zinc-900/60"
       />
     </li>
   )
@@ -457,9 +459,9 @@ export default function TradePanel() {
       }`}
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
-        <span className="text-[12px] font-medium text-zinc-400">Paper trade</span>
+        <span className={cn(softType.body, "font-medium text-zinc-400")}>Paper trade</span>
 
-        <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
+        <div className="ml-auto flex flex-wrap items-center gap-3 text-caption tabular-nums">
           {activeSession ? (
             <span className="text-zinc-500">
               Balance{' '}
@@ -500,7 +502,7 @@ export default function TradePanel() {
               {formatPnlCcy(perf.total, quoteCurrency)}
             </span>
             {sessionUsd != null ? (
-              <span className="ml-1.5 text-[10px] text-zinc-500">
+              <span className="ml-1.5 text-micro text-zinc-500">
                 ({formatPnlCcy(sessionUsd, 'USD')})
               </span>
             ) : null}
