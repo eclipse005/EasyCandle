@@ -557,7 +557,7 @@ function finalizeParsedRows(
   const lastTime = candles[candles.length - 1]?.time ?? 0
 
   if (skipped > 0) {
-    warnings.push(`Skipped ${skipped} invalid or incomplete row(s).`)
+    warnings.push(`skipped:${skipped}`)
   }
 
   const inferredSeconds = inferTimeframeSeconds(candles)
@@ -585,20 +585,10 @@ function finalizeParsedRows(
   }
 
   if (!fileMeta.symbol) {
-    warnings.push('Symbol not found in file name — enter it before confirming.')
+    warnings.push('symbol_missing')
   }
 
-  const spanDays = (lastTime - firstTime) / 86400
-  warnings.push(
-    `Will build 5m, 15m, 1h, 4h, and 1d from this 1m series (~${spanDays.toFixed(1)} days, ${candles.length.toLocaleString()} bars).`
-  )
-
-  if (timestampsAbsolute) {
-    warnings.push(
-      'Timestamps include Z/offset — treated as absolute UTC; CSV data timezone is not required.'
-    )
-  }
-
+  // Confirm modal i18n covers "built TFs" and absolute-UTC lock; keep warnings short codes only.
   return {
     ok: true,
     candles,

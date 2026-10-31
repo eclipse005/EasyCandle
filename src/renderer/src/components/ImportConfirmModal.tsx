@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Candle } from '@shared/candleUtils'
-import { IMPORT_SOURCE_TIMEFRAME, MIN_IMPORT_DAYS } from '@shared/importConstants'
+import { IMPORT_SOURCE_TIMEFRAME } from '@shared/importConstants'
 import {
   CSV_DATA_TIMEZONE_OPTIONS,
   formatCsvWallClock,
@@ -15,6 +15,8 @@ import {
 } from '@shared/pricePrecision'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
+import { useT } from '@/i18n/useT'
+import { translateImportWarnings } from '@/i18n/importWarnings'
 
 export type ImportConfirmDetails = {
   fileName: string
@@ -58,6 +60,7 @@ export default function ImportConfirmModal({
   onConfirm,
   onCancel
 }: ImportConfirmModalProps) {
+  const { t } = useT()
   const [symbol, setSymbol] = useState('')
   const [contractSizeText, setContractSizeText] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
@@ -89,41 +92,41 @@ export default function ImportConfirmModal({
   const candleCount = details.candleCount || details.candles.length
   const previewCandle = details.firstCandle ?? details.candles[0]
   const needSymbol = !details.symbolFromFilename
-  const spanDays = firstTime && lastTime ? ((lastTime - firstTime) / 86400).toFixed(1) : '—'
+  const spanDays =
+    firstTime && lastTime ? Math.max(1, Math.round((lastTime - firstTime) / 86400)) : 0
   const isReplace = Boolean(details.replaceId && details.noNewer)
   const isUpdate = Boolean(details.replaceId) && !isReplace
   const resolvedSymbol = normalizeSymbol(needSymbol ? symbol : (details.symbol ?? ''))
   const contractInfo = resolvedSymbol ? contractSizeInfoForSymbol(resolvedSymbol) : null
-  // A previously saved user parameter wins over the name-derived default.
   const savedContractSize = resolvedSymbol
     ? useSymbolParamsStore.getState().paramsFor(resolvedSymbol).contractSize
     : undefined
   const defaultContractSize = savedContractSize ?? contractInfo?.contractSize
   const timestampsAbsolute = Boolean(details.timestampsAbsolute)
+  const uiWarnings = translateImportWarnings(details.warnings, t)
 
   function submit(): void {
     const nextSymbol = normalizeSymbol(symbol)
 
     if (!nextSymbol) {
-      setFormError('Symbol is required.')
+      setFormError(t('importConfirm.symbolRequiredSimple'))
       return
     }
     if (!timestampsAbsolute && !isCsvDataTimezone(dataTimezone)) {
-      setFormError('Choose the CSV data timezone before saving. We never guess it.')
+      setFormError(t('importConfirm.needTz'))
       return
     }
     if (nextSymbol.length < 3) {
-      setFormError('Enter a valid symbol (e.g. XAUUSD).')
+      setFormError(t('importConfirm.symbolInvalidSimple'))
       return
     }
 
-    // Empty text keeps the symbol-name default; a positive number overrides it.
     const text = contractSizeText.trim()
     let contractSize: number | undefined
     if (text !== '') {
       contractSize = Number(text)
       if (!Number.isFinite(contractSize) || contractSize <= 0) {
-        setFormError('Contract size must be a positive number.')
+        setFormError(t('importConfirm.contractPositiveSimple'))
         return
       }
     }
@@ -154,7 +157,11 @@ export default function ImportConfirmModal({
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
             <h2 id="import-confirm-title" className="text-sm font-semibold text-zinc-100">
-              {isReplace ? 'Replace import' : isUpdate ? 'Update import' : 'Confirm import'}
+              {isReplace
+                ? t('importConfirm.replaceTitle')
+                : isUpdate
+                  ? t('importConfirm.updateTitle')
+                  : t('importConfirm.confirmTitle')}
             </h2>
             <p className="mt-0.5 truncate text-[11px] text-zinc-500" title={details.fileName}>
               {details.fileName}
@@ -162,7 +169,7 @@ export default function ImportConfirmModal({
           </div>
           <button
             type="button"
-            aria-label="Cancel import"
+            aria-label={t('importConfirm.cancelAria')}
             disabled={busy}
             onClick={onCancel}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
@@ -175,7 +182,7 @@ export default function ImportConfirmModal({
           <div className="grid grid-cols-2 gap-3 text-[12px]">
             <label className="block">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Symbol{needSymbol ? ' *' : ''}
+                {needSymbol ? t('importConfirm.symbolRequired') : t('importConfirm.symbol')}
               </span>
               {needSymbol ? (
                 <input
@@ -183,19 +190,22 @@ export default function ImportConfirmModal({
                   value={symbol}
                   disabled={busy}
                   autoFocus
-                  placeholder="e.g. XAUUSD"
-                  aria-label="Symbol"
+                  placeholder={t('importConfirm.symbolPlaceholder')}
+                  aria-label={t('importConfirm.symbol')}
                   onChange={(event) => setSymbol(event.target.value.toUpperCase())}
                   className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                 />
               ) : (
                 <span className="mt-1 block font-medium text-zinc-100">{details.symbol}</span>
               )}
+              <p className="mt-0.5 text-[10px] leading-relaxed text-zinc-500">
+                {t('importConfirm.symbolSourceHint')}
+              </p>
             </label>
 
             <div>
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Source TF
+                {t('importConfirm.sourceTf')}
               </span>
               <span className="mt-1 block font-medium text-zinc-100">
                 {IMPORT_SOURCE_TIMEFRAME}
@@ -204,7 +214,94 @@ export default function ImportConfirmModal({
 
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Contract size
+                {t('importConfirm.csvTz')}{' '}
+                {timestampsAbsolute ? (
+                  <span className="text-emerald-400/90" title={t('importConfirm.tzLockedHint')}>
+                    {t('importConfirm.tzLocked')}
+                  </span>
+                ) : (
+                  <span className="text-amber-400/90">{t('importConfirm.required')}</span>
+                )}
+              </span>
+              {timestampsAbsolute ? null : (
+                <>
+                  <select
+                    value={dataTimezone}
+                    disabled={busy}
+                    aria-label={t('importConfirm.csvTzAria')}
+                    aria-required="true"
+                    onChange={(event) => {
+                      setDataTimezone(event.target.value)
+                      setFormError(null)
+                    }}
+                    className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                  >
+                    <option value="">{t('importConfirm.selectTz')}</option>
+                    {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                    {dataTimezone
+                      ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
+                        t('importConfirm.tzRemapHint')
+                      : t('importConfirm.tzRequiredHint')}
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="col-span-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                {timestampsAbsolute ? t('importConfirm.startUtc') : t('importConfirm.startWall')}
+              </span>
+              <p className="mt-0.5 tabular-nums text-zinc-200">
+                {timestampsAbsolute
+                  ? formatRemappedUtc(firstTime, 'UTC')
+                  : formatCsvWallClock(firstTime)}
+              </p>
+              {!timestampsAbsolute && dataTimezone ? (
+                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                  → {formatRemappedUtc(firstTime, dataTimezone)}
+                </p>
+              ) : null}
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                {timestampsAbsolute ? t('importConfirm.endUtc') : t('importConfirm.endWall')}
+              </span>
+              <p className="mt-0.5 tabular-nums text-zinc-200">
+                {timestampsAbsolute
+                  ? formatRemappedUtc(lastTime, 'UTC')
+                  : formatCsvWallClock(lastTime)}
+              </p>
+              {!timestampsAbsolute && dataTimezone ? (
+                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                  → {formatRemappedUtc(lastTime, dataTimezone)}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                {t('importConfirm.candles1m')}
+              </span>
+              <p className="mt-0.5 tabular-nums text-zinc-200">{candleCount.toLocaleString()}</p>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                {t('importConfirm.span')}
+              </span>
+              <p className="mt-0.5 tabular-nums text-zinc-200">
+                {spanDays ? t('importConfirm.spanDays', { days: spanDays }) : '—'}
+              </p>
+            </div>
+
+            <div className="col-span-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                {t('importConfirm.contractSize')}
               </span>
               {contractInfo ? (
                 <div className="mt-1 flex items-center gap-2">
@@ -215,14 +312,15 @@ export default function ImportConfirmModal({
                     value={contractSizeText}
                     disabled={busy}
                     placeholder={defaultContractSize != null ? String(defaultContractSize) : ''}
-                    aria-label="Contract size"
+                    aria-label={t('importConfirm.contractSize')}
                     onChange={(event) => setContractSizeText(event.target.value)}
                     className="h-8 w-28 rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                   />
                   <span className="text-[11px] text-zinc-500">
-                    units per lot · default{' '}
-                    {defaultContractSize != null ? formatContractSize(defaultContractSize) : '—'} (
-                    {contractInfo?.label ?? 'unknown'})
+                    {t('importConfirm.unitsPerLot', {
+                      size:
+                        defaultContractSize != null ? formatContractSize(defaultContractSize) : '—'
+                    })}
                   </span>
                 </div>
               ) : (
@@ -232,94 +330,15 @@ export default function ImportConfirmModal({
 
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Built timeframes
+                {t('importConfirm.builtTf')}
               </span>
               <p className="mt-0.5 text-zinc-200">5m · 15m · 1h · 4h · 1d</p>
-            </div>
-
-            <div className="col-span-2">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                CSV data timezone{' '}
-                {details.timestampsAbsolute ? (
-                  <span className="text-emerald-400/90">locked</span>
-                ) : (
-                  <span className="text-amber-400/90">required</span>
-                )}
-              </span>
-              {details.timestampsAbsolute ? (
-                <p className="mt-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-200/90">
-                  Timestamps include Z/offset — treated as absolute UTC; timezone selection is not
-                  needed.
-                </p>
-              ) : (
-                <>
-                  <select
-                    value={dataTimezone}
-                    disabled={busy}
-                    aria-label="CSV data timezone"
-                    aria-required="true"
-                    onChange={(event) => {
-                      setDataTimezone(event.target.value)
-                      setFormError(null)
-                    }}
-                    className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-                  >
-                    <option value="">Select timezone of timestamps in this CSV…</option>
-                    {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                    We never guess broker/server time — pick the zone that matches the file.
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="col-span-2">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Start (CSV wall)
-              </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">
-                {formatCsvWallClock(firstTime)}
-              </p>
-              {dataTimezone ? (
-                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-                  → {formatRemappedUtc(firstTime, dataTimezone)}
-                </p>
-              ) : null}
-            </div>
-            <div className="col-span-2">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                End (CSV wall)
-              </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">
-                {formatCsvWallClock(lastTime)}
-              </p>
-              {dataTimezone ? (
-                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-                  → {formatRemappedUtc(lastTime, dataTimezone)}
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                1m candles
-              </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">{candleCount.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Span (≥{MIN_IMPORT_DAYS}d)
-              </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">{spanDays} days</p>
             </div>
 
             {previewCandle ? (
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  First bar preview
+                  {t('importConfirm.firstBar')}
                 </span>
                 <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
                   {formatCsvWallClock(previewCandle.time)} · O {previewCandle.open} H{' '}
@@ -331,31 +350,12 @@ export default function ImportConfirmModal({
 
           {needSymbol && resolvedSymbol.length > 0 && resolvedSymbol.length < 6 ? (
             <p className="text-[11px] leading-relaxed text-amber-400/90">
-              Symbol looks short — FX pairs are usually 6 letters (e.g. EURUSD). Confirm before
-              loading if this is intentional.
+              {t('importConfirm.symbolShort')}
             </p>
           ) : null}
 
-          {isUpdate && (
-            <p className="text-[11px] leading-relaxed text-sky-300/90">
-              Updating existing import
-              {details.existingSymbol ? ` for ${details.existingSymbol}` : ''}. New candles will
-              replace the stored series.
-            </p>
-          )}
-
-          {isReplace && (
-            <p className="text-[11px] leading-relaxed text-amber-400/90">
-              {details.existingSymbol ? `${details.existingSymbol} is` : 'This symbol is'} already
-              imported through the same or a later time. Replacing will overwrite the stored series
-              with this file.
-            </p>
-          )}
-
-          {details.warnings.length > 0 && (
-            <p className="text-[11px] leading-relaxed text-amber-400/90">
-              {details.warnings.join(' ')}
-            </p>
+          {uiWarnings.length > 0 && (
+            <p className="text-[11px] leading-relaxed text-amber-400/90">{uiWarnings.join(' ')}</p>
           )}
           {(formError || serverError) && (
             <p className="text-[11px] leading-relaxed text-red-400">{formError || serverError}</p>
@@ -370,24 +370,21 @@ export default function ImportConfirmModal({
             onClick={onCancel}
             className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
-            Cancel
+            {t('importConfirm.cancel')}
           </button>
           <button
             type="button"
-            disabled={
-              busy ||
-              (!details.timestampsAbsolute && !isCsvDataTimezone(dataTimezone))
-            }
+            disabled={busy || (!timestampsAbsolute && !isCsvDataTimezone(dataTimezone))}
             onClick={submit}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >
             {busy
-              ? 'Saving…'
+              ? t('importConfirm.saving')
               : isReplace
-                ? 'Replace & load'
+                ? t('importConfirm.replaceLoad')
                 : isUpdate
-                  ? 'Update & load'
-                  : 'Confirm & load'}
+                  ? t('importConfirm.updateLoad')
+                  : t('importConfirm.confirmLoad')}
           </button>
         </div>
       </div>

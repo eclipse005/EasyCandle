@@ -270,6 +270,22 @@ describe('ISO / BarReplay template timestamps', () => {
     expect(result.candles[0].time).toBe(Date.UTC(2026, 0, 2, 0, 0, 0) / 1000)
   })
 
+  it('rejects malformed ISO like 2026-01231-01T…Z with line-level error', () => {
+    const lines = [
+      'timestamp,open,high,low,close,volume',
+      '2026-01-01T22:00:00Z,1.17,1.171,1.169,1.170,1',
+      '2026-01-01T22:01:00Z,1.17,1.171,1.169,1.170,1',
+      '2026-01-01T22:02:00Z,1.17,1.171,1.169,1.170,1',
+      '2026-01-01T22:03:00Z,1.17,1.171,1.169,1.170,1',
+      '2026-01231-01T22:04:00Z,1.17,1.171,1.169,1.170,1'
+    ]
+    const result = parseMtCsv(lines.join('\n'), 'bad-iso.csv')
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/Line 6/i)
+    expect(result.error).toMatch(/ISO-8601|invalid|timestamp/i)
+  })
+
   it('rejects official template rows without Z/offset with line-level errors', () => {
     const lines = [
       'timestamp,open,high,low,close,volume',
