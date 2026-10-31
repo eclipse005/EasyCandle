@@ -61,6 +61,11 @@ export type ImportParseSuccess = {
   inferredTimeframe: string
   symbolFromFilename: boolean
   timeframeFromFilename: boolean
+  /**
+   * True when every parsed timestamp included Z or a numeric offset (absolute UTC).
+   * Import Confirm skips CSV data timezone and save must not remap/double-shift.
+   */
+  timestampsAbsolute: boolean
   warnings: string[]
 }
 
@@ -101,8 +106,8 @@ export type ImportSaveParams = {
   originalFileName: string
   symbol: string
   /**
-   * Explicit CSV data timezone (IANA). Required — parser only packs wall clocks
-   * provisionally; save remaps into true UTC unix before building timeframes.
+   * Explicit CSV data timezone (IANA). Required for wall-clock MT exports.
+   * For absolute ISO (Z/offset) imports pass `UTC` — remap is a no-op (no double-shift).
    */
   dataTimezone: string
   /** Raw CSV text stored as source. Optional when `parseToken` is set. */

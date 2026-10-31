@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { MIN_1M_CANDLES_FOR_IMPORT } from './importConstants'
-import { inferTimeframeSeconds, parseMtCsv, parseMtCsvAsync, parseMtFilename } from './mtCsvImport'
+import {
+  inferTimeframeSeconds,
+  isOfficialTemplateHeader,
+  parseIsoAbsoluteTimestamp,
+  parseMtCsv,
+  parseMtCsvAsync,
+  parseMtDateTime,
+  parseMtFilename
+} from './mtCsvImport'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 function mt4Series(count: number, stepSec: number, start = Date.UTC(2024, 0, 2, 0, 0, 0) / 1000): string {
   const lines = ['Date,Time,Open,High,Low,Close,Volume']
@@ -189,5 +199,124 @@ describe('parseMtCsv', () => {
     expect(percents[0]).toBeGreaterThanOrEqual(0)
     expect(percents[percents.length - 1]).toBe(100)
     expect(Math.max(...percents)).toBe(100)
+  })
+})
+
+function isoSeries(
+  count: number,
+  stepSec: number,
+  start = Date.UTC(2026, 0, 2, 0, 0, 0) / 1000
+): string {
+  const lines = ['timestamp,open,high,low,close,volume']
+  for (let i = 0; i < count; i += 1) {
+    const t = start + i * stepSec
+    const iso = new Date(t * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+    const close = 1.1 + i * 0.0001
+    // Include volume=0 flat bars periodically.
+    const volume = i % 17 === 0 ? 0 : 10 + (i % 5)
+    lines.push(
+      `${iso},${close - 0.0001},${close + 0.0002},${close - 0.0002},${close},${volume}`
+    )
+  }
+  return lines.join('\n')
+}
+
+describe('ISO / BarReplay template timestamps', () => {
+  it('parses Z and numeric offsets into absolute UTC seconds', () => {
+    expect(parseIsoAbsoluteTimestamp('2026-01-01T22:04:00Z')).toBe(
+      Date.UTC(2026, 0, 1, 22, 4, 0) / 1000
+    )
+    expect(parseIsoAbsoluteTimestamp('2026-01-01T22:04:00.123Z')).toBe(
+      Date.UTC(2026, 0, 1, 22, 4, 0) / 1000
+    )
+    expect(parseIsoAbsoluteTimestamp('2026-01-01T17:04:00-05:00')).toBe(
+      Date.UTC(2026, 0, 1, 22, 4, 0) / 1000
+    )
+    expect(parseIsoAbsoluteTimestamp('2026-01-01T22:04:00+0000')).toBe(
+      Date.UTC(2026, 0, 1, 22, 4, 0) / 1000
+    )
+    expect(parseIsoAbsoluteTimestamp('2026-01-01T22:04:00')).toBeNull()
+    expect(parseIsoAbsoluteTimestamp('2026.01.01 22:04')).toBeNull()
+  })
+
+  it('marks ISO absolute via parseMtDateTime and MT walls as provisional', () => {
+    expect(parseMtDateTime('2026-01-01T22:04:00Z')).toEqual({
+      seconds: Date.UTC(2026, 0, 1, 22, 4, 0) / 1000,
+      absolute: true
+    })
+    expect(parseMtDateTime('2026.01.01', '22:04')).toEqual({
+      seconds: Date.UTC(2026, 0, 1, 22, 4, 0) / 1000,
+      absolute: false
+    })
+  })
+
+  it('detects the official template header case-insensitively', () => {
+    expect(
+      isOfficialTemplateHeader(['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+    ).toBe(true)
+    expect(
+      isOfficialTemplateHeader(['Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Volume'])
+    ).toBe(false)
+  })
+
+  it('parses Dukascopy/official template as absolute and keeps volume=0 bars', () => {
+    const content = isoSeries(MIN_1M_CANDLES_FOR_IMPORT, 60)
+    const result = parseMtCsv(content, 'EURUSD_dukascopy.csv')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.timestampsAbsolute).toBe(true)
+    expect(result.symbol).toBe('EURUSD')
+    expect(result.candles.some((c) => c.volume === 0)).toBe(true)
+    expect(result.candles[0].time).toBe(Date.UTC(2026, 0, 2, 0, 0, 0) / 1000)
+  })
+
+  it('rejects official template rows without Z/offset with line-level errors', () => {
+    const lines = [
+      'timestamp,open,high,low,close,volume',
+      '2026-01-01T22:00:00Z,1.1,1.2,1.0,1.15,0',
+      '2026-01-01 22:01:00,1.1,1.2,1.0,1.15,1'
+    ]
+    const result = parseMtCsv(lines.join('\n'), 'bad-template.csv')
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/Line 3/i)
+    expect(result.error).toMatch(/ISO-8601/i)
+  })
+
+  it('keeps MT wall-clock imports provisional (timestampsAbsolute=false)', () => {
+    const content = mt4Series(MIN_1M_CANDLES_FOR_IMPORT, 60)
+    const result = parseMtCsv(content, 'EURUSD_M1.csv')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.timestampsAbsolute).toBe(false)
+  })
+
+  it('parses the Dukascopy sample fixture rows and fails only on min length', () => {
+    const fixturePath = resolve(__dirname, 'fixtures/EURUSD_dukascopy_sample.csv')
+    const content = readFileSync(fixturePath, 'utf8')
+    const dataLines = content
+      .trim()
+      .split(/\r?\n/)
+      .slice(1)
+      .filter(Boolean)
+    expect(dataLines.length).toBe(72)
+
+    for (const line of dataLines) {
+      const ts = line.split(',')[0]
+      expect(parseIsoAbsoluteTimestamp(ts), ts).not.toBeNull()
+    }
+
+    const first = parseIsoAbsoluteTimestamp(dataLines[0].split(',')[0])
+    const last = parseIsoAbsoluteTimestamp(dataLines[dataLines.length - 1].split(',')[0])
+    expect(first).toBe(Date.UTC(2026, 0, 1, 22, 0, 0) / 1000)
+    expect(last).toBe(Date.UTC(2026, 9, 15, 14, 30, 0) / 1000)
+
+    // Flat-fill volume=0 rows present in the fixture must not be dropped by a full parse
+    // once length is enough — here the short fixture fails only the min-days gate.
+    const result = parseMtCsv(content, 'EURUSD_dukascopy_sample.csv')
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/10 days/i)
+    expect(result.error).toMatch(/72/)
   })
 })

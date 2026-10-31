@@ -33,6 +33,8 @@ export type ImportConfirmDetails = {
   existingSymbol?: string
   /** True when the incoming file has no newer candles than the stored series. */
   noNewer?: boolean
+  /** Absolute ISO timestamps — timezone locked to UTC. */
+  timestampsAbsolute?: boolean
 }
 
 type ImportConfirmModalProps = {
@@ -66,7 +68,7 @@ export default function ImportConfirmModal({
     setSymbol(details.symbol ?? '')
     setContractSizeText('')
     setFormError(null)
-    setDataTimezone('')
+    setDataTimezone(details.timestampsAbsolute ? 'UTC' : '')
   }, [details])
 
   useEffect(() => {
@@ -97,6 +99,7 @@ export default function ImportConfirmModal({
     ? useSymbolParamsStore.getState().paramsFor(resolvedSymbol).contractSize
     : undefined
   const defaultContractSize = savedContractSize ?? contractInfo?.contractSize
+  const timestampsAbsolute = Boolean(details.timestampsAbsolute)
 
   function submit(): void {
     const nextSymbol = normalizeSymbol(symbol)
@@ -105,7 +108,7 @@ export default function ImportConfirmModal({
       setFormError('Symbol is required.')
       return
     }
-    if (!isCsvDataTimezone(dataTimezone)) {
+    if (!timestampsAbsolute && !isCsvDataTimezone(dataTimezone)) {
       setFormError('Choose the CSV data timezone before saving. We never guess it.')
       return
     }
@@ -126,7 +129,11 @@ export default function ImportConfirmModal({
     }
 
     setFormError(null)
-    onConfirm({ symbol: nextSymbol, contractSize, dataTimezone })
+    onConfirm({
+      symbol: nextSymbol,
+      contractSize,
+      dataTimezone: timestampsAbsolute ? 'UTC' : dataTimezone
+    })
   }
 
   return (
@@ -232,29 +239,43 @@ export default function ImportConfirmModal({
 
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                CSV data timezone <span className="text-amber-400/90">required</span>
+                CSV data timezone{' '}
+                {details.timestampsAbsolute ? (
+                  <span className="text-emerald-400/90">locked</span>
+                ) : (
+                  <span className="text-amber-400/90">required</span>
+                )}
               </span>
-              <select
-                value={dataTimezone}
-                disabled={busy}
-                aria-label="CSV data timezone"
-                aria-required="true"
-                onChange={(event) => {
-                  setDataTimezone(event.target.value)
-                  setFormError(null)
-                }}
-                className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              >
-                <option value="">Select timezone of timestamps in this CSV…</option>
-                {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                We never guess broker/server time — pick the zone that matches the file.
-              </p>
+              {details.timestampsAbsolute ? (
+                <p className="mt-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-200/90">
+                  Timestamps include Z/offset — treated as absolute UTC; timezone selection is not
+                  needed.
+                </p>
+              ) : (
+                <>
+                  <select
+                    value={dataTimezone}
+                    disabled={busy}
+                    aria-label="CSV data timezone"
+                    aria-required="true"
+                    onChange={(event) => {
+                      setDataTimezone(event.target.value)
+                      setFormError(null)
+                    }}
+                    className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                  >
+                    <option value="">Select timezone of timestamps in this CSV…</option>
+                    {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                    We never guess broker/server time — pick the zone that matches the file.
+                  </p>
+                </>
+              )}
             </div>
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
@@ -353,7 +374,10 @@ export default function ImportConfirmModal({
           </button>
           <button
             type="button"
-            disabled={busy || !isCsvDataTimezone(dataTimezone)}
+            disabled={
+              busy ||
+              (!details.timestampsAbsolute && !isCsvDataTimezone(dataTimezone))
+            }
             onClick={submit}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >

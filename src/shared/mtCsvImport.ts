@@ -185,11 +185,77 @@ function looksLikeHeader(cells: string[]): boolean {
   )
 }
 
-function parseMtDateTime(datePart: string, timePart?: string): number | null {
+export type ParsedTimestamp = {
+  /** Unix seconds (UTC instant, or provisional wall packed via Date.UTC). */
+  seconds: number
+  /** True when the source string included Z or a numeric offset. */
+  absolute: boolean
+}
+
+/** ISO-8601 with required Z or ±HH:MM / ±HHMM; optional fractional seconds. */
+const ISO_ABS_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:?\d{2})$/i
+
+/**
+ * Parse an absolute ISO-8601 instant (must include Z or numeric offset).
+ * Fractional seconds are truncated to whole seconds for candle opens.
+ */
+export function parseIsoAbsoluteTimestamp(raw: string): number | null {
+  const s = String(raw || '').trim()
+  const m = s.match(ISO_ABS_RE)
+  if (!m) return null
+
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  const hour = Number(m[4])
+  const minute = Number(m[5])
+  const second = Number(m[6] ?? 0)
+  if (
+    ![year, month, day, hour, minute, second].every((n) => Number.isFinite(n)) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return null
+  }
+
+  let offsetMinutes = 0
+  const off = m[8].toUpperCase()
+  if (off !== 'Z') {
+    const om = off.match(/^([+-])(\d{2}):?(\d{2})$/)
+    if (!om) return null
+    offsetMinutes = (Number(om[2]) * 60 + Number(om[3])) * (om[1] === '-' ? -1 : 1)
+  }
+
+  const utcMs = Date.UTC(year, month - 1, day, hour, minute, second) - offsetMinutes * 60_000
+  if (!Number.isFinite(utcMs)) return null
+  return Math.floor(utcMs / 1000)
+}
+
+/**
+ * Parse CSV date/time: absolute ISO (Z/offset) first, then MT wall-clock forms.
+ * Wall-clock results are provisional (Date.UTC pack) — Import Confirm remaps them.
+ */
+export function parseMtDateTime(datePart: string, timePart?: string): ParsedTimestamp | null {
   const date = String(datePart || '').trim()
   const time = String(timePart || '').trim()
 
-  // Combined: 2020.01.01 00:00[:00] or 2020-01-01 00:00
+  // Combined absolute ISO in the first cell (Dukascopy / official template).
+  if (!time) {
+    const abs = parseIsoAbsoluteTimestamp(date)
+    if (abs != null) return { seconds: abs, absolute: true }
+  } else {
+    // Rare: date + time cells that together form ISO with offset on time.
+    const abs = parseIsoAbsoluteTimestamp(`${date}T${time}`)
+    if (abs != null) return { seconds: abs, absolute: true }
+  }
+
+  // Combined MT wall: 2020.01.01 00:00[:00] or 2020-01-01 00:00 (no offset)
   const combined = date.match(
     /^(\d{4})[.\-/](\d{2})[.\-/](\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
   )
@@ -200,7 +266,8 @@ function parseMtDateTime(datePart: string, timePart?: string): number | null {
     const hour = Number(combined[4] ?? 0)
     const minute = Number(combined[5] ?? 0)
     const second = Number(combined[6] ?? 0)
-    return utcSeconds(year, month, day, hour, minute, second)
+    const seconds = utcSeconds(year, month, day, hour, minute, second)
+    return seconds == null ? null : { seconds, absolute: false }
   }
 
   const d = date.match(/^(\d{4})[.\-/](\d{2})[.\-/](\d{2})$/)
@@ -209,7 +276,7 @@ function parseMtDateTime(datePart: string, timePart?: string): number | null {
   const t = (time || '00:00').match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
   if (!t) return null
 
-  return utcSeconds(
+  const seconds = utcSeconds(
     Number(d[1]),
     Number(d[2]),
     Number(d[3]),
@@ -217,6 +284,7 @@ function parseMtDateTime(datePart: string, timePart?: string): number | null {
     Number(t[2]),
     Number(t[3] ?? 0)
   )
+  return seconds == null ? null : { seconds, absolute: false }
 }
 
 /**
@@ -268,40 +336,109 @@ function isValidOhlc(open: number, high: number, low: number, close: number): bo
   return true
 }
 
-function mapRowToCandle(cells: string[]): Candle | null {
-  if (cells.length < 5) return null
+/** Official BarReplay / Dukascopy header (order fixed, case-insensitive). */
+export function isOfficialTemplateHeader(cells: string[]): boolean {
+  if (cells.length < 6) return false
+  const norm = cells.slice(0, 6).map((c) => c.trim().toLowerCase().replace(/^<|>$/g, ''))
+  return (
+    norm[0] === 'timestamp' &&
+    norm[1] === 'open' &&
+    norm[2] === 'high' &&
+    norm[3] === 'low' &&
+    norm[4] === 'close' &&
+    norm[5] === 'volume'
+  )
+}
 
-  // MT5 often: DATE TIME OPEN HIGH LOW CLOSE ...
-  // MT4 often: DATE,TIME,OPEN,HIGH,LOW,CLOSE,VOLUME
-  let time: number | null = null
+type RowMapSuccess = { ok: true; candle: Candle; absolute: boolean }
+type RowMapFailure = { ok: false; reason: string }
+type RowMapResult = RowMapSuccess | RowMapFailure
+
+function mapOfficialTemplateRow(cells: string[], lineNo: number): RowMapResult {
+  if (cells.length < 6) {
+    return {
+      ok: false,
+      reason: `Line ${lineNo}: expected timestamp,open,high,low,close,volume (got ${cells.length} column(s)).`
+    }
+  }
+
+  const tsRaw = cells[0]
+  const abs = parseIsoAbsoluteTimestamp(tsRaw)
+  if (abs == null) {
+    return {
+      ok: false,
+      reason:
+        `Line ${lineNo}: timestamp must be ISO-8601 with Z or ±HH:MM (e.g. 2026-01-01T22:04:00Z); ` +
+        `got "${tsRaw}".`
+    }
+  }
+
+  const open = parseNumber(cells[1])
+  const high = parseNumber(cells[2])
+  const low = parseNumber(cells[3])
+  const close = parseNumber(cells[4])
+  if (open == null || high == null || low == null || close == null) {
+    return {
+      ok: false,
+      reason: `Line ${lineNo}: invalid OHLC values.`
+    }
+  }
+  if (!isValidOhlc(open, high, low, close)) {
+    return {
+      ok: false,
+      reason: `Line ${lineNo}: OHLC relationship is invalid.`
+    }
+  }
+
+  const candle: Candle = { time: abs, open, high, low, close }
+  const volume = parseNumber(cells[5] ?? '')
+  // Keep volume=0 flat-fill bars (do not drop).
+  if (volume != null) candle.volume = volume
+  return { ok: true, candle, absolute: true }
+}
+
+function mapMtRowToCandle(cells: string[]): RowMapResult {
+  if (cells.length < 5) {
+    return { ok: false, reason: 'too few columns' }
+  }
+
+  let parsed: ParsedTimestamp | null = null
   let openIdx = 1
 
-  const firstHasTime = /\d{1,2}:\d{2}/.test(cells[0])
+  const firstHasTime = /\d{1,2}:\d{2}/.test(cells[0]) || ISO_ABS_RE.test(cells[0].trim())
   if (firstHasTime) {
-    time = parseMtDateTime(cells[0])
+    parsed = parseMtDateTime(cells[0])
     openIdx = 1
   } else if (cells.length >= 6 && /^\d{1,2}:\d{2}/.test(cells[1])) {
-    time = parseMtDateTime(cells[0], cells[1])
+    parsed = parseMtDateTime(cells[0], cells[1])
     openIdx = 2
   } else {
-    time = parseMtDateTime(cells[0])
+    parsed = parseMtDateTime(cells[0])
     openIdx = 1
   }
 
-  if (time == null) return null
-  if (cells.length < openIdx + 4) return null
+  if (parsed == null) return { ok: false, reason: 'bad datetime' }
+  if (cells.length < openIdx + 4) return { ok: false, reason: 'too few columns' }
 
   const open = parseNumber(cells[openIdx])
   const high = parseNumber(cells[openIdx + 1])
   const low = parseNumber(cells[openIdx + 2])
   const close = parseNumber(cells[openIdx + 3])
-  if (open == null || high == null || low == null || close == null) return null
-  if (!isValidOhlc(open, high, low, close)) return null
+  if (open == null || high == null || low == null || close == null) {
+    return { ok: false, reason: 'bad ohlc' }
+  }
+  if (!isValidOhlc(open, high, low, close)) return { ok: false, reason: 'bad ohlc relation' }
 
-  const candle: Candle = { time, open, high, low, close }
+  const candle: Candle = { time: parsed.seconds, open, high, low, close }
   const volume = parseNumber(cells[openIdx + 4] ?? '')
   if (volume != null) candle.volume = volume
-  return candle
+  return { ok: true, candle, absolute: parsed.absolute }
+}
+
+/** @deprecated Prefer mapMtRowToCandle / mapOfficialTemplateRow — kept for delimiter scoring. */
+function mapRowToCandle(cells: string[]): Candle | null {
+  const mapped = mapMtRowToCandle(cells)
+  return mapped.ok ? mapped.candle : null
 }
 
 /**
@@ -398,14 +535,16 @@ function splitNonEmptyLinesWithProgress(
 function finalizeParsedRows(
   raw: Candle[],
   skipped: number,
-  fileMeta: FilenameMeta
+  fileMeta: FilenameMeta,
+  timestampsAbsolute: boolean
 ): ImportParseResult {
   const warnings: string[] = []
 
   if (!raw.length) {
     return {
       ok: false,
-      error: 'No valid MT4/MT5 candle rows found. Expected Date/Time, Open, High, Low, Close.'
+      error:
+        'No valid candle rows found. Use the BarReplay CSV template (timestamp,open,high,low,close,volume with ISO-8601 Z/offset) or an MT4/MT5 Date/Time export.'
     }
   }
 
@@ -454,6 +593,12 @@ function finalizeParsedRows(
     `Will build 5m, 15m, 1h, 4h, and 1d from this 1m series (~${spanDays.toFixed(1)} days, ${candles.length.toLocaleString()} bars).`
   )
 
+  if (timestampsAbsolute) {
+    warnings.push(
+      'Timestamps include Z/offset — treated as absolute UTC; CSV data timezone is not required.'
+    )
+  }
+
   return {
     ok: true,
     candles,
@@ -465,13 +610,21 @@ function finalizeParsedRows(
     inferredTimeframe: IMPORT_SOURCE_TIMEFRAME,
     symbolFromFilename: Boolean(fileMeta.symbol),
     timeframeFromFilename: Boolean(fileMeta.timeframe),
+    timestampsAbsolute,
     warnings
   }
 }
 
 function layoutCsvLines(
   lines: string[]
-): ImportParseFailure | { lines: string[]; startIndex: number; delimiter: FieldDelimiter } {
+):
+  | ImportParseFailure
+  | {
+      lines: string[]
+      startIndex: number
+      delimiter: FieldDelimiter
+      templateMode: boolean
+    } {
   if (lines.length === 0) {
     return { ok: false, error: 'CSV file is empty.' }
   }
@@ -479,7 +632,8 @@ function layoutCsvLines(
   const delimiter = detectDelimiter(lines)
   let startIndex = 0
   const firstCells = splitCsvLine(lines[0], delimiter)
-  if (looksLikeHeader(firstCells)) {
+  const templateMode = isOfficialTemplateHeader(firstCells)
+  if (templateMode || looksLikeHeader(firstCells)) {
     startIndex = 1
   }
 
@@ -487,7 +641,7 @@ function layoutCsvLines(
     return { ok: false, error: 'CSV has a header but no candle rows.' }
   }
 
-  return { lines, startIndex, delimiter }
+  return { lines, startIndex, delimiter, templateMode }
 }
 
 export function parseMtCsv(content: string, fileName: string): ImportParseResult {
@@ -521,18 +675,30 @@ export function parseMtCsvWithProgress(
   const prepared = layoutCsvLines(lines)
   if ('ok' in prepared) return prepared
 
-  const { startIndex, delimiter } = prepared
+  const { startIndex, delimiter, templateMode } = prepared
   const totalRows = lines.length - startIndex
   const raw: Candle[] = []
   let skipped = 0
+  let absoluteCount = 0
+  const lineErrors: string[] = []
 
   onProgress?.({ phase: 'parsing', percent: 8, processedRows: 0, totalRows })
 
   for (let i = startIndex; i < lines.length; i += 1) {
+    const lineNo = i + 1
     const cells = splitCsvLine(lines[i], delimiter)
-    const candle = mapRowToCandle(cells)
-    if (candle) raw.push(candle)
-    else skipped += 1
+    const mapped = templateMode
+      ? mapOfficialTemplateRow(cells, lineNo)
+      : mapMtRowToCandle(cells)
+
+    if (mapped.ok) {
+      raw.push(mapped.candle)
+      if (mapped.absolute) absoluteCount += 1
+    } else if (templateMode) {
+      if (lineErrors.length < 25) lineErrors.push(mapped.reason)
+    } else {
+      skipped += 1
+    }
 
     const processed = i - startIndex + 1
     if (processed % IMPORT_WORKER_PROGRESS_EVERY === 0 || processed === totalRows) {
@@ -541,8 +707,22 @@ export function parseMtCsvWithProgress(
     }
   }
 
+  if (templateMode && lineErrors.length > 0) {
+    const extra =
+      lineErrors.length >= 25
+        ? ' Additional invalid rows omitted from this message.'
+        : ''
+    return {
+      ok: false,
+      error: `Official CSV template rejected ${lineErrors.length} row(s):\n${lineErrors.join('\n')}${extra}`
+    }
+  }
+
+  // Absolute only when every successfully parsed row had Z/offset (no wall-clock mix).
+  const timestampsAbsolute = raw.length > 0 && absoluteCount === raw.length
+
   onProgress?.({ phase: 'finalizing', percent: 94, processedRows: totalRows, totalRows })
-  const result = finalizeParsedRows(raw, skipped, fileMeta)
+  const result = finalizeParsedRows(raw, skipped, fileMeta, timestampsAbsolute)
   onProgress?.({
     phase: 'finalizing',
     percent: 100,

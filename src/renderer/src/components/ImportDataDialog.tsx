@@ -163,7 +163,8 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
             lastTime: 0,
             warnings: [],
             content: '',
-            origin: 'csv' as ImportOrigin
+            origin: 'csv' as ImportOrigin,
+            timestampsAbsolute: false
           })
           continue
         }
@@ -183,7 +184,8 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
           parseToken: parsed.parseToken,
           warnings: parsed.warnings,
           content: '',
-          origin: 'csv'
+          origin: 'csv',
+          timestampsAbsolute: Boolean(parsed.timestampsAbsolute)
         })
       }
 
@@ -428,14 +430,29 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                     </>
                   )}
                 </button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <a
+                    href="/barreplay-csv-template.csv"
+                    download="barreplay-csv-template.csv"
+                    className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 text-[11px] font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  >
+                    {t('import.downloadTemplate')}
+                  </a>
+                  <a
+                    href="/barreplay-csv-sample.csv"
+                    download="barreplay-csv-sample.csv"
+                    className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 text-[11px] font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  >
+                    {t('import.downloadSample')}
+                  </a>
+                </div>
                 {loadProgress && (
                   <div className="mt-2">
                     <ImportProgressBar progress={loadProgress} />
                   </div>
                 )}
                 <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-                  Select one or more CSVs. Each file becomes its own dataset. Manage files per
-                  symbol on Datasets → Edit.
+                  {t('import.hintFormats')}
                 </p>
               </section>
 

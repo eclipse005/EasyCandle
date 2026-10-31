@@ -38,6 +38,8 @@ export type ImportBatchItem = {
   warnings: string[]
   content: string
   origin: ImportOrigin
+  /** Absolute ISO (Z/offset) — save with UTC, no wall-clock remap. */
+  timestampsAbsolute?: boolean
 }
 
 export type ImportBatchSaveRequest = {
@@ -126,7 +128,9 @@ export default function ImportBatchConfirmModal({
     }
     setDrafts(next)
     setFormError(null)
-    setDataTimezone('')
+    const ok = items.filter((item) => item.status === 'ok')
+    const allAbs = ok.length > 0 && ok.every((item) => Boolean(item.timestampsAbsolute))
+    setDataTimezone(allAbs ? 'UTC' : '')
   }, [items, lockedSymbol])
 
   useEffect(() => {
@@ -141,6 +145,10 @@ export default function ImportBatchConfirmModal({
   }, [items, busy, onCancel])
 
   const okRows = useMemo(() => rows.filter((r) => r.status === 'ok'), [rows])
+  const allTimestampsAbsolute = useMemo(
+    () => okRows.length > 0 && okRows.every((r) => Boolean(r.timestampsAbsolute)),
+    [okRows]
+  )
   const isSingle = okRows.length === 1 && rows.length === 1
 
   const resolvedById = useMemo(() => {
@@ -236,7 +244,8 @@ export default function ImportBatchConfirmModal({
       setFormError(t('importConfirm.noValid'))
       return
     }
-    if (!isCsvDataTimezone(dataTimezone)) {
+    const batchNeedsTz = okRows.some((row) => !row.timestampsAbsolute)
+    if (batchNeedsTz && !isCsvDataTimezone(dataTimezone)) {
       setFormError(t('importConfirm.needTz'))
       return
     }
@@ -273,7 +282,8 @@ export default function ImportBatchConfirmModal({
         id: row.id,
         symbol,
         contractSize: contractBySymbol.get(symbol),
-        dataTimezone,
+        // Absolute ISO must stay UTC — never remap/double-shift.
+        dataTimezone: row.timestampsAbsolute ? 'UTC' : dataTimezone,
         item: row
       })
     }
@@ -413,32 +423,45 @@ export default function ImportBatchConfirmModal({
 
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  {t('importConfirm.csvTz')} <span className="text-amber-400/90">{t('importConfirm.required')}</span>
+                  {t('importConfirm.csvTz')}{' '}
+                  {allTimestampsAbsolute ? (
+                    <span className="text-emerald-400/90">{t('importConfirm.tzLocked')}</span>
+                  ) : (
+                    <span className="text-amber-400/90">{t('importConfirm.required')}</span>
+                  )}
                 </span>
-                <select
-                  value={dataTimezone}
-                  disabled={busy}
-                  aria-label={t('importConfirm.csvTzAria')}
-                  aria-required="true"
-                  onChange={(event) => {
-                    setDataTimezone(event.target.value)
-                    setFormError(null)
-                  }}
-                  className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-                >
-                  <option value="">{t('importConfirm.selectTz')}</option>
-                  {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                  {dataTimezone
-                    ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
-                      t('importConfirm.tzRemapHint')
-                    : t('importConfirm.tzRequiredHint')}
-                </p>
+                {allTimestampsAbsolute ? (
+                  <p className="mt-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-200/90">
+                    {t('importConfirm.tzLockedHint')}
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      value={dataTimezone}
+                      disabled={busy}
+                      aria-label={t('importConfirm.csvTzAria')}
+                      aria-required="true"
+                      onChange={(event) => {
+                        setDataTimezone(event.target.value)
+                        setFormError(null)
+                      }}
+                      className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                    >
+                      <option value="">{t('importConfirm.selectTz')}</option>
+                      {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                      {dataTimezone
+                        ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
+                          t('importConfirm.tzRemapHint')
+                        : t('importConfirm.tzRequiredHint')}
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="col-span-2">
@@ -521,7 +544,9 @@ export default function ImportBatchConfirmModal({
             </button>
             <button
               type="button"
-              disabled={busy || !isCsvDataTimezone(dataTimezone)}
+              disabled={
+                busy || (!allTimestampsAbsolute && !isCsvDataTimezone(dataTimezone))
+              }
               onClick={submit}
               className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
             >
@@ -762,32 +787,43 @@ export default function ImportBatchConfirmModal({
 
           
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                {t('importConfirm.csvTz')} <span className="text-amber-400/90">{t('importConfirm.required')}</span>
-              </span>
-              <select
-                value={dataTimezone}
-                disabled={busy}
-                aria-label={t('importConfirm.csvTzAria')}
-                aria-required="true"
-                onChange={(event) => {
-                  setDataTimezone(event.target.value)
-                  setFormError(null)
-                }}
-                className="mt-1.5 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              >
-                <option value="">{t('importConfirm.selectTzBatch')}</option>
-                {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
-              {t('importConfirm.batchTzHint')}
-            </p>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+              {t('importConfirm.csvTz')}{' '}
+              {allTimestampsAbsolute ? (
+                <span className="text-emerald-400/90">{t('importConfirm.tzLocked')}</span>
+              ) : (
+                <span className="text-amber-400/90">{t('importConfirm.required')}</span>
+              )}
+            </span>
+            {allTimestampsAbsolute ? (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-emerald-200/90">
+                {t('importConfirm.tzLockedHint')}
+              </p>
+            ) : (
+              <>
+                <select
+                  value={dataTimezone}
+                  disabled={busy}
+                  aria-label={t('importConfirm.csvTzAria')}
+                  aria-required="true"
+                  onChange={(event) => {
+                    setDataTimezone(event.target.value)
+                    setFormError(null)
+                  }}
+                  className="mt-1.5 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                >
+                  <option value="">{t('importConfirm.selectTzBatch')}</option>
+                  {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+                  {t('importConfirm.batchTzHint')}
+                </p>
+              </>
+            )}
           </div>
 
 {(formError || serverError) && (
@@ -807,7 +843,11 @@ export default function ImportBatchConfirmModal({
           </button>
           <button
             type="button"
-            disabled={busy || okRows.length === 0 || !isCsvDataTimezone(dataTimezone)}
+            disabled={
+              busy ||
+              okRows.length === 0 ||
+              (!allTimestampsAbsolute && !isCsvDataTimezone(dataTimezone))
+            }
             onClick={submit}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >

@@ -167,7 +167,8 @@ export default function SymbolDatasetsDialog({
             lastTime: 0,
             warnings: [],
             content: '',
-            origin: 'csv' as ImportOrigin
+            origin: 'csv' as ImportOrigin,
+            timestampsAbsolute: false
           })
           continue
         }
@@ -191,7 +192,8 @@ export default function SymbolDatasetsDialog({
           parseToken: parsed.parseToken,
           warnings: parsed.warnings,
           content: '',
-          origin: 'csv'
+          origin: 'csv',
+          timestampsAbsolute: Boolean(parsed.timestampsAbsolute)
         })
       }
 
