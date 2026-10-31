@@ -71,3 +71,15 @@
 ## 刻意不做
 
 付费墙、Prop firm、Order flow、云同步、付费新闻日历。新建向导可仿 UI，数据仍本地 CSV。
+
+## P0 shipped (2026-10-31)
+
+- [x] Theme tokens: page `#030303`, card `#131415`, border `#414347`, primary `#0260FD`, up `#06A77D`, down `#ED6A5A` (`main.css` + `primary` Tailwind scale + `UI_TOKENS` / chart palette)
+- [x] Interactive chrome accent → primary blue (IconButton `tone="accent"`, play control); wordmark amber kept
+- [x] Session shell: order ticket `300px`; chart/ticket/blotter hairline `border-zinc-700`
+- [x] Chart overlays: bottom-left instant Buy (blue) / Sell (red) + qty → `paperBuy`/`paperSell`; bottom-right equity + session PnL
+- [x] Floating replay bar: dark card pill (`rounded-2xl`), blue circular play; scrubber deferred
+- [x] Blotter tab labels: Open positions / Pending orders / Closed positions (Order History retained)
+- [ ] Ticket field reorder (Sell|Buy → risk chips → type) — **P1**
+- [ ] Chart entry/SL/TP label polish — **P1**
+- [ ] Dashboard productization — **P2**
