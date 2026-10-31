@@ -10,7 +10,7 @@ import SoftButton from '@/components/ui/SoftButton'
 import SoftDialog from '@/components/ui/SoftDialog'
 import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
 import SoftLabel from '@/components/ui/SoftLabel'
-import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
+import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
 import { DEFAULT_CHART_TIMEZONE, parseSessionParts, toSessionParts } from '@/lib/chartTimezone'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -217,34 +217,30 @@ export default function CreateSessionDialog({
           </SoftLabel>
 
           <SoftLabel caption="Start date">
-            <SoftInput
-              type="date"
-              value={startDate}
-              disabled={busy}
-              aria-label="Start date"
-              onChange={(event) => {
-                const next = event.target.value
-                if (!group || isDayCovered(group.coverageDays, next)) {
-                  setStartDate(next)
-                } else {
-                  setError('That day has no data — pick a lit day on the calendar.')
-                }
-              }}
-            />
+            {group ? (
+              <DateCoveragePopover
+                mode="pick"
+                coverageDays={group.coverageDays}
+                selectedDay={startDate}
+                disabled={busy}
+                placeholder="Pick a day with data"
+                initialMonth={startDate ? startDate.slice(0, 7) : undefined}
+                onSelectDay={(day) => {
+                  setError(null)
+                  setStartDate(day)
+                }}
+              />
+            ) : (
+              <SoftInput
+                type="text"
+                value=""
+                disabled
+                aria-label="Start date"
+                placeholder="Pick a day with data"
+              />
+            )}
           </SoftLabel>
         </div>
-
-        {group ? (
-          <DateCoverageCalendar
-            coverageDays={group.coverageDays}
-            selectedDay={startDate}
-            onSelectDay={(day) => {
-              setError(null)
-              setStartDate(day)
-            }}
-            initialMonth={startDate ? startDate.slice(0, 7) : undefined}
-          />
-        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           <SoftLabel caption="Initial balance">

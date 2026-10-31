@@ -7,7 +7,7 @@ import { yieldToEventLoop } from '@shared/yieldToEventLoop'
 import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
-import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
+import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
 import ImportConfirmModal, { type ImportConfirmDetails } from '@/components/ImportConfirmModal'
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
 import SoftButton from '@/components/ui/SoftButton'
@@ -54,7 +54,7 @@ function parseProgressLabel(progress: ImportJobProgress): string {
 
 /**
  * Manage drawer for one symbol: list CSV files, delete one, import more (inline),
- * and a read-only date-coverage calendar (union of file spans).
+ * and a read-only date-coverage popover (union of file spans).
  */
 export default function SymbolDatasetsDialog({
   open,
@@ -264,17 +264,11 @@ export default function SymbolDatasetsDialog({
             <div className="max-h-[11.5rem] overflow-y-auto rounded-xl border border-white/[0.06]">
               <ul className="divide-y divide-white/[0.05]">
                 {files.map((meta) => {
-                  const onChart = importMeta?.id === meta.id
                   return (
                     <li key={meta.id} className="flex items-start gap-3 px-3.5 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-zinc-100">
-                          <span className="truncate">{meta.originalFileName}</span>
-                          {onChart ? (
-                            <span className="rounded-lg border border-sky-700/60 bg-sky-950/50 px-1.5 py-px text-[10px] uppercase tracking-wide text-sky-300">
-                              On chart
-                            </span>
-                          ) : null}
+                        <p className="truncate text-[13px] font-medium text-zinc-100">
+                          {meta.originalFileName}
                         </p>
                         <p className={cn('mt-1', softType.caption)}>
                           {meta.candleCount.toLocaleString()} × 1m ·{' '}
@@ -321,12 +315,12 @@ export default function SymbolDatasetsDialog({
             </p>
           ) : null}
 
-          <div>
-            <h3 className={cn(softType.caption, 'mb-2 font-medium text-zinc-400')}>
-              Date coverage (UTC)
-            </h3>
-            <DateCoverageCalendar coverageDays={coverage} />
-          </div>
+          <DateCoveragePopover
+            mode="coverage"
+            coverageDays={coverage}
+            caption="Date coverage (UTC)"
+            disabled={importDisabled}
+          />
         </div>
       </SoftDialog>
 

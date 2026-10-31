@@ -98,7 +98,7 @@ export function groupImportsBySymbol(
 }
 
 /** Earliest lit day key, or '' when empty. */
-export function earliestCoverageDay(days: Set<string>): string {
+export function earliestCoverageDay(days: Set<string> | ReadonlySet<string>): string {
   let min = ''
   for (const day of days) {
     if (!min || day < min) min = day
@@ -106,7 +106,26 @@ export function earliestCoverageDay(days: Set<string>): string {
   return min
 }
 
+/** Latest lit day key, or '' when empty. */
+export function latestCoverageDay(days: Set<string> | ReadonlySet<string>): string {
+  let max = ''
+  for (const day of days) {
+    if (!max || day > max) max = day
+  }
+  return max
+}
+
+/** Compact coverage span for triggers: `No coverage` | `YYYY-MM-DD` | `first → last`. */
+export function coverageSpanLabel(days: Set<string> | ReadonlySet<string>): string {
+  if (days.size === 0) return 'No coverage'
+  const first = earliestCoverageDay(days)
+  const last = latestCoverageDay(days)
+  if (!first) return 'No coverage'
+  if (first === last) return first
+  return `${first} → ${last}`
+}
+
 /** True when `YYYY-MM-DD` is in the coverage set. */
-export function isDayCovered(days: Set<string>, dayKey: string): boolean {
+export function isDayCovered(days: Set<string> | ReadonlySet<string>, dayKey: string): boolean {
   return days.has(dayKey)
 }

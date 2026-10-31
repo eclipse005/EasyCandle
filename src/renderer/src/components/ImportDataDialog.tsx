@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Database, FileUp, Replace, Trash2, X } from 'lucide-react'
-import IconButton from '@/components/IconButton'
+import { Database, FileUp, Replace, X } from 'lucide-react'
 import ImportConfirmModal, { type ImportConfirmDetails } from '@/components/ImportConfirmModal'
-import {
-  isMetatraderImport,
-  type ImportOrigin,
-  type ImportedDatasetMeta
-} from '@shared/importTypes'
+import { type ImportOrigin } from '@shared/importTypes'
 import { IMPORT_BUILD_UI_PERCENT, type ImportJobProgress } from '@shared/importJobProgress'
 import { yieldToEventLoop } from '@shared/yieldToEventLoop'
 import { useReplayStore } from '@/store/replayStore'
@@ -55,14 +50,14 @@ function parseProgressLabel(progress: ImportJobProgress): string {
   return progress.phase
 }
 
+/**
+ * Global Import: pick CSV → parse → confirm → save.
+ * Dataset manage/delete lives in SymbolDatasetsDialog.
+ */
 export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps): ReactNode {
   const mode = useReplayStore((s) => s.mode)
   const status = useReplayStore((s) => s.status)
-  const dataSource = useReplayStore((s) => s.dataSource)
-  const importMeta = useReplayStore((s) => s.importMeta)
-  const importedList = useReplayStore((s) => s.importedList)
   const replayLoading = useReplayStore((s) => s.replayLoading)
-  const clearImportedDataset = useReplayStore((s) => s.clearImportedDataset)
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
   const selectImportedDataset = useReplayStore((s) => s.selectImportedDataset)
   const ensureSymbol = useSymbolParamsStore((s) => s.ensureSymbol)
@@ -111,11 +106,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
   }, [disabled, setOpen, staleOffer])
 
   useEffect(() => {
-    if (!open) return
-    void refreshImportedList()
-  }, [open, refreshImportedList])
-
-  useEffect(() => {
     if (!open) return undefined
 
     function onKey(event: KeyboardEvent): void {
@@ -125,7 +115,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, disabled, closeDialog])
-
 
   function openConfirm(params: PendingImport): void {
     setMessage(null)
@@ -175,7 +164,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
       }
 
       // Symbol-first model: each CSV is a new dataset under the symbol.
-      // Overlaps resolve at session load (newer updatedAt wins). No auto-replace.
       openConfirm(next)
     } finally {
       unsub()
@@ -214,9 +202,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
     try {
       const symbol = normalizeSymbol(values.symbol)
-      // Always create a new dataset file (multi-CSV under one symbol).
-      // Explicit replaceId only when the pending payload already carries one
-      // (e.g. user chose "Replace existing" from a stale offer).
       const replaceId = pending.replaceId
 
       ensureSymbol(symbol, values.contractSize != null ? { contractSize: values.contractSize } : undefined)
@@ -273,47 +258,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
     }
   }
 
-  async function onDeleteSaved(id: string): Promise<void> {
-    if (!id) return
-    setBusy(true)
-    setMessage(null)
-    try {
-      const result = await window.api.deleteImport(id)
-      if (!result.ok) {
-        showInline('error', result.error)
-        return
-      }
-      if (importMeta?.id === id) {
-        clearImportedDataset()
-      }
-      await refreshImportedList()
-      showInline('success', 'Imported symbol removed.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function onLoadDataset(entry: ImportedDatasetMeta): Promise<void> {
-    setBusy(true)
-    setMessage(null)
-    try {
-      await selectImportedDataset(entry.id, entry.timeframe)
-      setOpen(false)
-      showBanner(
-        'info',
-        `Loaded ${entry.symbol} (${entry.candleCount.toLocaleString()} × 1m · ${isMetatraderImport(entry) ? 'MetaTrader' : 'imported'}).`
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  function onExitImported(): void {
-    setMessage(null)
-    clearImportedDataset()
-    showInline('success', 'Exited imported mode.')
-  }
-
   const messageClass =
     message?.tone === 'error'
       ? 'text-red-400'
@@ -351,7 +295,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
             role="dialog"
             aria-modal="true"
             aria-labelledby="import-data-title"
-            className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
+            className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
@@ -378,9 +322,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
             <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
               <section>
-                <span className="text-[11px] font-medium text-zinc-400">
-                  Import CSV
-                </span>
+                <span className="text-[11px] font-medium text-zinc-400">Import CSV</span>
                 <button
                   type="button"
                   disabled={disabled}
@@ -403,6 +345,9 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                     <ImportProgressBar progress={loadProgress} />
                   </div>
                 )}
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+                  Manage files per symbol on Datasets → Edit.
+                </p>
               </section>
 
               {message && (
@@ -429,96 +374,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                   )}
                 </div>
               )}
-
-              {dataSource === 'imported' && importMeta && (
-                <section className="flex items-center justify-between gap-3 rounded-xl border border-sky-900/50 bg-sky-950/30 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-sky-300">
-                      {importMeta.symbol} ·{' '}
-                      {isMetatraderImport(importMeta) ? 'MetaTrader' : 'imported'}
-                    </p>
-                    <p
-                      className="mt-0.5 truncate text-[11px] text-zinc-500"
-                      title={`${importMeta.originalFileName} · ${formatUtcCandleTime(importMeta.firstTime)} → ${formatUtcCandleTime(importMeta.lastTime)}`}
-                    >
-                      {importMeta.originalFileName}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={onExitImported}
-                    className="inline-flex h-8 shrink-0 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
-                  >
-                    Exit imported
-                  </button>
-                </section>
-              )}
-
-              <section>
-                <span className="text-[11px] font-medium text-zinc-400">
-                  Imported datasets
-                </span>
-                {importedList.length === 0 ? (
-                  <p className="mt-1.5 text-xs text-zinc-600">
-                    {desktop
-                      ? 'No imported datasets yet. Import a CSV or confirm a MetaTrader preview.'
-                      : 'No imported datasets yet. Import a CSV to get started.'}
-                  </p>
-                ) : (
-                  <ul className="mt-1.5 max-h-[11.5rem] divide-y divide-zinc-800/80 overflow-y-auto rounded-xl border border-zinc-800">
-                    {importedList.map((entry) => {
-                      const active = importMeta?.id === entry.id
-                      const live = active && importMeta ? importMeta : entry
-                      const fromMt = isMetatraderImport(live)
-                      return (
-                        <li key={entry.id} className="flex items-center gap-3 px-3 py-2.5">
-                          <div className="min-w-0 flex-1">
-                            <p className="flex items-center gap-2 text-xs font-medium text-zinc-100">
-                              {live.symbol}
-                              {fromMt && (
-                                <span className="rounded-xl border border-emerald-800/70 bg-emerald-950/40 px-1 py-px text-[9px] uppercase tracking-wide text-emerald-300/90">
-                                  MetaTrader
-                                </span>
-                              )}
-                              {active && (
-                                <span className="rounded-xl border border-sky-700/60 bg-sky-950/50 px-1 py-px text-[9px] uppercase tracking-wide text-sky-300">
-                                  On chart
-                                </span>
-                              )}
-                            </p>
-                            <p className="mt-0.5 truncate text-[11px] text-zinc-500">
-                              {live.originalFileName} · {live.candleCount.toLocaleString()} × 1m
-                            </p>
-                            <p className="text-[11px] text-zinc-600">
-                              {formatUtcCandleTime(live.firstTime)} →{' '}
-                              {formatUtcCandleTime(live.lastTime)}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            <button
-                              type="button"
-                              disabled={disabled || active}
-                              onClick={() => void onLoadDataset(entry)}
-                              className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 text-xs font-medium text-zinc-300 hover:border-primary-500/50 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              {active ? 'Loaded' : 'Load'}
-                            </button>
-                            <IconButton
-                              tooltip="Delete imported symbol"
-                              disabled={disabled}
-                              tone="danger"
-                              onClick={() => void onDeleteSaved(entry.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </IconButton>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </section>
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/[0.06] px-4 py-3">
