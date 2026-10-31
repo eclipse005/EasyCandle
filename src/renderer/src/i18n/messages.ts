@@ -352,8 +352,11 @@ const en = {
   'replay.toggleNext': 'Toggle next-candle pane',
   'replay.pauseOnTpSl': 'Pause after price hits TP or SL',
   'replay.saveClose': 'Save & close session',
-  'replay.progressAria': 'Replay progress — click to jump',
-  'replay.progressTip': 'Click to jump within the loaded window',
+  'replay.progressAria': 'Replay progress — drag to scrub',
+  'replay.progressTip': 'Drag to scrub within the loaded window',
+  'replay.seekDiscardTitle': 'Rewind past trades?',
+  'replay.seekDiscardBody': 'Jumping backward will discard trades and orders after this candle. This cannot be undone.',
+  'replay.seekDiscardConfirm': 'Rewind',
 
 
   'cal.month.0': 'Jan',
@@ -919,8 +922,11 @@ const zh: Record<MessageKey, string> = {
   'replay.toggleNext': '切换下一周期图表面板',
   'replay.pauseOnTpSl': '触及止盈/止损后暂停',
   'replay.saveClose': '保存并关闭会话',
-  'replay.progressAria': '回放进度 — 点击跳转',
-  'replay.progressTip': '点击在已加载窗口内跳转',
+  'replay.progressAria': '回放进度 — 拖动 scrub',
+  'replay.progressTip': '拖动在已加载窗口内 scrub',
+  'replay.seekDiscardTitle': '回退并撤销后续成交？',
+  'replay.seekDiscardBody': '向回跳转会丢弃该 K 线之后的成交与挂单，且无法恢复。',
+  'replay.seekDiscardConfirm': '确认回退',
 
   'cal.month.0': '1月',
   'cal.month.1': '2月',

@@ -45,6 +45,8 @@ import {
   placePendingLimit,
   pnlScaleForSymbol,
   rewindTradesAfterStepBack,
+  rewindTradesToTime,
+  hasTradeActivityAfter,
   stopLossFromTakeProfit,
   summarizeSession,
   takeProfitFromStopLoss,
@@ -482,6 +484,12 @@ function secondarySnapshot(): {
   }
 }
 
+export type PendingSeekConfirm =
+  | { kind: 'index'; index: number; resumeIndex: number }
+  | { kind: 'time'; time: number; resumeIndex: number }
+
+export type SeekApplyResult = 'applied' | 'needs-confirm' | 'noop'
+
 type ReplayStore = {
   symbol: string
   timeframe: string
@@ -555,6 +563,8 @@ type ReplayStore = {
   secondaryStatus: ChartStatus
   secondaryError: string | null
   secondaryLoading: boolean
+  /** SoftConfirm payload when a backward seek would discard later trades. */
+  pendingSeekConfirm: PendingSeekConfirm | null
   toggleIndicator: (id: string) => void
   setChartType: (type: ChartType) => void
   setDrawTool: (tool: DrawTool) => void
@@ -627,7 +637,7 @@ type ReplayStore = {
     startTimeSeconds: number,
     opts?: { forwardBars?: number; message?: string | null }
   ) => Promise<void>
-  jumpToTime: (timeSeconds: number) => Promise<void>
+  jumpToTime: (timeSeconds: number, opts?: { force?: boolean }) => Promise<SeekApplyResult>
   finalizeSessionTrades: () => SessionReport | null
   exitReplay: () => void
   resetReplayState: (opts?: { keepImport?: boolean; keepDrawings?: boolean }) => void
@@ -639,8 +649,14 @@ type ReplayStore = {
   stepForward: () => void
   stepBackward: () => void
   setSpeed: (speed: number) => void
-  seekToIndex: (index: number) => void
-  seekToTime: (timeSeconds: number) => void
+  /**
+   * Seek playhead. Backward seeks rewind trades like stepBackward.
+   * SoftConfirm when later trades would be discarded unless `force`.
+   */
+  seekToIndex: (index: number, opts?: { force?: boolean; preview?: boolean }) => SeekApplyResult
+  seekToTime: (timeSeconds: number, opts?: { force?: boolean }) => SeekApplyResult
+  confirmPendingSeek: () => void
+  cancelPendingSeek: () => void
   /**
    * Scroll both panes so a UTC time is visible, without moving the playhead.
    * Pages older candles in first when the target is not loaded yet.
@@ -801,24 +817,121 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
   function rewindPrimaryToIndex(target: number, opts: { rewindTrades?: boolean } = {}): void {
     const rewindTrades = opts.rewindTrades !== false
-    if (!rewindTrades) {
-      if (engine.getState().index !== target) engine.seekToIndex(target)
+    const before = engine.getState().index
+    const candles = engine.getState().candles
+    if (!candles.length) return
+    const clamped = Math.min(candles.length - 1, Math.max(0, Math.floor(target)))
+    if (clamped === before) return
+
+    if (clamped > before) {
+      engine.seekToIndex(clamped)
       return
     }
 
-    while (engine.getState().index > target) {
-      const leftCandle = engine.getCurrentCandle() || get().currentCandle
-      const before = engine.getState().index
-      engine.stepBackward()
-      const after = engine.getState().index
-      if (!(after < before && leftCandle)) continue
-
-      rewindTradesLeavingCandle(
-        leftCandle,
-        (engine.getCurrentCandle() || get().currentCandle)?.time ?? leftCandle.time,
-        intervalSecondsFor(get().timeframe)
-      )
+    if (rewindTrades) {
+      const targetCandle = candles[clamped]
+      if (targetCandle) {
+        const intervalSec = intervalSecondsFor(get().timeframe)
+        applyRewindResult(
+          rewindTradesToTime({
+            positions: get().positions,
+            pendingOrders: get().pendingOrders,
+            closedTrades: get().closedTrades,
+            orderHistory: get().orderHistory,
+            targetCandleTime: targetCandle.time,
+            keepUntil: playheadCoverEnd(targetCandle.time, intervalSec)
+          })
+        )
+      }
     }
+
+    engine.seekToIndex(clamped)
+  }
+
+  function tradeActivityAfterIndex(index: number): boolean {
+    const candles = engine.getState().candles
+    if (!candles.length) return false
+    const clamped = Math.min(candles.length - 1, Math.max(0, Math.floor(index)))
+    const targetCandle = candles[clamped]
+    if (!targetCandle) return false
+    const keepUntil = playheadCoverEnd(targetCandle.time, intervalSecondsFor(get().timeframe))
+    return hasTradeActivityAfter({
+      positions: get().positions,
+      pendingOrders: get().pendingOrders,
+      closedTrades: get().closedTrades,
+      orderHistory: get().orderHistory,
+      targetCandleTime: targetCandle.time,
+      keepUntil
+    })
+  }
+
+  function publishSeekReplace(fitContent: boolean): void {
+    publishReplay('replace', { fitContent })
+    syncSecondaryToPrimaryCover({ fitContent })
+    publishStatus()
+  }
+
+  /** Move playhead only — used while scrubbing before SoftConfirm commits trades. */
+  function seekPlayheadOnly(index: number, fitContent = false): void {
+    stopClock()
+    engine.seekToIndex(index)
+    publishSeekReplace(fitContent)
+  }
+
+  function applySeekToIndex(index: number, opts: { fitContent?: boolean } = {}): void {
+    stopClock()
+    const before = engine.getState().index
+    const candles = engine.getState().candles
+    if (!candles.length) return
+    const clamped = Math.min(candles.length - 1, Math.max(0, Math.floor(index)))
+    if (clamped === before) {
+      publishStatus()
+      return
+    }
+    if (clamped > before) {
+      engine.seekToIndex(clamped)
+      publishSeekReplace(opts.fitContent ?? false)
+      return
+    }
+    rewindPrimaryToIndex(clamped, { rewindTrades: true })
+    publishSeekReplace(opts.fitContent ?? false)
+  }
+
+  function requestSeekToIndex(
+    index: number,
+    opts: { force?: boolean; preview?: boolean; fitContent?: boolean } = {}
+  ): SeekApplyResult {
+    if (get().mode !== 'replay') return 'noop'
+    if (get().replayLoading || get().secondaryLoading) return 'noop'
+
+    const candles = engine.getState().candles
+    if (!candles.length) return 'noop'
+    const clamped = Math.min(candles.length - 1, Math.max(0, Math.floor(Number(index))))
+    if (!Number.isFinite(clamped)) return 'noop'
+    const before = engine.getState().index
+    if (clamped === before) {
+      set({ pendingSeekConfirm: null })
+      return 'noop'
+    }
+
+    // Live scrub preview: move candles only; blotter catches up on pointer-up / confirm.
+    if (opts.preview) {
+      seekPlayheadOnly(clamped, opts.fitContent ?? false)
+      return 'applied'
+    }
+
+    if (clamped < before && !opts.force && tradeActivityAfterIndex(clamped)) {
+      set({
+        pendingSeekConfirm: { kind: 'index', index: clamped, resumeIndex: before }
+      })
+      // Preview the destination playhead so the user sees where Jump/scrub lands.
+      seekPlayheadOnly(clamped, opts.fitContent ?? false)
+      return 'needs-confirm'
+    }
+
+    set({ pendingSeekConfirm: null })
+    applySeekToIndex(clamped, { fitContent: opts.fitContent })
+    return 'applied'
   }
 
   function priceFollowPane(): DriverPane {
@@ -1728,6 +1841,21 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     engine.setSpeed(keptSpeed)
     engine.seekToTime(target)
 
+    const landed = engine.getCurrentCandle()
+    if (landed) {
+      const keepUntil = playheadCoverEnd(landed.time, intervalSecondsFor(timeframe))
+      applyRewindResult(
+        rewindTradesToTime({
+          positions: get().positions,
+          pendingOrders: get().pendingOrders,
+          closedTrades: get().closedTrades,
+          orderHistory: get().orderHistory,
+          targetCandleTime: landed.time,
+          keepUntil
+        })
+      )
+    }
+
     set({
       candles: loaded.candles,
       importWindow: loaded.window,
@@ -1783,6 +1911,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       replayLoading: false,
       replayMessage: null,
       chartFocus: null,
+      pendingSeekConfirm: null,
       ...(opts.keepDrawings ? {} : emptyDrawingState()),
       ...EMPTY_TICKET_LEVELS,
       ticketOrderType: 'market' as TicketOrderType,
@@ -2560,6 +2689,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     secondaryStatus: 'idle',
     secondaryError: null,
     secondaryLoading: false,
+    pendingSeekConfirm: null,
 
     toggleIndicator(id) {
       if (!getIndicator(id)) return
@@ -3571,13 +3701,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       })
     },
 
-    async jumpToTime(timeSeconds) {
-      if (get().mode !== 'replay') return
+    async jumpToTime(timeSeconds, opts = {}) {
+      if (get().mode !== 'replay') return 'noop'
 
       const target = Math.floor(Number(timeSeconds))
       if (!Number.isFinite(target)) {
         set({ replayMessage: 'Invalid jump time.' })
-        return
+        return 'noop'
       }
 
       stopClock()
@@ -3592,19 +3722,49 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
         if (target >= first && target <= last) {
           const found = findIndexAtOrBefore(buffer, target)
-          engine.seekToIndex(found < 0 ? 0 : found)
-          set({ replayMessage: null })
-          publishReplay('replace', { fitContent: true })
-          void maybePrefetch()
-          alignSecondaryAfterPrimaryLoad()
-          return
+          const idx = found < 0 ? 0 : found
+          const result = requestSeekToIndex(idx, { force: opts.force, fitContent: true })
+          if (result === 'applied') {
+            set({ replayMessage: null })
+            void maybePrefetch()
+            alignSecondaryAfterPrimaryLoad()
+          }
+          return result
         }
+      }
+
+      // Outside buffer: SoftConfirm when jumping backward past later trades.
+      const current = engine.getCurrentCandle() || get().currentCandle
+      if (
+        current &&
+        target < current.time &&
+        !opts.force &&
+        hasTradeActivityAfter({
+          positions: get().positions,
+          pendingOrders: get().pendingOrders,
+          closedTrades: get().closedTrades,
+          orderHistory: get().orderHistory,
+          targetCandleTime: target,
+          keepUntil: target
+        })
+      ) {
+        set({
+          pendingSeekConfirm: {
+            kind: 'time',
+            time: target,
+            resumeIndex: engine.getState().index
+          }
+        })
+        return 'needs-confirm'
       }
 
       const jumped = await jumpImportedToTime(target)
       if (!jumped) {
         set({ replayMessage: 'Jump time is outside the imported dataset.' })
+        return 'noop'
       }
+      set({ pendingSeekConfirm: null })
+      return 'applied'
     },
 
     finalizeSessionTrades() {
@@ -3701,20 +3861,40 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       }
     },
 
-    seekToIndex(index) {
-      if (get().mode !== 'replay') return
-      stopClock()
-      engine.seekToIndex(index)
-      publishReplay('replace', { fitContent: false })
-      syncSecondaryToPrimaryCover({ fitContent: false })
+    seekToIndex(index, opts = {}) {
+      return requestSeekToIndex(index, opts)
     },
 
-    seekToTime(timeSeconds) {
-      if (get().mode !== 'replay') return
-      stopClock()
-      engine.seekToTime(timeSeconds)
-      publishReplay('replace', { fitContent: false })
-      syncSecondaryToPrimaryCover({ fitContent: false })
+    seekToTime(timeSeconds, opts = {}) {
+      if (get().mode !== 'replay') return 'noop'
+      const buffer = engine.getState().candles
+      if (!buffer.length) return 'noop'
+      const found = findIndexAtOrBefore(buffer, timeSeconds)
+      return requestSeekToIndex(found < 0 ? 0 : found, opts)
+    },
+
+    confirmPendingSeek() {
+      const pending = get().pendingSeekConfirm
+      if (!pending) return
+      set({ pendingSeekConfirm: null })
+      if (pending.kind === 'index') {
+        // Preview may already sit on the target index with trades untouched —
+        // restore the pre-seek playhead so applySeek can rewind from there.
+        if (engine.getState().index !== pending.resumeIndex) {
+          seekPlayheadOnly(pending.resumeIndex, false)
+        }
+        applySeekToIndex(pending.index, { fitContent: false })
+        void maybePrefetch()
+        return
+      }
+      void get().jumpToTime(pending.time, { force: true })
+    },
+
+    cancelPendingSeek() {
+      const pending = get().pendingSeekConfirm
+      if (!pending) return
+      set({ pendingSeekConfirm: null })
+      seekPlayheadOnly(pending.resumeIndex, false)
     },
 
     async focusChartTime(timeSeconds) {

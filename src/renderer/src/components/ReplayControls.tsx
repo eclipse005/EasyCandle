@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -13,6 +13,7 @@ import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
 import Dropdown from '@/components/Dropdown'
 import IconButton from '@/components/IconButton'
 import Tooltip from '@/components/Tooltip'
+import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import {
   defaultSessionParts,
   parseSessionParts,
@@ -27,6 +28,15 @@ import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useT } from '@/i18n/useT'
+
+function indexFromClientX(
+  clientX: number,
+  rect: DOMRect,
+  bufferLength: number
+): number {
+  const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)))
+  return Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
+}
 
 export default function ReplayControls() {
   const { t } = useT()
@@ -51,6 +61,9 @@ export default function ReplayControls() {
   const setDriverPane = useReplayStore((s) => s.setDriverPane)
   const jumpToTime = useReplayStore((s) => s.jumpToTime)
   const seekToIndex = useReplayStore((s) => s.seekToIndex)
+  const confirmPendingSeek = useReplayStore((s) => s.confirmPendingSeek)
+  const cancelPendingSeek = useReplayStore((s) => s.cancelPendingSeek)
+  const pendingSeekConfirm = useReplayStore((s) => s.pendingSeekConfirm)
   const bufferLength = useReplayStore((s) => s.bufferLength)
   const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
   const pauseOnTpSl = useReplayStore((s) => s.pauseOnTpSl)
@@ -72,9 +85,61 @@ export default function ReplayControls() {
   const [jumpTime, setJumpTime] = useState(seed.time)
   const [jumpError, setJumpError] = useState<string | null>(null)
 
+  const trackRef = useRef<HTMLDivElement>(null)
+  const draggingRef = useRef(false)
+  const scrubOriginRef = useRef(0)
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null)
+
   const busy = replayLoading || secondaryLoading
   const ended = replayStatus === 'ended'
   const driverIndex = chartSplit && driverPane === 'secondary' ? secondaryReplayIndex : replayIndex
+  const displayIndex = scrubIndex ?? driverIndex
+  const progressPct =
+    bufferLength > 0 ? Math.min(100, ((displayIndex + 1) / bufferLength) * 100) : 0
+
+  useEffect(() => {
+    if (!draggingRef.current) setScrubIndex(null)
+  }, [driverIndex])
+
+  useEffect(() => {
+    function onMove(event: PointerEvent): void {
+      if (!draggingRef.current || !trackRef.current || bufferLength <= 0) return
+      const idx = indexFromClientX(event.clientX, trackRef.current.getBoundingClientRect(), bufferLength)
+      setScrubIndex(idx)
+      seekToIndex(idx, { preview: true })
+    }
+
+    function onUp(event: PointerEvent): void {
+      if (!draggingRef.current) return
+      draggingRef.current = false
+      const track = trackRef.current
+      const idx =
+        track && bufferLength > 0
+          ? indexFromClientX(event.clientX, track.getBoundingClientRect(), bufferLength)
+          : (scrubIndex ?? driverIndex)
+      setScrubIndex(null)
+      // Commit from the index before the scrub so SoftConfirm can restore it.
+      // Preview already moved the playhead; force=false still gates discard.
+      const origin = scrubOriginRef.current
+      if (idx === origin) {
+        seekToIndex(idx, { force: true })
+        return
+      }
+      // Restore origin first so requestSeek sees a real backward/forward delta
+      // against the pre-scrub trade state (preview never rewound trades).
+      seekToIndex(origin, { preview: true })
+      seekToIndex(idx)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [bufferLength, driverIndex, scrubIndex, seekToIndex])
 
   async function onJump(event: FormEvent): Promise<void> {
     event.preventDefault()
@@ -273,33 +338,63 @@ export default function ReplayControls() {
       </Dropdown>
 
       {bufferLength > 0 ? (
-        <div className="ml-0.5 flex min-w-[7.5rem] max-w-[11rem] flex-1 items-center gap-1.5">
-          <button
-            type="button"
-            disabled={busy}
+        <div className="ml-0.5 flex min-w-[8.5rem] max-w-[14rem] flex-1 items-center gap-1.5">
+          <div
+            ref={trackRef}
+            role="slider"
+            tabIndex={busy ? -1 : 0}
+            aria-valuemin={1}
+            aria-valuemax={bufferLength}
+            aria-valuenow={displayIndex + 1}
             aria-label={t('replay.progressAria')}
             title={t('replay.progressTip')}
-            className="group relative h-8 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={(event) => {
+            aria-disabled={busy}
+            className="group relative h-8 min-w-0 flex-1 cursor-ew-resize touch-none rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 disabled:cursor-not-allowed select-none"
+            onPointerDown={(event) => {
               if (busy || bufferLength <= 0) return
-              const rect = event.currentTarget.getBoundingClientRect()
-              const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)))
-              const idx = Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
-              seekToIndex(idx)
-              event.currentTarget.blur()
+              event.preventDefault()
+              draggingRef.current = true
+              scrubOriginRef.current = driverIndex
+              const idx = indexFromClientX(
+                event.clientX,
+                event.currentTarget.getBoundingClientRect(),
+                bufferLength
+              )
+              setScrubIndex(idx)
+              seekToIndex(idx, { preview: true })
+              event.currentTarget.setPointerCapture?.(event.pointerId)
+            }}
+            onKeyDown={(event) => {
+              if (busy || bufferLength <= 0) return
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                seekToIndex(Math.max(0, driverIndex - 1))
+              } else if (event.key === 'ArrowRight') {
+                event.preventDefault()
+                seekToIndex(Math.min(bufferLength - 1, driverIndex + 1))
+              } else if (event.key === 'Home') {
+                event.preventDefault()
+                seekToIndex(0)
+              } else if (event.key === 'End') {
+                event.preventDefault()
+                seekToIndex(bufferLength - 1)
+              }
             }}
           >
             <span
               className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-primary-500/35"
-              style={{
-                width: `calc(${Math.min(100, ((driverIndex + 1) / bufferLength) * 100)}% - 0.25rem)`
-              }}
+              style={{ width: `calc(${progressPct}% - 0.25rem)` }}
+              aria-hidden
+            />
+            <span
+              className="pointer-events-none absolute top-1/2 z-[2] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary-300 bg-zinc-950 shadow shadow-black/40"
+              style={{ left: `${Math.min(100, Math.max(0, progressPct))}%` }}
               aria-hidden
             />
             <span className="relative z-[1] text-[10px] font-medium tabular-nums text-zinc-400 group-hover:text-zinc-200">
-              {driverIndex + 1}/{bufferLength}
+              {displayIndex + 1}/{bufferLength}
             </span>
-          </button>
+          </div>
         </div>
       ) : null}
 
@@ -311,6 +406,17 @@ export default function ReplayControls() {
       >
         <LogOut className="h-4 w-4" />
       </IconButton>
+
+      <SoftConfirmDialog
+        open={pendingSeekConfirm != null}
+        title={t('replay.seekDiscardTitle')}
+        description={t('replay.seekDiscardBody')}
+        confirmLabel={t('replay.seekDiscardConfirm')}
+        cancelLabel={t('common.cancel')}
+        danger
+        onConfirm={confirmPendingSeek}
+        onCancel={cancelPendingSeek}
+      />
     </div>
   )
 }

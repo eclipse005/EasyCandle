@@ -31,6 +31,8 @@ import {
   pnlScaleForSymbol,
   realizedRiskReward,
   rewindTradesAfterStepBack,
+  rewindTradesToTime,
+  hasTradeActivityAfter,
   sessionPerformance,
   sideReport,
   stopLossFromTakeProfit,
@@ -1309,5 +1311,75 @@ describe('equityCurve', () => {
     expect(curve[0]?.equity).toBe(1000)
     expect(curve[1]?.equity).toBe(1010)
     expect(curve[2]?.equity).toBe(1020)
+  })
+})
+
+
+describe('rewindTradesToTime + hasTradeActivityAfter', () => {
+  const closedAt20 = flatClosed({
+    id: 't1',
+    side: 'long',
+    entryPrice: 100,
+    entryTime: 10,
+    exitPrice: 90,
+    exitTime: 20,
+    pnl: -10,
+    exitReason: 'sl',
+    takeProfit: 120,
+    stopLoss: 90
+  })
+
+  it('bulk rewind matches stepping back across multiple candles', () => {
+    const bulk = rewindTradesToTime({
+      positions: [],
+      closedTrades: [closedAt20],
+      targetCandleTime: 10,
+      keepUntil: 14
+    })
+    expect(bulk.closedTrades).toHaveLength(0)
+    expect(bulk.positions).toHaveLength(1)
+    expect(bulk.positions[0]?.id).toBe('t1')
+    expect(bulk.discardedExitTimes).toEqual([20])
+  })
+
+  it('hasTradeActivityAfter is true when a later exit exists', () => {
+    expect(
+      hasTradeActivityAfter({
+        closedTrades: [closedAt20],
+        targetCandleTime: 10,
+        keepUntil: 14
+      })
+    ).toBe(true)
+  })
+
+  it('hasTradeActivityAfter is false when landing after the exit', () => {
+    expect(
+      hasTradeActivityAfter({
+        closedTrades: [closedAt20],
+        targetCandleTime: 20,
+        keepUntil: 24
+      })
+    ).toBe(false)
+  })
+
+  it('forgets an open position entered after the landing candle', () => {
+    const result = rewindTradesToTime({
+      positions: [
+        {
+          id: 'p1',
+          side: 'long',
+          entryPrice: 100,
+          entryTime: 20,
+          lots: 1,
+          takeProfit: null,
+          stopLoss: null
+        }
+      ],
+      closedTrades: [],
+      targetCandleTime: 10,
+      keepUntil: 14
+    })
+    expect(result.positions).toEqual([])
+    expect(result.discardedEntryTimes).toEqual([20])
   })
 })

@@ -995,6 +995,107 @@ export function rewindTradesAfterStepBack(args: {
 }
 
 /**
+ * True when seeking back to a candle would forget or reopen trades / orders
+ * after that playhead (SoftConfirm gate for Jump / scrub / RMB).
+ */
+export function hasTradeActivityAfter(args: {
+  positions?: Position[]
+  pendingOrders?: PendingOrder[]
+  closedTrades?: ClosedTrade[]
+  orderHistory?: HistoricOrder[]
+  /** Landing candle open time. */
+  targetCandleTime: number
+  /** Inclusive end of the landing candle — exits/history after this are after. */
+  keepUntil: number
+}): boolean {
+  const { targetCandleTime, keepUntil } = args
+  if ((args.positions ?? []).some((p) => targetCandleTime < p.entryTime)) return true
+  if ((args.pendingOrders ?? []).some((p) => targetCandleTime < p.placedTime)) return true
+  if (
+    (args.closedTrades ?? []).some(
+      (t) => t.exitTime > keepUntil || targetCandleTime < t.entryTime
+    )
+  ) {
+    return true
+  }
+  if ((args.orderHistory ?? []).some((o) => o.updateTime > keepUntil)) return true
+  return false
+}
+
+/**
+ * Bulk rewind to a landing candle — same end state as repeatedly calling
+ * `rewindTradesAfterStepBack` from the current playhead back to `targetCandleTime`.
+ */
+export function rewindTradesToTime(args: {
+  positions?: Position[]
+  pendingOrders?: PendingOrder[]
+  closedTrades: ClosedTrade[]
+  orderHistory?: HistoricOrder[]
+  targetCandleTime: number
+  /** Inclusive end of the landing candle. Defaults to `targetCandleTime`. */
+  keepUntil?: number
+}): TradeRewindResult {
+  const { targetCandleTime } = args
+  const keepUntil = args.keepUntil ?? targetCandleTime
+  let positions = Array.isArray(args.positions) ? [...args.positions] : []
+  let pendingOrders = Array.isArray(args.pendingOrders) ? [...args.pendingOrders] : []
+  let closedTrades = Array.isArray(args.closedTrades) ? [...args.closedTrades] : []
+  let orderHistory = Array.isArray(args.orderHistory) ? [...args.orderHistory] : []
+  const discardedEntryTimes: number[] = []
+  const discardedExitTimes: number[] = []
+
+  const keptPositions: Position[] = []
+  for (const position of positions) {
+    if (targetCandleTime < position.entryTime) {
+      discardedEntryTimes.push(position.entryTime)
+      const restored = pendingFromFilledPosition(position, targetCandleTime)
+      if (restored) pendingOrders.push(restored)
+      continue
+    }
+    keptPositions.push(position)
+  }
+  positions = keptPositions
+
+  const stillClosed: ClosedTrade[] = []
+  for (const trade of closedTrades) {
+    if (trade.exitTime <= keepUntil) {
+      stillClosed.push(trade)
+      continue
+    }
+    discardedExitTimes.push(trade.exitTime)
+    if (trade.entryTime <= targetCandleTime) {
+      positions.push(positionFromClosedTrade(trade))
+    } else {
+      const restored = pendingFromFilledPosition(positionFromClosedTrade(trade), targetCandleTime)
+      if (restored) pendingOrders.push(restored)
+      discardedEntryTimes.push(trade.entryTime)
+    }
+  }
+  closedTrades = stillClosed
+
+  const restoredCanceled: HistoricOrder[] = []
+  const keptHistory: HistoricOrder[] = []
+  for (const order of orderHistory) {
+    if (order.updateTime <= keepUntil) {
+      keptHistory.push(order)
+      continue
+    }
+    if (order.status === 'canceled') restoredCanceled.push(order)
+  }
+  orderHistory = keptHistory
+
+  for (const order of restoredCanceled) {
+    if (isPendingTicketType(order.type) && order.placedTime <= targetCandleTime) {
+      pendingOrders.push(pendingFromHistoricOrder(order))
+    }
+  }
+
+  pendingOrders = pendingOrders.filter((pending) => !(targetCandleTime < pending.placedTime))
+
+  return { positions, pendingOrders, closedTrades, orderHistory, discardedEntryTimes, discardedExitTimes }
+}
+
+/**
  * Check whether the candle's high/low (shadows) or close touches TP/SL.
  * If both hit on the same bar, SL wins (conservative).
  */
