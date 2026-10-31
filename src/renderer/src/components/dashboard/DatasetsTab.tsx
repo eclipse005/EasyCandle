@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
-import { groupImportsBySymbol } from '@shared/dateCoverage'
+import { coverageSpanLabel, groupImportsBySymbol } from '@shared/dateCoverage'
 import { useReplayStore } from '@/store/replayStore'
 import ImportDataDialog from '@/components/ImportDataDialog'
 import SymbolDatasetsDialog from '@/components/dashboard/SymbolDatasetsDialog'
@@ -66,10 +65,9 @@ export default function DatasetsTab(): ReactNode {
       ) : (
         <div className="space-y-2.5">
           {groups.map((group) => {
-            const span =
-              group.firstTime && group.lastTime
-                ? `${formatUtcCandleTime(group.firstTime)} → ${formatUtcCandleTime(group.lastTime)}`
-                : '—'
+            const span = coverageSpanLabel(group.coverageDays)
+            const dayCount = group.coverageDays.size
+            const daysLabel = `${dayCount.toLocaleString()} day${dayCount === 1 ? '' : 's'}`
             return (
               <SoftCard
                 key={group.key}
@@ -85,7 +83,7 @@ export default function DatasetsTab(): ReactNode {
                       {group.fileCount} file{group.fileCount === 1 ? '' : 's'}
                     </span>
                     <span className="rounded-lg border border-white/[0.08] bg-zinc-950/50 px-2 py-0.5 text-[11px] text-zinc-400">
-                      {group.candleCount.toLocaleString()} candles
+                      {daysLabel}
                     </span>
                     <span className="truncate text-[12px] text-zinc-500">{span}</span>
                   </div>

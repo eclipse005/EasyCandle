@@ -172,7 +172,7 @@ export default function CreateSessionDialog({
             {symbolGroups.map((g) => (
               <option key={g.key} value={g.key}>
                 {g.symbol} · {g.fileCount} file{g.fileCount === 1 ? '' : 's'} ·{' '}
-                {g.candleCount.toLocaleString()} candles
+                {g.coverageDays.size.toLocaleString()} day{g.coverageDays.size === 1 ? '' : 's'}
               </option>
             ))}
           </SoftSelect>

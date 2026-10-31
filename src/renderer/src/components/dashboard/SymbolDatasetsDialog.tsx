@@ -4,7 +4,7 @@ import type { ImportedDatasetMeta, ImportOrigin } from '@shared/importTypes'
 import { coverageDaysFromMetas } from '@shared/dateCoverage'
 import { IMPORT_BUILD_UI_PERCENT, type ImportJobProgress } from '@shared/importJobProgress'
 import { yieldToEventLoop } from '@shared/yieldToEventLoop'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
+import { toUtcParts } from '@/lib/utcDateTime'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
@@ -272,8 +272,8 @@ export default function SymbolDatasetsDialog({
                         </p>
                         <p className={cn('mt-1', softType.caption)}>
                           {meta.candleCount.toLocaleString()} × 1m ·{' '}
-                          {formatUtcCandleTime(meta.firstTime)} →{' '}
-                          {formatUtcCandleTime(meta.lastTime)}
+                          {toUtcParts(meta.firstTime).date || '—'} →{' '}
+                          {toUtcParts(meta.lastTime).date || '—'}
                         </p>
                       </div>
                       <SoftButton
@@ -318,7 +318,7 @@ export default function SymbolDatasetsDialog({
           <DateCoveragePopover
             mode="coverage"
             coverageDays={coverage}
-            caption="Date coverage (UTC)"
+            caption="Date coverage"
             disabled={importDisabled}
           />
         </div>
