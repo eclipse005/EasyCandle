@@ -379,3 +379,22 @@ select option {
     transform: none;
   }
 }
+
+
+/* Symbols list: 2-col follows main content width (sidebar expand/collapse). */
+.symbols-list-container {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+}
+.symbols-list-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+@container (min-width: 40rem) {
+  .symbols-list-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

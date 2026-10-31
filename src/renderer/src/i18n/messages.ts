@@ -1152,13 +1152,8 @@ export function detectDefaultLocale(): Locale {
   } catch {
     // ignore
   }
-  try {
-    const lang = (navigator.language || 'en').toLowerCase()
-    if (lang.startsWith('zh')) return 'zh'
-  } catch {
-    // ignore
-  }
-  return 'en'
+  // First visit / no saved preference → Chinese UI (Settings can still switch).
+  return 'zh'
 }
 
 export function translate(
