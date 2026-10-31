@@ -239,7 +239,7 @@ export default function SymbolDatasetsDialog({
         labelledBy="symbol-datasets-title"
         title={`${symbol} datasets`}
         description="Each CSV is a dataset under this symbol. Overlapping bars: newer import wins."
-        className="max-w-2xl"
+        className="max-h-[min(90vh,48rem)] max-w-3xl"
         closeDisabled={importDisabled}
         footer={
           <>
@@ -249,7 +249,7 @@ export default function SymbolDatasetsDialog({
               onClick={() => void onImportMore()}
             >
               <FileUp className="h-3.5 w-3.5" aria-hidden />
-              {loadProgress ? 'Importing…' : 'Import more CSV'}
+              {loadProgress ? 'Importing…' : 'Import'}
             </SoftButton>
             <SoftButton variant="primary" disabled={importDisabled} onClick={handleClose}>
               Done
@@ -261,7 +261,7 @@ export default function SymbolDatasetsDialog({
           {files.length === 0 ? (
             <SoftEmpty>No files for this symbol — import a CSV.</SoftEmpty>
           ) : (
-            <div className="max-h-[11.5rem] overflow-y-auto rounded-xl border border-white/[0.06]">
+            <div className="max-h-[min(40vh,22rem)] overflow-y-auto rounded-xl border border-white/[0.06]">
               <ul className="divide-y divide-white/[0.05]">
                 {files.map((meta) => {
                   return (
