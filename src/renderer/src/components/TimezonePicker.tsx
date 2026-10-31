@@ -93,11 +93,12 @@ export default function TimezonePicker({
             aria-required={!value}
             title={value ? chartTimezoneById(value).id : undefined}
             className={cn(
-              'flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 text-left text-body font-medium text-zinc-100 outline-none transition-colors',
+              'flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 text-left font-medium text-zinc-100 outline-none transition-colors',
               'hover:bg-zinc-900 focus:border-primary-500/40 focus:bg-zinc-900',
               open && 'border-primary-500/40 bg-zinc-900',
               disabled && 'cursor-not-allowed opacity-40',
               !value && 'text-zinc-500',
+              !/(^|\s)text-/.test(triggerClassName ?? '') && 'text-caption',
               triggerClassName
             )}
           >
