@@ -43,7 +43,7 @@ export default function SoftDialog({
         aria-modal="true"
         aria-labelledby={labelledBy}
         className={cn(
-          'w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl shadow-black/50',
+          'flex max-h-[min(90vh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl shadow-black/50',
           className
         )}
         onClick={(event) => event.stopPropagation()}
@@ -69,7 +69,7 @@ export default function SoftDialog({
           </SoftButton>
         </div>
 
-        <div className="px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer != null ? (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/[0.06] px-5 py-3.5">

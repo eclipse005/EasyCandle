@@ -351,7 +351,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
             role="dialog"
             aria-modal="true"
             aria-labelledby="import-data-title"
-            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
+            className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
@@ -466,7 +466,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                       : 'No imported datasets yet. Import a CSV to get started.'}
                   </p>
                 ) : (
-                  <ul className="mt-1.5 divide-y divide-zinc-800/80 rounded-xl border border-zinc-800">
+                  <ul className="mt-1.5 max-h-[11.5rem] divide-y divide-zinc-800/80 overflow-y-auto rounded-xl border border-zinc-800">
                     {importedList.map((entry) => {
                       const active = importMeta?.id === entry.id
                       const live = active && importMeta ? importMeta : entry
@@ -483,7 +483,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                               )}
                               {active && (
                                 <span className="rounded-xl border border-sky-700/60 bg-sky-950/50 px-1 py-px text-[9px] uppercase tracking-wide text-sky-300">
-                                  Active
+                                  On chart
                                 </span>
                               )}
                             </p>

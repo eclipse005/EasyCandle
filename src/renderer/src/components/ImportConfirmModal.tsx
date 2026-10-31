@@ -120,7 +120,7 @@ export default function ImportConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-6"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3 sm:p-6"
       role="presentation"
       onClick={() => {
         if (!busy) onCancel()

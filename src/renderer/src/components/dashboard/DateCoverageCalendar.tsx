@@ -87,6 +87,7 @@ export default function DateCoverageCalendar({
       out.push({ day: d, key })
     }
     while (out.length % 7 !== 0) out.push(null)
+    while (out.length < 42) out.push(null)
     return out
   }, [year, month])
 
