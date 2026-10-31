@@ -1,0 +1,12 @@
+node_modules
+out
+dist
+release
+*.local
+.DS_Store
+.zcode-site/
+test-data
+
+# local artifacts
+.zcode/
+gui-test-screenshots/
