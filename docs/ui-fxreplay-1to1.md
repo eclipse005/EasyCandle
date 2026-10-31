@@ -100,3 +100,12 @@
 - [x] Dashboard breathing room + Soft* primitives (`components/ui/`)
 - [x] Ticket/blotter density closer to FXR (labels/spacing; field order unchanged)
 - [x] Double-chevron icon retained
+
+
+## Soft pass 3 — dashboard chrome (2026-10-31)
+
+- [x] Left sidebar IA: Testing / Strategies + Datasets / Symbols + Settings (no Live/Battles/Upgrade/Education)
+- [x] Testing sub-tabs: Dashboard | Sessions | Trades | Analytics (underline active)
+- [x] Dashboard action cards + local IndexedDB performance metrics
+- [x] Typography: Inter Variable + documented scale (page title / metric / section / body / caption) in `main.css`, `TYPOGRAPHY` / Tailwind `fontSize`
+- [ ] In-session chrome beyond nav open — deferred this pass

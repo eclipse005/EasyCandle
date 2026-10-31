@@ -21,6 +21,30 @@ module.exports = {
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          'Inter Variable',
+          'Inter',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif'
+        ]
+      },
+      fontSize: {
+        'page-title': ['1.75rem', { lineHeight: '1.2', letterSpacing: '-0.025em', fontWeight: '600' }],
+        metric: ['1.75rem', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '600' }],
+        section: ['0.9375rem', { lineHeight: '1.35', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'card-title': ['0.875rem', { lineHeight: '1.4', fontWeight: '500' }],
+        body: ['0.8125rem', { lineHeight: '1.5', fontWeight: '400' }],
+        caption: ['0.75rem', { lineHeight: '1.4', fontWeight: '400' }],
+        micro: ['0.6875rem', { lineHeight: '1.3', fontWeight: '500' }]
+      },
       colors: {
         zinc: scale('zinc'),
         amber: scale('amber'),

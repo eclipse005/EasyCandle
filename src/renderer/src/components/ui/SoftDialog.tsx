@@ -50,11 +50,11 @@ export default function SoftDialog({
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
           <div className="min-w-0">
-            <h2 id={labelledBy} className="text-[15px] font-semibold tracking-tight text-zinc-100">
+            <h2 id={labelledBy} className="text-section tracking-tight text-zinc-100">
               {title}
             </h2>
             {description != null ? (
-              <p className="mt-1 text-[12px] leading-relaxed text-zinc-400">{description}</p>
+              <p className="mt-1 text-caption leading-relaxed text-zinc-400">{description}</p>
             ) : null}
           </div>
           <SoftButton

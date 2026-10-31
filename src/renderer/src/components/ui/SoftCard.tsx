@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/components/ui/cn'
+import { softSurface } from '@/components/ui/softTokens'
 
 type SoftCardProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
@@ -7,7 +8,7 @@ type SoftCardProps = HTMLAttributes<HTMLDivElement> & {
   elevated?: boolean
 }
 
-/** Muted SaaS card surface — rounded-2xl, soft border, quiet shadow. */
+/** Muted SaaS card surface — tokens from softSurface (radius / border / shadow). */
 export default function SoftCard({
   children,
   elevated = false,
@@ -16,11 +17,7 @@ export default function SoftCard({
 }: SoftCardProps) {
   return (
     <div
-      className={cn(
-        'rounded-2xl border border-white/[0.06] shadow-lg shadow-black/15',
-        elevated ? 'bg-zinc-900/70' : 'bg-zinc-900/45',
-        className
-      )}
+      className={cn(elevated ? softSurface.cardElevated : softSurface.card, className)}
       {...rest}
     >
       {children}

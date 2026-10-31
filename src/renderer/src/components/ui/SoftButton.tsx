@@ -20,11 +20,11 @@ const VARIANT: Record<SoftButtonVariant, string> = {
 }
 
 const SIZE = {
-  sm: 'h-7 gap-1 rounded-xl px-2.5 text-[11px] font-medium',
-  md: 'h-8 gap-1.5 rounded-xl px-3 text-xs font-medium'
+  sm: 'h-7 gap-1 rounded-xl px-2.5 text-micro font-medium',
+  md: 'h-8 gap-1.5 rounded-xl px-3 text-caption font-medium'
 } as const
 
-/** Soft fill / soft hover buttons — prefer primary soft fill over sharp outlines. */
+/** Soft fill / soft hover buttons — type/radius from Soft tokens. */
 export default function SoftButton({
   children,
   variant = 'secondary',

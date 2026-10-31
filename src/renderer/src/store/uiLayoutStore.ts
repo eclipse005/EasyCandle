@@ -4,8 +4,14 @@ import type { SessionReport } from '@/store/replayStore'
 
 const STORAGE_KEY = 'bar-replay:ui-layout'
 
-/** Tabs of the management console (the app's home view). */
-export type DashboardTab = 'dashboard' | 'sessions' | 'datasets' | 'symbols' | 'strategies'
+/** Primary left-sidebar destinations (FX Replay–style). */
+export type SidebarNav = 'testing' | 'strategies' | 'datasets' | 'symbols' | 'settings'
+
+/** Horizontal sub-tabs when Testing is selected. */
+export type TestingTab = 'dashboard' | 'sessions' | 'trades' | 'analytics'
+
+/** @deprecated Prefer SidebarNav + TestingTab; kept for older call sites. */
+export type DashboardTab = TestingTab | 'datasets' | 'symbols' | 'strategies' | 'settings'
 
 export type PanelPos = { x: number; y: number }
 
@@ -39,7 +45,14 @@ type UiLayoutState = {
   aboutDialogOpen: boolean
   importDataDialogOpen: boolean
   chartSettingsDialogOpen: boolean
-  /** Active tab of the management console (Dashboard view). */
+  /** Active left-sidebar destination. */
+  sidebarNav: SidebarNav
+  /** Active Testing sub-tab (only meaningful when sidebarNav === 'testing'). */
+  testingTab: TestingTab
+  /**
+   * @deprecated Derived bridge for older callers — prefer sidebarNav / testingTab.
+   * Writing via setDashboardTab still works.
+   */
   dashboardTab: DashboardTab
   hasCompletedTour: boolean
   /** Session-only counter; bumping it asks AppTour to (re)start. */
@@ -67,6 +80,8 @@ type UiLayoutState = {
   setAboutDialogOpen: (value: boolean) => void
   setImportDataDialogOpen: (value: boolean) => void
   setChartSettingsDialogOpen: (value: boolean) => void
+  setSidebarNav: (nav: SidebarNav) => void
+  setTestingTab: (tab: TestingTab) => void
   setDashboardTab: (tab: DashboardTab) => void
   startTour: () => void
   completeTour: () => void
@@ -128,7 +143,10 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   chartSettingsDialogOpen: false,
   symbolManagerDialogOpen: false,
   sessionManagerDialogOpen: false,
-  dashboardTab: 'dashboard',  hasCompletedTour: initial.hasCompletedTour === true,
+  sidebarNav: 'testing',
+  testingTab: 'dashboard',
+  dashboardTab: 'dashboard',
+  hasCompletedTour: initial.hasCompletedTour === true,
   tourRequestId: 0,
   tourPaperTradePreview: false,
   tourPaperTradeRestore: null,
@@ -217,8 +235,24 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     set({ chartSettingsDialogOpen: value })
   },
 
+  setSidebarNav: (nav) => {
+    if (nav === get().sidebarNav) return
+    // Bridge: keep dashboardTab roughly aligned for anything still reading it.
+    const bridge: DashboardTab =
+      nav === 'testing' ? get().testingTab : nav
+    set({ sidebarNav: nav, dashboardTab: bridge })
+  },
+
+  setTestingTab: (tab) => {
+    set({ testingTab: tab, sidebarNav: 'testing', dashboardTab: tab })
+  },
+
   setDashboardTab: (tab) => {
-    set({ dashboardTab: tab })
+    if (tab === 'datasets' || tab === 'symbols' || tab === 'strategies' || tab === 'settings') {
+      set({ sidebarNav: tab, dashboardTab: tab })
+      return
+    }
+    set({ sidebarNav: 'testing', testingTab: tab, dashboardTab: tab })
   },
 
   startTour: () => {
@@ -236,6 +270,8 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
       aboutDialogOpen: false,
       importDataDialogOpen: false,
       chartSettingsDialogOpen: false,
+      sidebarNav: 'testing',
+      testingTab: 'dashboard',
       dashboardTab: 'dashboard',
       tourRequestId: get().tourRequestId + 1
     })

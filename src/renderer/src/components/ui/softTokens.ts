@@ -1,0 +1,48 @@
+/**
+ * Soft* design tokens — single source for colors, radius, type, spacing.
+ * Prefer these class fragments over magic numbers in Soft* and dashboard pages.
+ * Values mirror CSS vars in main.css + TYPOGRAPHY / UI_TOKENS in theme.ts.
+ */
+
+/** Surfaces */
+export const softSurface = {
+  page: 'bg-zinc-950 text-zinc-200',
+  card: 'rounded-2xl border border-white/[0.06] bg-zinc-900/45 shadow-lg shadow-black/15',
+  cardElevated: 'rounded-2xl border border-white/[0.06] bg-zinc-900/70 shadow-lg shadow-black/15',
+  hairline: 'border-white/[0.06]',
+  hairlineStrong: 'border-white/10',
+  inset: 'rounded-2xl border border-white/[0.05] bg-zinc-950/50'
+} as const
+
+/** Type roles (Tailwind fontSize extensions from theme). */
+export const softType = {
+  pageTitle: 'text-page-title text-zinc-50',
+  metric: 'text-metric tabular-nums text-zinc-50',
+  section: 'text-section text-zinc-100',
+  cardTitle: 'text-card-title text-zinc-100',
+  body: 'text-body text-zinc-200',
+  bodyMuted: 'text-body text-zinc-400',
+  tab: 'text-body font-medium',
+  caption: 'text-caption text-zinc-500',
+  micro: 'text-micro text-zinc-600'
+} as const
+
+/** Spacing rhythm used by Soft* chrome. */
+export const softSpace = {
+  pageX: 'px-7',
+  pageY: 'py-7',
+  cardPad: 'px-5 py-5',
+  cardPadSm: 'px-4 py-3.5',
+  sectionGap: 'space-y-5',
+  stackGap: 'space-y-4',
+  rowGap: 'gap-3'
+} as const
+
+/** Nav / pill active states (FXR soft SaaS). */
+export const softNav = {
+  pillActive: 'bg-zinc-800/80 text-zinc-50 shadow-sm shadow-black/20',
+  pillIdle: 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
+  tabActive: 'text-zinc-50',
+  tabIdle: 'text-zinc-500 hover:text-zinc-300',
+  tabUnderline: 'absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-zinc-100'
+} as const

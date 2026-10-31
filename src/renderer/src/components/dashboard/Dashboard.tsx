@@ -2,73 +2,81 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   CircleDollarSign,
   Database,
-  ExternalLink,
+  FlaskConical,
   GitBranch,
   LayoutDashboard,
-  ListVideo
+  LineChart,
+  ListVideo,
+  Settings,
+  Table2
 } from 'lucide-react'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
+import { APP_NAME } from '@shared/appName'
 import { useReplayStore } from '@/store/replayStore'
-import { useUiLayoutStore, type DashboardTab } from '@/store/uiLayoutStore'
+import {
+  useUiLayoutStore,
+  type SidebarNav,
+  type TestingTab
+} from '@/store/uiLayoutStore'
 import SessionsTab from '@/components/dashboard/SessionsTab'
 import DatasetsTab from '@/components/dashboard/DatasetsTab'
 import SymbolsTab from '@/components/dashboard/SymbolsTab'
 import StrategiesTab from '@/components/dashboard/StrategiesTab'
+import TestingDashboardTab from '@/components/dashboard/TestingDashboardTab'
+import TradesTab from '@/components/dashboard/TradesTab'
+import AnalyticsTab from '@/components/dashboard/AnalyticsTab'
+import SettingsPanel from '@/components/dashboard/SettingsPanel'
 import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog'
 import SessionReportDialog from '@/components/SessionReportDialog'
+import AboutDialog from '@/components/AboutDialog'
 import iconUrl from '@/assets/barreplay-icon.svg'
+import { cn } from '@/components/ui/cn'
+import { softNav, softType } from '@/components/ui/softTokens'
 
-const TABS: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'sessions', label: 'Sessions', icon: ListVideo },
-  { id: 'datasets', label: 'Datasets', icon: Database },
-  { id: 'symbols', label: 'Symbols', icon: CircleDollarSign },
+const SIDEBAR_PRIMARY: { id: SidebarNav; label: string; icon: typeof FlaskConical }[] = [
+  { id: 'testing', label: 'Testing', icon: FlaskConical },
   { id: 'strategies', label: 'Strategies', icon: GitBranch }
 ]
 
-const PAGE_COPY: Record<DashboardTab, { title: string; description: string }> = {
-  dashboard: {
-    title: 'Dashboard',
-    description: 'Resume a session or start a new backtest from an imported dataset.'
-  },
-  sessions: {
-    title: 'Sessions',
-    description: 'All saved backtesting sessions — open, review, or clean up.'
-  },
-  datasets: {
-    title: 'Datasets',
-    description: 'Imported CSV candle history used to drive replay sessions.'
-  },
-  symbols: {
-    title: 'Symbols',
-    description: 'Contract size, spread, and commission defaults for paper fills.'
-  },
-  strategies: {
-    title: 'Strategies',
-    description: 'Tag sessions so you can compare results by approach.'
-  }
+const SIDEBAR_SECONDARY: { id: SidebarNav; label: string; icon: typeof Database }[] = [
+  { id: 'datasets', label: 'Datasets', icon: Database },
+  { id: 'symbols', label: 'Symbols', icon: CircleDollarSign }
+]
+
+const TESTING_TABS: { id: TestingTab; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'sessions', label: 'Sessions', icon: ListVideo },
+  { id: 'trades', label: 'Trades', icon: Table2 },
+  { id: 'analytics', label: 'Analytics', icon: LineChart }
+]
+
+const PAGE_TITLES: Record<SidebarNav, string> = {
+  testing: 'Testing',
+  strategies: 'Strategies',
+  datasets: 'Datasets',
+  symbols: 'Symbols',
+  settings: 'Settings'
 }
 
-function TabButton({
+function SidebarNavButton({
   active,
   icon: Icon,
   label,
   onClick
 }: {
   active: boolean
-  icon: typeof LayoutDashboard
+  icon: typeof FlaskConical
   label: string
   onClick: () => void
-}) {
+}): ReactNode {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-medium transition-colors ${
-        active
-          ? 'bg-zinc-800/70 text-zinc-100 shadow-sm shadow-black/15'
-          : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
-      }`}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-body font-medium transition-colors',
+        active ? softNav.pillActive : softNav.pillIdle
+      )}
     >
       <Icon className="h-4 w-4 opacity-80" aria-hidden />
       {label}
@@ -77,85 +85,151 @@ function TabButton({
 }
 
 /**
- * Management console — the app's home view. Sessions, imported datasets,
- * symbol parameters, and strategies are managed here; entering a backtesting
- * session switches to the chart (AppShell).
+ * Management console — FX Replay–style left sidebar + main column.
+ * Entering a backtesting session switches to the chart (AppShell).
  */
 export default function Dashboard(): ReactNode {
-  const dashboardTab = useUiLayoutStore((s) => s.dashboardTab)
-  const setDashboardTab = useUiLayoutStore((s) => s.setDashboardTab)
+  const sidebarNav = useUiLayoutStore((s) => s.sidebarNav)
+  const setSidebarNav = useUiLayoutStore((s) => s.setSidebarNav)
+  const testingTab = useUiLayoutStore((s) => s.testingTab)
+  const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
   const imports = useReplayStore((s) => s.importedList)
   const [createFor, setCreateFor] = useState<ImportedDatasetMeta | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [version, setVersion] = useState('')
 
   useEffect(() => {
     void refreshImportedList()
   }, [refreshImportedList])
 
+  useEffect(() => {
+    void window.api.getAppVersion().then(setVersion)
+  }, [])
+
   const openCreate = (datasetId?: string) => {
-    setCreateFor(datasetId ? imports.find((m) => m.id === datasetId) ?? null : null)
+    setCreateFor(datasetId ? (imports.find((m) => m.id === datasetId) ?? null) : null)
     setCreateOpen(true)
   }
 
-  const page = PAGE_COPY[dashboardTab] ?? PAGE_COPY.dashboard
-
-  let content: ReactNode = null
-  switch (dashboardTab) {
-    case 'sessions':
-      content = <SessionsTab onNewSession={() => openCreate()} />
-      break
-    case 'datasets':
-      content = <DatasetsTab onNewSession={openCreate} />
-      break
-    case 'symbols':
-      content = <SymbolsTab />
-      break
-    case 'strategies':
-      content = <StrategiesTab />
-      break
-    default:
-      content = <SessionsTab onNewSession={() => openCreate()} summary />
+  let mainBody: ReactNode = null
+  if (sidebarNav === 'testing') {
+    switch (testingTab) {
+      case 'sessions':
+        mainBody = <SessionsTab onNewSession={() => openCreate()} />
+        break
+      case 'trades':
+        mainBody = <TradesTab />
+        break
+      case 'analytics':
+        mainBody = <AnalyticsTab />
+        break
+      default:
+        mainBody = <TestingDashboardTab onStartSession={() => openCreate()} />
+    }
+  } else if (sidebarNav === 'strategies') {
+    mainBody = <StrategiesTab />
+  } else if (sidebarNav === 'datasets') {
+    mainBody = <DatasetsTab onNewSession={openCreate} />
+  } else if (sidebarNav === 'symbols') {
+    mainBody = <SymbolsTab />
+  } else {
+    mainBody = <SettingsPanel />
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
-      <header className="flex shrink-0 items-center gap-3 border-b border-white/[0.05] px-5 py-4">
-        <img src={iconUrl} alt="" className="h-8 w-8 rounded-lg" aria-hidden />
-        <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
+    <div className="flex h-full overflow-hidden bg-zinc-950 font-sans text-zinc-200">
+      <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.05] bg-zinc-950 px-3 py-4">
+        <div className="mb-5 flex items-center gap-2.5 px-2">
+          <img src={iconUrl} alt="" className="h-7 w-7 rounded-lg" aria-hidden />
+          <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-zinc-100">
+            {APP_NAME}
+          </span>
+        </div>
 
-        <nav className="ml-6 flex items-center gap-1" aria-label="Main navigation">
-          {TABS.map((tab) => (
-            <TabButton
-              key={tab.id}
-              active={dashboardTab === tab.id}
-              icon={tab.icon}
-              label={tab.label}
-              onClick={() => setDashboardTab(tab.id)}
+        <nav className="flex flex-1 flex-col gap-1" aria-label="Primary">
+          {SIDEBAR_PRIMARY.map((item) => (
+            <SidebarNavButton
+              key={item.id}
+              active={sidebarNav === item.id}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => setSidebarNav(item.id)}
+            />
+          ))}
+
+          <div className="my-2 border-t border-white/[0.05]" />
+
+          {SIDEBAR_SECONDARY.map((item) => (
+            <SidebarNavButton
+              key={item.id}
+              active={sidebarNav === item.id}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => setSidebarNav(item.id)}
             />
           ))}
         </nav>
 
-        <a
-          href="https://github.com/eclipse005/BarReplay"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="BarReplay on GitHub"
-          className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-300"
-        >
-          <ExternalLink className="h-4 w-4" aria-hidden />
-        </a>
-      </header>
-
-      <main className="min-h-0 flex-1 overflow-y-auto px-6 py-7">
-        <div className="mx-auto w-full max-w-4xl">
-          <div className="mb-6">
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">{page.title}</h1>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">{page.description}</p>
-          </div>
-          {content}
+        <div className="mt-auto space-y-2 border-t border-white/[0.05] pt-3">
+          <SidebarNavButton
+            active={sidebarNav === 'settings'}
+            icon={Settings}
+            label="Settings"
+            onClick={() => setSidebarNav('settings')}
+          />
+          {version ? (
+            <p className={cn("px-3", softType.micro)}>v{version}</p>
+          ) : null}
         </div>
-      </main>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="min-h-0 flex-1 overflow-y-auto px-7 py-7">
+          <div className="mx-auto w-full max-w-5xl">
+            <h1 className={softType.pageTitle}>{PAGE_TITLES[sidebarNav]}</h1>
+
+            {sidebarNav === 'testing' ? (
+              <div
+                className="mt-4 flex items-center gap-5 border-b border-white/[0.06]"
+                role="tablist"
+                aria-label="Testing sections"
+              >
+                {TESTING_TABS.map((tab) => {
+                  const active = testingTab === tab.id
+                  const Icon = tab.icon
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setTestingTab(tab.id)}
+                      className={cn(
+                        'relative -mb-px inline-flex items-center gap-1.5 pb-2.5 text-body font-medium transition-colors',
+                        active ? softNav.tabActive : softNav.tabIdle
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                      {tab.label}
+                      {active ? (
+                        <span
+                          className={softNav.tabUnderline}
+                          aria-hidden
+                        />
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 border-b border-white/[0.04]" />
+            )}
+
+            <div className="mt-5">{mainBody}</div>
+          </div>
+        </main>
+      </div>
 
       <CreateSessionDialog
         open={createOpen}
@@ -163,6 +237,7 @@ export default function Dashboard(): ReactNode {
         onClose={() => setCreateOpen(false)}
       />
       <SessionReportDialog />
+      <AboutDialog />
     </div>
   )
 }

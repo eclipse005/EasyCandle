@@ -7,12 +7,12 @@ type SoftLabelProps = LabelHTMLAttributes<HTMLLabelElement> & {
   caption?: ReactNode
 }
 
-/** Form label with soft caption hierarchy (zinc-400 secondary). */
+/** Form label with soft caption hierarchy (tokenized). */
 export default function SoftLabel({ children, caption, className, ...rest }: SoftLabelProps) {
   return (
     <label className={cn('block', className)} {...rest}>
       {caption != null ? (
-        <span className="mb-1.5 block text-[11px] font-medium text-zinc-400">{caption}</span>
+        <span className="mb-1.5 block text-micro font-medium text-zinc-400">{caption}</span>
       ) : null}
       {children}
     </label>
@@ -28,6 +28,6 @@ export function SoftCaption({
   className?: string
 }) {
   return (
-    <span className={cn('text-[11px] font-medium text-zinc-400', className)}>{children}</span>
+    <span className={cn('text-micro font-medium text-zinc-400', className)}>{children}</span>
   )
 }
