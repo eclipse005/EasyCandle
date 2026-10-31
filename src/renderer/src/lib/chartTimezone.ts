@@ -24,14 +24,56 @@ function ianaLabel(id: string): { city: string; region: string } {
   return { city, region }
 }
 
+/** Sensible curated fallback when `Intl.supportedValuesOf('timeZone')` is unavailable. */
+const FALLBACK_IANA_TIME_ZONES: readonly string[] = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Toronto',
+  'America/Sao_Paulo',
+  'America/Argentina/Buenos_Aires',
+  'Atlantic/Reykjavik',
+  'Europe/London',
+  'Europe/Dublin',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Europe/Zurich',
+  'Europe/Amsterdam',
+  'Europe/Madrid',
+  'Europe/Rome',
+  'Europe/Athens',
+  'Europe/Moscow',
+  'Europe/Istanbul',
+  'Africa/Cairo',
+  'Africa/Johannesburg',
+  'Asia/Dubai',
+  'Asia/Karachi',
+  'Asia/Kolkata',
+  'Asia/Dhaka',
+  'Asia/Bangkok',
+  'Asia/Shanghai',
+  'Asia/Hong_Kong',
+  'Asia/Singapore',
+  'Asia/Taipei',
+  'Asia/Seoul',
+  'Asia/Tokyo',
+  'Australia/Perth',
+  'Australia/Sydney',
+  'Pacific/Auckland',
+  'Pacific/Honolulu',
+  'UTC'
+]
+
 function supportedIanaTimeZones(): string[] {
   if (typeof Intl === 'undefined' || typeof Intl.supportedValuesOf !== 'function') {
-    return []
+    return [...FALLBACK_IANA_TIME_ZONES]
   }
   try {
-    return Intl.supportedValuesOf('timeZone')
+    const values = Intl.supportedValuesOf('timeZone')
+    return values.length > 0 ? values : [...FALLBACK_IANA_TIME_ZONES]
   } catch {
-    return []
+    return [...FALLBACK_IANA_TIME_ZONES]
   }
 }
 

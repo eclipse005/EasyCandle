@@ -1,5 +1,6 @@
 /**
- * Approximate local usage + graded clears for Settings → Storage.
+ * Local usage + graded clears for Settings → Storage.
+ * Total size prefers navigator.storage.estimate() (origin usage).
  * IndexedDB holds market datasets; sessions / strategies / prefs live in localStorage.
  */
 
@@ -14,7 +15,7 @@ import { LOCALE_STORAGE_KEY } from '@/i18n/messages'
 import { THEME_STORAGE_KEY } from '@/lib/theme'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
 
-/** Approx structured-clone size per OHLC bar in IDB. */
+/** Approx structured-clone size per OHLC bar in IDB (breakdown only). */
 const BYTES_PER_CANDLE_EST = 56
 
 /** Keys preserved by default on “clear all” (language / theme / account TZ). */
@@ -42,11 +43,14 @@ const OTHER_APP_LOCAL_KEYS = [
 ] as const
 
 export type LocalUsageBreakdown = {
+  /** Prefer navigator.storage.estimate().usage when available. */
   totalBytes: number
+  /** Category breakdowns remain approximate (~). */
   marketBytes: number
   backtestBytes: number
   otherBytes: number
-  approximate: boolean
+  /** True when total came from estimate(); false when falling back to sum of approx categories. */
+  fromStorageEstimate: boolean
 }
 
 function utf16Bytes(value: string): number {
@@ -82,18 +86,51 @@ function estimateMarketBytesFromMetas(metas: ImportedDatasetMeta[]): number {
   return candles * BYTES_PER_CANDLE_EST + metaOverhead
 }
 
-export function formatApproxBytes(bytes: number): { value: string; unit: 'KB' | 'MB' } {
-  const safe = Math.max(0, Math.round(bytes))
-  if (safe < 1024 * 1024) {
-    const kb = safe === 0 ? 0 : Math.max(1, Math.round(safe / 1024))
-    return { value: String(kb), unit: 'KB' }
+/** Format usage bytes for Settings total (e.g. 11.2 MB). */
+export function formatStorageBytes(bytes: number): { value: string; unit: 'KB' | 'MB' | 'GB' } {
+  const safe = Math.max(0, Number.isFinite(bytes) ? bytes : 0)
+  if (safe >= 1024 * 1024 * 1024) {
+    const gb = safe / (1024 * 1024 * 1024)
+    const rounded = gb >= 10 ? Math.round(gb) : Math.round(gb * 10) / 10
+    return { value: String(rounded), unit: 'GB' }
   }
-  const mb = safe / (1024 * 1024)
-  const rounded = mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10
-  return { value: String(rounded), unit: 'MB' }
+  if (safe >= 1024 * 1024) {
+    const mb = safe / (1024 * 1024)
+    const rounded = mb >= 10 ? Math.round(mb * 10) / 10 : Math.round(mb * 10) / 10
+    return { value: String(rounded), unit: 'MB' }
+  }
+  if (safe === 0) return { value: '0', unit: 'KB' }
+  const kb = Math.max(0.1, Math.round((safe / 1024) * 10) / 10)
+  return { value: String(kb), unit: 'KB' }
 }
 
-/** Sum known stores — approximate, labeled as such in UI. */
+/** @deprecated Prefer formatStorageBytes — kept for existing tests / call sites. */
+export function formatApproxBytes(bytes: number): { value: string; unit: 'KB' | 'MB' } {
+  const fmt = formatStorageBytes(bytes)
+  if (fmt.unit === 'GB') {
+    const mb = Math.round((Math.max(0, bytes) / (1024 * 1024)) * 10) / 10
+    return { value: String(mb), unit: 'MB' }
+  }
+  return { value: fmt.value, unit: fmt.unit }
+}
+
+async function readOriginUsageBytes(): Promise<number | null> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return null
+    const est = await navigator.storage.estimate()
+    if (est && typeof est.usage === 'number' && Number.isFinite(est.usage)) {
+      return Math.max(0, est.usage)
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+/**
+ * Total = navigator.storage.estimate().usage when available (accurate origin usage).
+ * Category fields stay approximate for internal/breakdown use.
+ */
 export async function estimateLocalUsage(): Promise<LocalUsageBreakdown> {
   let metas: ImportedDatasetMeta[] = []
   try {
@@ -107,12 +144,14 @@ export async function estimateLocalUsage(): Promise<LocalUsageBreakdown> {
     ...OTHER_APP_LOCAL_KEYS,
     ...PRESERVED_SETTINGS_KEYS
   ])
+  const approxSum = marketBytes + backtestBytes + otherBytes
+  const originUsage = await readOriginUsageBytes()
   return {
-    totalBytes: marketBytes + backtestBytes + otherBytes,
+    totalBytes: originUsage != null ? originUsage : approxSum,
     marketBytes,
     backtestBytes,
     otherBytes,
-    approximate: true
+    fromStorageEstimate: originUsage != null
   }
 }
 

@@ -6,22 +6,6 @@ export const ACCOUNT_TIMEZONE_STORAGE_KEY = 'bar-replay:account-timezone'
 /** Default account timezone — FXR-style America/New_York. */
 export const DEFAULT_ACCOUNT_TIMEZONE = DEFAULT_CHART_TIMEZONE
 
-/** Common account zones for Settings SoftSelect (full IANA available via sanitize). */
-export const ACCOUNT_TIMEZONE_OPTIONS: readonly { id: string; label: string }[] = [
-  { id: 'America/New_York', label: 'New York (ET)' },
-  { id: 'America/Chicago', label: 'Chicago (CT)' },
-  { id: 'America/Los_Angeles', label: 'Los Angeles (PT)' },
-  { id: 'Europe/London', label: 'London' },
-  { id: 'Europe/Berlin', label: 'Berlin / CET' },
-  { id: 'Europe/Zurich', label: 'Zurich' },
-  { id: 'Asia/Dubai', label: 'Dubai' },
-  { id: 'Asia/Shanghai', label: 'Shanghai' },
-  { id: 'Asia/Hong_Kong', label: 'Hong Kong' },
-  { id: 'Asia/Tokyo', label: 'Tokyo' },
-  { id: 'Australia/Sydney', label: 'Sydney' },
-  { id: 'UTC', label: 'UTC' }
-]
-
 function readStoredAccountTimezone(): string {
   try {
     const raw = localStorage.getItem(ACCOUNT_TIMEZONE_STORAGE_KEY)

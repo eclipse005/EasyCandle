@@ -2,26 +2,21 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Database, ExternalLink, Moon, Sun } from 'lucide-react'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
-import { SoftSelect } from '@/components/ui/SoftInput'
 import SoftButton from '@/components/ui/SoftButton'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { cn } from '@/components/ui/cn'
 import { useThemeStore } from '@/store/themeStore'
-import {
-  ACCOUNT_TIMEZONE_OPTIONS,
-  useAccountPrefsStore
-} from '@/store/accountPrefsStore'
-import { chartTimezoneById } from '@/lib/chartTimezone'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
 import { LOCALE_OPTIONS, type Locale } from '@/i18n/messages'
 import { APP_NAME } from '@shared/appName'
+import AccountTimezoneSelect from '@/components/dashboard/AccountTimezoneSelect'
 import {
   clearAllLocalAppData,
   clearBacktestRecordsOnly,
   clearMarketDataOnly,
   estimateLocalUsage,
-  formatApproxBytes
+  formatStorageBytes
 } from '@/lib/localData'
 
 const GITHUB_URL = 'https://github.com/eclipse005/BarReplay'
@@ -32,12 +27,9 @@ type ClearKind = 'market' | 'backtest' | 'all' | null
 export default function SettingsPanel(): ReactNode {
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
-  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
-  const setAccountTimezone = useAccountPrefsStore((s) => s.setAccountTimezone)
   const setAboutOpen = useUiLayoutStore((s) => s.setAboutDialogOpen)
   const { locale, t, setLocale } = useT()
   const [version, setVersion] = useState('')
-  const accountZoneLabel = chartTimezoneById(accountTimezone).city
 
   const [usageLabel, setUsageLabel] = useState<string>('—')
   const [usageBusy, setUsageBusy] = useState(false)
@@ -49,7 +41,7 @@ export default function SettingsPanel(): ReactNode {
     setUsageBusy(true)
     try {
       const usage = await estimateLocalUsage()
-      const fmt = formatApproxBytes(usage.totalBytes)
+      const fmt = formatStorageBytes(usage.totalBytes)
       setUsageLabel(
         t('settings.storageUsageValue', { value: fmt.value, unit: fmt.unit })
       )
@@ -192,24 +184,10 @@ export default function SettingsPanel(): ReactNode {
         <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-2 md:row-start-2')}>
           <h2 className={softType.section}>{t('settings.accountTimezone')}</h2>
           <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.accountTimezoneHint')}</p>
-          <label className="mt-5 block">
+          <div className="mt-5">
             <span className="sr-only">{t('settings.accountTimezone')}</span>
-            <SoftSelect
-              className="h-11 max-w-sm text-body"
-              value={accountTimezone}
-              aria-label={t('settings.accountTimezone')}
-              onChange={(e) => setAccountTimezone(e.target.value)}
-            >
-              {ACCOUNT_TIMEZONE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-              {!ACCOUNT_TIMEZONE_OPTIONS.some((o) => o.id === accountTimezone) ? (
-                <option value={accountTimezone}>{accountZoneLabel}</option>
-              ) : null}
-            </SoftSelect>
-          </label>
+            <AccountTimezoneSelect />
+          </div>
         </SoftCard>
 
         {/* Full-width row: Storage / 本地数据 */}

@@ -36,8 +36,8 @@ const en = {
   'settings.version': 'Version {version}',
 
   'settings.storage': 'Storage',
-  'settings.storageHint': 'Local browser data — approximate size.',
-  'settings.storageUsageValue': '~{value} {unit}',
+  'settings.storageHint': 'Local browser data used by this site.',
+  'settings.storageUsageValue': '{value} {unit}',
   'settings.storageUsageUnknown': 'Unknown',
   'settings.storageClearMarket': 'Clear market data',
   'settings.storageClearBacktest': 'Clear backtest records',
@@ -377,8 +377,8 @@ const zh: Record<MessageKey, string> = {
   'settings.version': '版本 {version}',
 
   'settings.storage': '本地数据',
-  'settings.storageHint': '浏览器本地占用 — 约为估算值。',
-  'settings.storageUsageValue': '约 {value} {unit}',
+  'settings.storageHint': '本站占用的浏览器本地数据。',
+  'settings.storageUsageValue': '{value} {unit}',
   'settings.storageUsageUnknown': '未知',
   'settings.storageClearMarket': '清除行情数据',
   'settings.storageClearBacktest': '清除回测记录',
