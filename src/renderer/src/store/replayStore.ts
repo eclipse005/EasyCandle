@@ -565,6 +565,8 @@ type ReplayStore = {
   secondaryLoading: boolean
   /** SoftConfirm payload when a backward seek would discard later trades. */
   pendingSeekConfirm: PendingSeekConfirm | null
+  /** True while the progress scrubber is dragging — chart drops heavy overlays. */
+  chartScrubbing: boolean
   toggleIndicator: (id: string) => void
   setChartType: (type: ChartType) => void
   setDrawTool: (tool: DrawTool) => void
@@ -653,6 +655,7 @@ type ReplayStore = {
    * Seek playhead. Backward seeks rewind trades like stepBackward.
    * SoftConfirm when later trades would be discarded unless `force`.
    */
+  setChartScrubbing: (active: boolean) => void
   seekToIndex: (index: number, opts?: { force?: boolean; preview?: boolean }) => SeekApplyResult
   seekToTime: (timeSeconds: number, opts?: { force?: boolean }) => SeekApplyResult
   confirmPendingSeek: () => void
@@ -865,17 +868,26 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     })
   }
 
-  function publishSeekReplace(fitContent: boolean): void {
+  function publishSeekReplace(
+    fitContent: boolean,
+    opts: { syncSecondary?: boolean } = {}
+  ): void {
     publishReplay('replace', { fitContent })
-    syncSecondaryToPrimaryCover({ fitContent })
+    if (opts.syncSecondary !== false) {
+      syncSecondaryToPrimaryCover({ fitContent })
+    }
     publishStatus()
   }
 
   /** Move playhead only — used while scrubbing before SoftConfirm commits trades. */
-  function seekPlayheadOnly(index: number, fitContent = false): void {
+  function seekPlayheadOnly(
+    index: number,
+    fitContent = false,
+    opts: { syncSecondary?: boolean } = {}
+  ): void {
     stopClock()
     engine.seekToIndex(index)
-    publishSeekReplace(fitContent)
+    publishSeekReplace(fitContent, opts)
   }
 
   function applySeekToIndex(index: number, opts: { fitContent?: boolean } = {}): void {
@@ -916,7 +928,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     // Live scrub preview: move candles only; blotter catches up on pointer-up / confirm.
     if (opts.preview) {
-      seekPlayheadOnly(clamped, opts.fitContent ?? false)
+      seekPlayheadOnly(clamped, opts.fitContent ?? false, { syncSecondary: false })
       return 'applied'
     }
 
@@ -925,7 +937,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         pendingSeekConfirm: { kind: 'index', index: clamped, resumeIndex: before }
       })
       // Preview the destination playhead so the user sees where Jump/scrub lands.
-      seekPlayheadOnly(clamped, opts.fitContent ?? false)
+      seekPlayheadOnly(clamped, opts.fitContent ?? false, { syncSecondary: false })
       return 'needs-confirm'
     }
 
@@ -1912,6 +1924,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       replayMessage: null,
       chartFocus: null,
       pendingSeekConfirm: null,
+      chartScrubbing: false,
       ...(opts.keepDrawings ? {} : emptyDrawingState()),
       ...EMPTY_TICKET_LEVELS,
       ticketOrderType: 'market' as TicketOrderType,
@@ -2690,6 +2703,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     secondaryError: null,
     secondaryLoading: false,
     pendingSeekConfirm: null,
+    chartScrubbing: false,
+
+    setChartScrubbing(active) {
+      const next = Boolean(active)
+      if (get().chartScrubbing === next) return
+      set({ chartScrubbing: next })
+    },
 
     toggleIndicator(id) {
       if (!getIndicator(id)) return

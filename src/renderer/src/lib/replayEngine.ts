@@ -82,8 +82,10 @@ export function createReplayEngine(options: { prefetchThreshold?: number; speed?
   }
 
   function getState(): ReplayState {
+    // Return the live buffer by reference — callers must treat it as read-only.
+    // Copying tens of thousands of M1 bars on every seek/tick was a scrub bottleneck.
     return {
-      candles: candles.slice(),
+      candles,
       index,
       isPlaying,
       speed,

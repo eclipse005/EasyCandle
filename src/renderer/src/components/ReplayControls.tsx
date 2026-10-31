@@ -88,7 +88,10 @@ export default function ReplayControls() {
   const trackRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef(false)
   const scrubOriginRef = useRef(0)
+  const scrubRafRef = useRef(0)
+  const scrubPendingRef = useRef<number | null>(null)
   const [scrubIndex, setScrubIndex] = useState<number | null>(null)
+  const setChartScrubbing = useReplayStore((s) => s.setChartScrubbing)
 
   const busy = replayLoading || secondaryLoading
   const ended = replayStatus === 'ended'
@@ -102,16 +105,37 @@ export default function ReplayControls() {
   }, [driverIndex])
 
   useEffect(() => {
+    function flushScrubPreview(): void {
+      scrubRafRef.current = 0
+      const idx = scrubPendingRef.current
+      if (idx == null) return
+      scrubPendingRef.current = null
+      setScrubIndex(idx)
+      seekToIndex(idx, { preview: true })
+    }
+
+    function scheduleScrubPreview(idx: number): void {
+      scrubPendingRef.current = idx
+      if (scrubRafRef.current) return
+      scrubRafRef.current = requestAnimationFrame(flushScrubPreview)
+    }
+
     function onMove(event: PointerEvent): void {
       if (!draggingRef.current || !trackRef.current || bufferLength <= 0) return
       const idx = indexFromClientX(event.clientX, trackRef.current.getBoundingClientRect(), bufferLength)
-      setScrubIndex(idx)
-      seekToIndex(idx, { preview: true })
+      // Coalesce pointermove storms to one seek/publish per frame (M1 scrub).
+      scheduleScrubPreview(idx)
     }
 
     function onUp(event: PointerEvent): void {
       if (!draggingRef.current) return
       draggingRef.current = false
+      setChartScrubbing(false)
+      if (scrubRafRef.current) {
+        cancelAnimationFrame(scrubRafRef.current)
+        scrubRafRef.current = 0
+      }
+      scrubPendingRef.current = null
       const track = trackRef.current
       const idx =
         track && bufferLength > 0
@@ -138,8 +162,9 @@ export default function ReplayControls() {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
+      if (scrubRafRef.current) cancelAnimationFrame(scrubRafRef.current)
     }
-  }, [bufferLength, driverIndex, scrubIndex, seekToIndex])
+  }, [bufferLength, driverIndex, scrubIndex, seekToIndex, setChartScrubbing])
 
   async function onJump(event: FormEvent): Promise<void> {
     event.preventDefault()
@@ -391,6 +416,7 @@ export default function ReplayControls() {
               event.preventDefault()
               draggingRef.current = true
               scrubOriginRef.current = driverIndex
+              setChartScrubbing(true)
               const idx = indexFromClientX(
                 event.clientX,
                 event.currentTarget.getBoundingClientRect(),

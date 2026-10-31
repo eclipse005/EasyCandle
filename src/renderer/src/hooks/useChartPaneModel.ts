@@ -22,15 +22,18 @@ export function useChartPaneModel(isPrimary: boolean) {
   )
   const chartSync = useReplayStore((s) => (isPrimary ? s.chartSync : s.secondaryChartSync))
   const rawTradeMarkers = useReplayStore((s) => s.tradeMarkers)
+  const chartScrubbing = useReplayStore((s) => s.chartScrubbing)
 
   const overlayIds = activeIndicators
   const overlaySource = mode === 'replay' ? (visibleCandles ?? []) : (candles ?? [])
-  const overlays = useMemo(
-    () => buildOverlays(overlaySource, overlayIds),
-    [overlaySource, overlayIds]
-  )
+  const overlays = useMemo(() => {
+    // Indicator math over full M1 history is the scrub hitch — drop while dragging.
+    if (chartScrubbing) return []
+    return buildOverlays(overlaySource, overlayIds)
+  }, [overlaySource, overlayIds, chartScrubbing])
 
   const tradeMarkers = useMemo(() => {
+    if (chartScrubbing) return []
     const markers = rawTradeMarkers ?? []
     if (isPrimary) return markers
     const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
@@ -38,7 +41,7 @@ export function useChartPaneModel(isPrimary: boolean) {
       ...marker,
       time: alignTimeToInterval(marker.time, interval)
     }))
-  }, [isPrimary, rawTradeMarkers, timeframe])
+  }, [isPrimary, rawTradeMarkers, timeframe, chartScrubbing])
 
   return {
     mode,
