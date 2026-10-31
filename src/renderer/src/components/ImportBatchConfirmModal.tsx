@@ -370,7 +370,7 @@ export default function ImportBatchConfirmModal({
                       onChange={(event) =>
                         setDraft(details.id, { contractSizeText: event.target.value })
                       }
-                      className="h-8 w-28 rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                      className="h-8 w-[7.5rem] min-w-[7.5rem] rounded-xl border border-zinc-800 bg-zinc-900 px-2.5 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                     />
                     <span className="text-[11px] text-zinc-500">
                       units per lot · default{' '}
@@ -662,9 +662,6 @@ export default function ImportBatchConfirmModal({
                   <span className="min-w-[4.5rem] text-[12px] font-medium text-zinc-100">
                     {symbol}
                   </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {group.length} file{group.length === 1 ? '' : 's'}
-                  </span>
                   {contractInfo ? (
                     <>
                       <input
@@ -680,7 +677,7 @@ export default function ImportBatchConfirmModal({
                         onChange={(event) =>
                           setDraft(draftKey, { contractSizeText: event.target.value })
                         }
-                        className="h-7 w-24 rounded-lg border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                        className="h-7 w-[7.5rem] min-w-[7.5rem] rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                       />
                       <span className="text-[11px] text-zinc-500">
                         default{' '}
