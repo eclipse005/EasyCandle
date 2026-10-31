@@ -2,7 +2,7 @@ import type { Candle } from '@shared/candleUtils'
 import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
 import { buildImportedDatasetMeta } from '@shared/importMeta'
 import { decodeMtTextBuffer } from '@shared/mtTextDecode'
-import type { EasyCandleApi } from '@shared/appApi'
+import type { CandleLabApi } from '@shared/appApi'
 import type {
   ImportDeleteResult,
   ImportDialogResult,
@@ -302,10 +302,10 @@ export const webApi = {
   listImports: listImportDatasets,
   loadImport: loadImportDataset,
   deleteImport: deleteImportDataset
-} satisfies EasyCandleApi
+} satisfies CandleLabApi
 
 // Inject when the host did not already expose an API.
 if (typeof window !== 'undefined') {
-  const w = window as unknown as { api?: EasyCandleApi }
+  const w = window as unknown as { api?: CandleLabApi }
   if (!w.api) w.api = webApi
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-const STORAGE_KEY = 'easy-candle:strategies'
+const STORAGE_KEY = 'candle-lab:strategies'
 
 export const STRATEGY_NAME_MAX_LENGTH = 48
 

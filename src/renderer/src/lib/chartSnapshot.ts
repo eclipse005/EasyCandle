@@ -45,7 +45,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Draw the Easy Candle wordmark the same way it sits on the live chart. */
+/** Draw the CandleLab wordmark the same way it sits on the live chart. */
 function drawWordmark(
   ctx: CanvasRenderingContext2D,
   wordmark: HTMLImageElement,

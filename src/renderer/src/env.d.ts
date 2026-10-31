@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 
-import type { EasyCandleApi } from '@shared/appApi'
+import type { CandleLabApi } from '@shared/appApi'
 
 declare const __APP_VERSION__: string
 
 declare global {
   interface Window {
-    api: EasyCandleApi
+    api: CandleLabApi
   }
 }
 

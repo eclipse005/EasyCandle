@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { IChartApi } from 'lightweight-charts'
 import type { SessionReport } from '@/store/replayStore'
 
-const STORAGE_KEY = 'easy-candle:ui-layout'
+const STORAGE_KEY = 'candle-lab:ui-layout'
 
 /** Tabs of the management console (the app's home view). */
 export type DashboardTab = 'dashboard' | 'sessions' | 'datasets' | 'symbols' | 'strategies'

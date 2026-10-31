@@ -1,9 +1,9 @@
 {
-  "name": "easy-candle-web",
+  "name": "candle-lab",
   "version": "2.13.1",
-  "description": "Easy Candle — candle replay web app (pure frontend port)",
+  "description": "CandleLab — candle replay web app (pure frontend port)",
   "private": true,
-  "author": "Easy Candle",
+  "author": "CandleLab",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,9 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy": "npm run build && wrangler deploy",
+    "cf:deploy": "wrangler deploy"
   },
   "dependencies": {
     "driver.js": "^1.8.0",
@@ -35,6 +37,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.86.0"
   }
 }

@@ -1,4 +1,4 @@
-# EasyCandle UI shell inventory
+# CandleLab UI shell inventory
 
 Factual snapshot of the current renderer UI (branch `main`) for a later 1:1 FX Replay comparison. **No redesign notes** — layout, controls, and tokens only. Source roots: `src/renderer/src/App.tsx`, `components/`, `store/uiLayoutStore.ts`, `lib/theme.ts`, `assets/main.css`, `tailwind.config.js`.
 
@@ -25,7 +25,7 @@ Header nav (left → right): **Dashboard · Sessions · Datasets · Symbols · S
 - **Symbols**: symbol params (contract size / precision, etc.).
 - **Strategies**: strategy rollups.
 
-Dashboard chrome: full-height `bg-zinc-950`, header `border-b border-zinc-800 px-3 py-2.5`, brand “Easy Candle” (`text-amber-400`), subtitle “Backtesting console”, GitHub link right. Content: `px-4 py-5`, centered `max-w-4xl`.
+Dashboard chrome: full-height `bg-zinc-950`, header `border-b border-zinc-800 px-3 py-2.5`, brand “CandleLab” (`text-amber-400`), subtitle “Backtesting console”, GitHub link right. Content: `px-4 py-5`, centered `max-w-4xl`.
 
 Entering a session (create/load) sets `activeSessionId` → chart shell. Exiting: toolbar back / AppMenu “Sessions home” / ReplayControls logout → `closeActiveSession()`.
 
@@ -97,7 +97,7 @@ Checked items: Dark theme, Paper trade, Status bar, Drawing toolbar, Replay cont
 **Host:** `FloatingReplayBar` → `FloatingPanel` title “Replay” → `ReplayControls`.
 
 - Default placement: **bottom-center** of chart frame.
-- Persisted: `replayControlsPos`, `replayControlsMinimized` (`easy-candle:ui-layout`).
+- Persisted: `replayControlsPos`, `replayControlsMinimized` (`candle-lab:ui-layout`).
 - Minimized label: `Replay` or `Replay · {TF} · L/R` when split.
 
 ### Control order (left → right)
@@ -176,7 +176,7 @@ Row actions:
 - Tailwind `darkMode: ['selector', '[data-theme="dark"]']`.
 - `zinc`, `amber`, `red`, `emerald`, `sky` mapped to CSS vars `rgb(var(--{name}-{step}) / <alpha-value>)` in `tailwind.config.js`.
 - Vars defined in `assets/main.css` for `:root` / `[data-theme='dark']` and inverted/remapped for `[data-theme='light']`.
-- `document.documentElement.dataset.theme` + `colorScheme` via `lib/theme.ts` / `themeStore`. Storage: `easy-candle:theme`. Default **dark**.
+- `document.documentElement.dataset.theme` + `colorScheme` via `lib/theme.ts` / `themeStore`. Storage: `candle-lab:theme`. Default **dark**.
 
 ### Chart palette (`CHART_PALETTES`)
 

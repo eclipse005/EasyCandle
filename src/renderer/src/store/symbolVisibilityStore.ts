@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { SYMBOL_GROUPS } from '@shared/symbols'
 
-const STORAGE_KEY = 'easy-candle:symbol-visibility'
+const STORAGE_KEY = 'candle-lab:symbol-visibility'
 
 type SymbolVisibilityState = {
   /** Group keys the user has hidden (e.g. "crypto"). */

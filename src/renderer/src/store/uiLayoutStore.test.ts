@@ -55,7 +55,7 @@ describe('drawing widget position', () => {
 
   it('loads a persisted position on init and ignores invalid ones', async () => {
     const store = {
-      'easy-candle:ui-layout': JSON.stringify({
+      'candle-lab:ui-layout': JSON.stringify({
         drawingWidgetPos: { x: 300, y: 42 }
       })
     }
@@ -71,7 +71,7 @@ describe('drawing widget position', () => {
     vi.resetModules()
     const mod = await import('@/store/uiLayoutStore')
     mod.useUiLayoutStore.getState().setDrawingWidgetPos({ x: 7, y: 11 })
-    const raw = store['easy-candle:ui-layout']
+    const raw = store['candle-lab:ui-layout']
     const parsed = JSON.parse(raw ?? '{}') as { drawingWidgetPos: { x: number; y: number } }
     expect(parsed.drawingWidgetPos).toEqual({ x: 7, y: 11 })
   })
@@ -80,7 +80,7 @@ describe('drawing widget position', () => {
 describe('app tour', () => {
   it('loads a persisted completion flag', async () => {
     const store = {
-      'easy-candle:ui-layout': JSON.stringify({ hasCompletedTour: true })
+      'candle-lab:ui-layout': JSON.stringify({ hasCompletedTour: true })
     }
     stubLocalStorage(store)
     vi.resetModules()
@@ -97,7 +97,7 @@ describe('app tour', () => {
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(false)
     mod.useUiLayoutStore.getState().completeTour()
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(true)
-    const parsed = JSON.parse(store['easy-candle:ui-layout'] ?? '{}') as { hasCompletedTour?: boolean }
+    const parsed = JSON.parse(store['candle-lab:ui-layout'] ?? '{}') as { hasCompletedTour?: boolean }
     expect(parsed.hasCompletedTour).toBe(true)
   })
 
@@ -108,7 +108,7 @@ describe('app tour', () => {
     const mod = await import('@/store/uiLayoutStore')
     mod.useUiLayoutStore.getState().skipTour()
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(true)
-    const parsed = JSON.parse(store['easy-candle:ui-layout'] ?? '{}') as { hasCompletedTour?: boolean }
+    const parsed = JSON.parse(store['candle-lab:ui-layout'] ?? '{}') as { hasCompletedTour?: boolean }
     expect(parsed.hasCompletedTour).toBe(true)
   })
 
@@ -140,7 +140,7 @@ describe('app tour', () => {
     expect(next.shortcutsDialogOpen).toBe(false)
     expect(next.importDataDialogOpen).toBe(false)
     expect(next.chartSettingsDialogOpen).toBe(false)
-    const parsed = JSON.parse(store['easy-candle:ui-layout'] ?? '{}') as {
+    const parsed = JSON.parse(store['candle-lab:ui-layout'] ?? '{}') as {
       showMainToolbar?: boolean
       showDrawingToolbar?: boolean
     }
@@ -158,7 +158,7 @@ describe('app tour', () => {
     api.getState().beginPaperTradePreview()
     expect(api.getState().tourPaperTradePreview).toBe(true)
     expect(api.getState().showPaperTrade).toBe(true)
-    expect(store['easy-candle:ui-layout']).toBeUndefined()
+    expect(store['candle-lab:ui-layout']).toBeUndefined()
     api.getState().endPaperTradePreview()
     expect(api.getState().tourPaperTradePreview).toBe(false)
     expect(api.getState().showPaperTrade).toBe(false)

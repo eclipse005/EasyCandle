@@ -3,7 +3,7 @@ import { CrosshairMode, LineStyle, PriceScaleMode, type LineWidth } from 'lightw
 import { DEFAULT_CHART_TIMEZONE, sanitizeTimezone } from '@/lib/chartTimezone'
 import { CHART_PALETTES, type ChartPalette, type Theme } from '@/lib/theme'
 
-const STORAGE_KEY = 'easy-candle:chart-settings'
+const STORAGE_KEY = 'candle-lab:chart-settings'
 
 /** Series / crosshair colors not present in the theme palette. */
 export const SERIES_DEFAULT_COLORS = {

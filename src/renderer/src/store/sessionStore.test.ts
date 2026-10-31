@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useReplayStore } from '@/store/replayStore'
 
-const STORAGE_KEY = 'easy-candle:sessions'
+const STORAGE_KEY = 'candle-lab:sessions'
 
 function stubLocalStorage(store: Record<string, string>): void {
   vi.stubGlobal('localStorage', {

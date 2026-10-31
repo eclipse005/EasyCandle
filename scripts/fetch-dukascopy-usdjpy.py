@@ -1,5 +1,5 @@
 """Fetch USDJPY 1-minute candles from Dukascopy's public data feed and write
-an MT5-style CSV for Easy Candle import testing.
+an MT5-style CSV for CandleLab import testing.
 
 Per-day file: https://datafeed.dukascopy.com/datafeed/USDJPY/<y>/<m-1>/<d>/BID_candles_min_1.bi5
 bi5 = LZMA-compressed 24-byte records: >i f f f f f

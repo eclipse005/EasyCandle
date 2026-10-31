@@ -176,7 +176,7 @@ export default function SessionReportDialog() {
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
     const link = document.createElement('a')
     link.href = url
-    link.download = `easy-candle-${symbol}-${timeframe}-${stamp}.csv`
+    link.download = `candle-lab-${symbol}-${timeframe}-${stamp}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }

@@ -1,16 +1,16 @@
-# EasyCandle × FX Replay UI 1:1
+# CandleLab × FX Replay UI 1:1
 
-截至 2026-10-31。FX Replay 截图在 `/workspace/fxr-ui/`；EasyCandle 库存见 `ui-easycandle-inventory.md`。
+截至 2026-10-31。FX Replay 截图在 `/workspace/fxr-ui/`；CandleLab 库存见 `ui-candlelab-inventory.md`。
 
 ## 结论
 
-要对标的是「终端感」：近黑画布、品牌蓝只打在主操作上、左绘图轨 / 顶工具条 / 右订单票 / 底成交表、底中浮动回放、票上风险筹码先于订单类型、图上入场·止损·止盈标签。EasyCandle 会话骨架已接近；差距在色板（琥珀/锌 vs 蓝/近黑）、仪表盘产品化、票字段序、图角一键买卖。
+要对标的是「终端感」：近黑画布、品牌蓝只打在主操作上、左绘图轨 / 顶工具条 / 右订单票 / 底成交表、底中浮动回放、票上风险筹码先于订单类型、图上入场·止损·止盈标签。CandleLab 会话骨架已接近；差距在色板（琥珀/锌 vs 蓝/近黑）、仪表盘产品化、票字段序、图角一键买卖。
 
 免费套餐拦了「新建会话」向导；向导字段用既有会话 create 记忆，不挡布局对标。
 
 ## 布局对照
 
-| 区域 | FX Replay v2 | EasyCandle | 1:1 差距 |
+| 区域 | FX Replay v2 | CandleLab | 1:1 差距 |
 |---|---|---|---|
 | 壳 | 左栏导航 + 顶栏 + 主列 | 管理台顶 Tab；会话内顶工具条 | 管理台产品化 |
 | 会话图 | 左轨·顶条·图·右票·底表 | 同骨架，票宽 260 | 收紧；票约 300 |

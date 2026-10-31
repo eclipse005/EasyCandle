@@ -15,7 +15,7 @@ import type {
 import { useReplayStore, type TradeMarker, type ViewMode } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 
-const STORAGE_KEY = 'easy-candle:sessions'
+const STORAGE_KEY = 'candle-lab:sessions'
 
 export const SESSION_NAME_MAX_LENGTH = 48
 

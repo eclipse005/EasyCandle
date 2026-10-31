@@ -17,7 +17,7 @@ import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
-import iconUrl from '@/assets/easycandle-icon.svg'
+import iconUrl from '@/assets/candlelab-icon.svg'
 
 type MenuEntry =
   | {
@@ -193,9 +193,9 @@ export default function AppMenu() {
     { type: 'separator' },
     {
       type: 'item',
-      label: 'GitHub (easy-candle)',
+      label: 'GitHub (CandleLab)',
       icon: ExternalLink,
-      href: 'https://github.com/easy-candle/easy-candle',
+      href: 'https://github.com/eclipse005/EasyCandle',
       onSelect: () => {}
     }
   ]
@@ -234,7 +234,7 @@ export default function AppMenu() {
         }`}
       >
         <img src={iconUrl} alt="" width={18} height={18} className="h-[18px] w-[18px] rounded-sm" aria-hidden />
-        <span className="text-xs font-bold tracking-tight text-amber-400">Easy Candle</span>
+        <span className="text-xs font-bold tracking-tight text-amber-400">CandleLab</span>
         <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
