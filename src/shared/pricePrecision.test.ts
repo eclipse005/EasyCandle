@@ -6,6 +6,7 @@ import {
   FOREX_CONTRACT_SIZE,
   formatAssetPrice,
   formatContractSize,
+  contractSizeUnitLabel,
   GOLD_CONTRACT_SIZE,
   inferPrecisionFromCandles,
   minMoveFromPrecision,
@@ -141,5 +142,13 @@ describe('contractSizeForSymbol', () => {
     expect(tradeSizeKindForSymbol('EURUSD')).toBe('lot')
     expect(tradeSizeKindForSymbol('XAUUSD')).toBe('lot')
     expect(tradeSizeKindForSymbol('BTCUSDT')).toBe('amount')
+  })
+})
+
+describe('contractSizeUnitLabel', () => {
+  it('uses base currency for forex, oz for metals', () => {
+    expect(contractSizeUnitLabel('EURUSD')).toBe('EUR')
+    expect(contractSizeUnitLabel('USDJPY')).toBe('USD')
+    expect(contractSizeUnitLabel('XAUUSD')).toBe('oz')
   })
 })

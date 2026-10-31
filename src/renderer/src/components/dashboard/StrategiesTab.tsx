@@ -25,6 +25,7 @@ import {
 import { equityCurve, sideReport, type ClosedTrade } from '@/lib/paperTrade'
 import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore, type Strategy } from '@/store/strategiesStore'
+import { useT } from '@/i18n/useT'
 
 type StrategyPerf = {
   trades: ClosedTrade[]
@@ -89,10 +90,11 @@ function formatMaxDd(pct: number | null): string {
 
 /** Blue filled equity sparkline — FXR Strategies card style. */
 function StrategyEquitySparkline({ points }: { points: number[] }): ReactNode {
+  const { t } = useT()
   if (points.length < 2) {
     return (
       <p className={cn('flex h-full items-center justify-center text-center', softType.caption)}>
-        No performance data yet
+        {t('strategies.noPerf')}
       </p>
     )
   }
@@ -138,8 +140,8 @@ function StrategyEquitySparkline({ points }: { points: number[] }): ReactNode {
 function MetricChip({ label, value }: { label: string; value: string }): ReactNode {
   return (
     <div className="min-w-0 rounded-xl border border-white/[0.05] bg-zinc-950/55 px-2.5 py-2">
-      <div className={cn(softType.micro, 'truncate text-zinc-500')}>{label}</div>
-      <div className="mt-1 truncate text-caption font-semibold tabular-nums text-zinc-100">
+      <div className={cn(softType.micro, 'whitespace-nowrap text-zinc-500')}>{label}</div>
+      <div className="mt-1 whitespace-nowrap text-caption font-semibold tabular-nums text-zinc-100">
         {value}
       </div>
     </div>
@@ -153,6 +155,7 @@ function StrategyCard({
   strategy: Strategy
   onDelete: () => void
 }): ReactNode {
+  const { t } = useT()
   const rename = useStrategiesStore((s) => s.rename)
   const perf = useStrategyPerf(strategy.id)
   const [editing, setEditing] = useState(false)
@@ -238,18 +241,18 @@ function StrategyCard({
       {!perf.hasData ? (
         <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/[0.06] bg-zinc-950/60 px-2.5 py-1">
           <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden />
-          <span className={cn(softType.micro, 'text-zinc-400')}>No data</span>
+          <span className={cn(softType.micro, 'text-zinc-400')}>{t('strategies.noData')}</span>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-4 gap-2">
-        <MetricChip label="Win rate" value={formatWinRate(perf.winRate)} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <MetricChip label={t('strategies.winRate')} value={formatWinRate(perf.winRate)} />
         <MetricChip
-          label="Trades"
+          label={t('strategies.trades')}
           value={perf.hasData ? String(perf.tradeCount) : '—'}
         />
-        <MetricChip label="Max DD" value={formatMaxDd(perf.maxDdPct)} />
-        <MetricChip label="RR" value={formatRiskRewardRatio(perf.rr)} />
+        <MetricChip label={t('strategies.maxDd')} value={formatMaxDd(perf.maxDdPct)} />
+        <MetricChip label={t('strategies.rr')} value={formatRiskRewardRatio(perf.rr)} />
       </div>
 
       <div className="mt-auto min-h-[7.5rem] flex-1 rounded-xl border border-white/[0.04] bg-zinc-950/35 px-2 py-2">
@@ -262,7 +265,7 @@ function StrategyCard({
               softType.caption
             )}
           >
-            No performance data yet
+            {t('strategies.noPerf')}
           </p>
         )}
       </div>
@@ -272,6 +275,7 @@ function StrategyCard({
 
 /** Strategies page — FXR-style card grid (local tags + session-derived stats). */
 export default function StrategiesTab(): ReactNode {
+  const { t } = useT()
   const strategies = useStrategiesStore((s) => s.strategies)
   const add = useStrategiesStore((s) => s.add)
   const remove = useStrategiesStore((s) => s.remove)
@@ -321,7 +325,7 @@ export default function StrategiesTab(): ReactNode {
               softNav.tabActive
             )}
           >
-            My strategies
+            {t('strategies.my')}
             <span className={softNav.tabUnderline} aria-hidden />
           </button>
         </div>
@@ -349,7 +353,7 @@ export default function StrategiesTab(): ReactNode {
           </SoftButton>
           <SoftButton variant="primary" onClick={() => setCreateOpen(true)}>
             <Plus className="h-5 w-5" aria-hidden />
-            New strategy
+            {t('strategies.new')}
           </SoftButton>
         </div>
       </div>
@@ -362,7 +366,7 @@ export default function StrategiesTab(): ReactNode {
           />
           <SoftInput
             className="h-11 pl-10 pr-10 text-body"
-            placeholder="Search strategies…"
+            placeholder={t('strategies.searchPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search strategies"
@@ -382,12 +386,9 @@ export default function StrategiesTab(): ReactNode {
       ) : null}
 
       {strategies.length === 0 ? (
-        <SoftEmpty>
-          No strategies yet — create one and tag sessions with it to see win rate, drawdown, and
-          equity.
-        </SoftEmpty>
+        <SoftEmpty>{t('strategies.empty')}</SoftEmpty>
       ) : filtered.length === 0 ? (
-        <SoftEmpty>No strategies match “{query.trim()}”.</SoftEmpty>
+        <SoftEmpty>{t('strategies.noMatch', { query: query.trim() })}</SoftEmpty>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((strategy) => (
@@ -402,10 +403,14 @@ export default function StrategiesTab(): ReactNode {
 
       <SoftConfirmDialog
         open={pendingDelete != null}
-        title="Delete strategy"
+        title={t('strategies.deleteTitle')}
         description={
-          pendingDelete ? `Delete strategy “${pendingDelete.name}”?` : undefined
+          pendingDelete
+            ? t('strategies.deleteBody', { name: pendingDelete.name })
+            : undefined
         }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
           if (!pendingDelete) return
@@ -416,29 +421,29 @@ export default function StrategiesTab(): ReactNode {
 
       <SoftDialog
         open={createOpen}
-        title="New strategy"
-        description="Local tag for sessions — performance aggregates from tagged closed trades."
+        title={t('strategies.createTitle')}
+        description={t('strategies.createHint')}
         onClose={() => setCreateOpen(false)}
         footer={
           <>
             <SoftButton variant="ghost" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {t('strategies.cancel')}
             </SoftButton>
             <SoftButton
               variant="primary"
               disabled={!newName.trim()}
               onClick={submitCreate}
             >
-              Create
+              {t('strategies.create')}
             </SoftButton>
           </>
         }
       >
-        <SoftLabel htmlFor="new-strategy-name" caption="Name">
+        <SoftLabel htmlFor="new-strategy-name" caption={t('strategies.name')}>
           <SoftInput
             id="new-strategy-name"
             className="mt-2 h-11 text-body"
-            placeholder="e.g. Breakout M15"
+            placeholder={t('strategies.namePlaceholder')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {

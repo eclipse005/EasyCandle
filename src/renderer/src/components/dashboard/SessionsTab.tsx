@@ -206,7 +206,7 @@ export default function SessionsTab({
         title="Delete session"
         description={
           pendingDelete
-            ? `Delete session “${pendingDelete.name}”? This cannot be undone.`
+            ? `Delete the session “${pendingDelete.name}”? This cannot be undone.`
             : undefined
         }
         onCancel={() => setPendingDelete(null)}
@@ -340,16 +340,59 @@ function SessionCard({
             ) : (
               <h2 className={cn(softType.cardTitle, 'truncate text-zinc-50')}>{session.name}</h2>
             )}
-            <p className={cn('mt-1.5', softType.caption)}>
-              {session.symbol} · {session.timeframe}
-              {strategyName ? ` · ${strategyName}` : ''}
-              {rangeLabel ? ` · ${rangeLabel}` : ''}
-              {remaining != null ? ` · ${remaining} day${remaining === 1 ? '' : 's'} remaining` : ''}
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={cn(softType.caption, 'whitespace-nowrap text-zinc-300')}>
+                {session.symbol}
+              </span>
+              <span className="text-zinc-600" aria-hidden>
+                ·
+              </span>
+              <span className={cn(softType.caption, 'whitespace-nowrap')}>{session.timeframe}</span>
+              {strategyName ? (
+                <>
+                  <span className="text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <span className={cn(softType.caption, 'whitespace-nowrap')}>{strategyName}</span>
+                </>
+              ) : null}
+              {rangeLabel ? (
+                <>
+                  <span className="text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <span className={cn(softType.caption, 'whitespace-nowrap tabular-nums')}>
+                    {rangeLabel}
+                  </span>
+                </>
+              ) : null}
+              {remaining != null ? (
+                <>
+                  <span className="text-zinc-600" aria-hidden>
+                    ·
+                  </span>
+                  <span className={cn(softType.caption, 'whitespace-nowrap')}>
+                    {remaining} day{remaining === 1 ? '' : 's'} remaining
+                  </span>
+                </>
+              ) : null}
+            </div>
             <p className={cn('mt-3', softType.caption)}>
               Balance{' '}
-              <span className="text-body font-semibold tabular-nums text-zinc-100">
+              <span className="whitespace-nowrap text-body font-semibold tabular-nums text-zinc-100">
                 {formatPnlCcy(analytics.balance, quote).replace(/^[+-]/, '')}
+              </span>
+              <span className="mx-2 text-zinc-700" aria-hidden>
+                ·
+              </span>
+              PnL{' '}
+              <span
+                className={cn(
+                  'whitespace-nowrap text-body font-semibold tabular-nums',
+                  analytics.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                )}
+              >
+                {formatPnlCcy(analytics.totalPnl, quote)}
               </span>
             </p>
           </div>
@@ -530,15 +573,16 @@ function MetricChip({
     <div className="min-w-0 rounded-2xl border border-white/[0.05] bg-zinc-950/40 px-4 py-3">
       <div className={cn('flex items-center gap-1.5', softType.caption)}>
         {label}
-        <Info className="h-3.5 w-3.5 opacity-50" aria-hidden />
+        <Info className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
       </div>
       <p
         className={cn(
-          'mt-2 truncate text-[1.25rem] font-semibold tabular-nums tracking-tight',
+          'mt-2 whitespace-nowrap text-[clamp(1rem,1.6vw,1.25rem)] font-semibold tabular-nums tracking-tight',
           tone === 'up' && 'text-emerald-400',
           tone === 'down' && 'text-red-400',
           tone === 'neutral' && 'text-zinc-50'
         )}
+        title={value}
       >
         {value}
       </p>
@@ -591,7 +635,7 @@ function BarSparkline({
   shortLabels?: boolean
 }): ReactNode {
   const maxAbs = Math.max(1, ...buckets.map((b) => Math.abs(b.pnl)))
-  const hasData = buckets.some((b) => b.pnl !== 0)
+  const hasData = buckets.some((b) => b.pnl !== 0 || (b.tradeCount ?? 0) > 0)
   if (!hasData) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>

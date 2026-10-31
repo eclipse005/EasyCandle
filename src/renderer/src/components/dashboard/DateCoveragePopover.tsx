@@ -88,12 +88,30 @@ export default function DateCoveragePopover({
       left = Math.max(8, window.innerWidth - 8 - width)
     }
     const panelHeight = panelRef.current?.offsetHeight ?? 320
-    const below = rect.bottom + 6
-    const above = rect.top - 6 - panelHeight
-    const top =
-      below + panelHeight <= window.innerHeight - 8
-        ? below
-        : Math.max(8, above)
+    const gap = 6
+    const below = rect.bottom + gap
+    const above = rect.top - gap - panelHeight
+
+    // Prefer anchoring under the date field. Flip above when below would
+    // cover SoftDialog Cancel/actions or clip the viewport.
+    let footerTop = Number.POSITIVE_INFINITY
+    const dialog = trigger.closest('[role="dialog"]')
+    const footer = dialog?.querySelector('[data-soft-dialog-footer]')
+    if (footer instanceof HTMLElement) {
+      footerTop = footer.getBoundingClientRect().top
+    }
+    const wouldCoverFooter = below + panelHeight > footerTop - 4
+    const fitsBelow =
+      below + panelHeight <= window.innerHeight - 8 && !wouldCoverFooter
+
+    let top: number
+    if (fitsBelow) {
+      top = below
+    } else if (above >= 8) {
+      top = above
+    } else {
+      top = Math.max(8, Math.min(below, window.innerHeight - 8 - panelHeight))
+    }
     setPos({ top, left, width })
   }, [])
 
@@ -103,6 +121,9 @@ export default function DateCoveragePopover({
       return
     }
     placePanel()
+    // Second pass after portal paints so measured panel height is accurate.
+    const id = requestAnimationFrame(() => placePanel())
+    return () => cancelAnimationFrame(id)
   }, [open, placePanel])
 
   useEffect(() => {

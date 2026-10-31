@@ -90,6 +90,17 @@ describe('sessionAnalytics', () => {
     expect(daily.find((d) => d.label === 'Tuesday')?.pnl).toBe(25)
   })
 
+
+  it('anchors monthly buckets to latest trade (historical replay)', () => {
+    // Trades in March 2024; "now" is Oct 2026 — must still show Mar bars
+    const mar2024 = Date.UTC(2024, 2, 15, 12) / 1000
+    const trades = [trade({ id: '1', side: 'long', pnl: 40, exitTime: mar2024 })]
+    const monthly = monthlyPnlBuckets(trades, 3, Date.UTC(2026, 9, 31))
+    const mar = monthly.find((m) => m.label === 'Mar')
+    expect(mar?.pnl).toBe(40)
+    expect(mar?.tradeCount).toBe(1)
+  })
+
   it('daysRemaining from playhead', () => {
     expect(daysRemaining(100, 100 + 3 * 86400, 0)).toBe(3)
     expect(daysRemaining(null, 200, 100)).toBe(0) // 100 sec span → 0 days

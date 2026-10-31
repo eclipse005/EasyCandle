@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import iconUrl from '@/assets/barreplay-icon.svg'
+import iconUrl from '@/assets/barreplay-logo.png'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { APP_NAME } from '@shared/appName'
 import { getReleaseCodename, parseSemverMajor } from '@shared/releaseCodenames'
@@ -70,7 +70,7 @@ export default function AboutDialog() {
               alt=""
               width={48}
               height={48}
-              className="h-12 w-12 rounded-xl border border-white/10 shadow-lg shadow-black/30"
+              className="h-12 w-12 rounded-xl border border-white/10 bg-zinc-900 object-contain p-1 shadow-lg shadow-black/30"
               aria-hidden
             />
             <div className="min-w-0">

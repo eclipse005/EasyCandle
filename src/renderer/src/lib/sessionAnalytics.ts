@@ -6,6 +6,8 @@ export type PeriodBucket = {
   key: string
   label: string
   pnl: number
+  /** Closed trades that contributed to this bucket (incl. break-even). */
+  tradeCount?: number
 }
 
 export type SessionAnalytics = {
@@ -82,22 +84,32 @@ export function monthlyPnlBuckets(
   count = 6,
   now = Date.now()
 ): PeriodBucket[] {
-  const end = new Date(now)
+  const list = Array.isArray(trades) ? trades : []
+  // Anchor to latest closed trade so historical replay months show bars
+  // (Daily weekday buckets already include all trades regardless of calendar year).
+  let endMs = now
+  let latest = Number.NEGATIVE_INFINITY
+  for (const t of list) {
+    if (Number.isFinite(t.exitTime)) latest = Math.max(latest, t.exitTime * 1000)
+  }
+  if (Number.isFinite(latest) && latest > 0) endMs = latest
+  const end = new Date(endMs)
   const buckets: PeriodBucket[] = []
   const index = new Map<string, number>()
   for (let i = count - 1; i >= 0; i -= 1) {
     const d = new Date(end.getFullYear(), end.getMonth() - i, 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     index.set(key, buckets.length)
-    buckets.push({ key, label: MONTH_LABELS[d.getMonth()] ?? key, pnl: 0 })
+    buckets.push({ key, label: MONTH_LABELS[d.getMonth()] ?? key, pnl: 0, tradeCount: 0 })
   }
-  for (const t of Array.isArray(trades) ? trades : []) {
+  for (const t of list) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
     const d = new Date(t.exitTime * 1000)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const i = index.get(key)
     if (i == null) continue
     buckets[i].pnl += t.pnl
+    buckets[i].tradeCount = (buckets[i].tradeCount ?? 0) + 1
   }
   return buckets
 }
@@ -107,12 +119,14 @@ export function weekdayPnlBuckets(trades: ClosedTrade[]): PeriodBucket[] {
   const buckets: PeriodBucket[] = DOW_LABELS.map((label, i) => ({
     key: String(i),
     label,
-    pnl: 0
+    pnl: 0,
+    tradeCount: 0
   }))
   for (const t of Array.isArray(trades) ? trades : []) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
     const dow = new Date(t.exitTime * 1000).getDay()
     buckets[dow].pnl += t.pnl
+    buckets[dow].tradeCount = (buckets[dow].tradeCount ?? 0) + 1
   }
   return buckets
 }

@@ -78,7 +78,10 @@ export default function SoftDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer != null ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/[0.06] px-5 py-3.5">
+          <div
+            data-soft-dialog-footer
+            className="relative z-[1] flex flex-wrap items-center justify-end gap-2 border-t border-white/[0.06] bg-zinc-950/95 px-5 py-3.5"
+          >
             {footer}
           </div>
         ) : null}

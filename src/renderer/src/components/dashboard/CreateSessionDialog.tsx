@@ -14,6 +14,7 @@ import { DEFAULT_CHART_TIMEZONE, parseSessionParts, toSessionParts } from '@/lib
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
+import { useT } from '@/i18n/useT'
 
 export type CreateSessionDialogProps = {
   open: boolean
@@ -37,6 +38,7 @@ export default function CreateSessionDialog({
   presetSymbol = null,
   onClose
 }: CreateSessionDialogProps): ReactNode {
+  const { t } = useT()
   const imports = useReplayStore((s) => s.importedList)
   const openSession = useSessionStore((s) => s.openSession)
   const strategies = useStrategiesStore((s) => s.strategies)
@@ -146,29 +148,29 @@ export default function CreateSessionDialog({
       onClose={onClose}
       closeDisabled={busy}
       labelledBy="create-session-title"
-      title="New backtesting session"
-      description="Pick a symbol — the engine merges all of its imported CSV files."
+      title={t('session.newTitle')}
+      description={t('session.newHint')}
       className="max-w-lg"
       footer={
         <>
           <SoftButton variant="secondary" disabled={busy} onClick={onClose}>
-            Cancel
+            {t('session.cancel')}
           </SoftButton>
           <SoftButton variant="primary" disabled={busy || !group} onClick={submit}>
-            {busy ? 'Preparing…' : 'Start session'}
+            {busy ? t('session.preparing') : t('session.start')}
           </SoftButton>
         </>
       }
     >
       <div className="space-y-3.5 text-[12px]">
-        <SoftLabel caption={`Symbol${symbolGroups.length === 0 ? ' — import a CSV first' : ' *'}`}>
+        <SoftLabel caption={symbolGroups.length === 0 ? t('session.importFirst') : t('session.symbolRequired')}>
           <SoftSelect
             value={symbolKey}
             disabled={busy || symbolGroups.length === 0}
-            aria-label="Symbol"
+            aria-label={t('session.symbol')}
             onChange={(event) => setSymbolKey(event.target.value)}
           >
-            {symbolGroups.length === 0 ? <option value="">No symbols with data</option> : null}
+            {symbolGroups.length === 0 ? <option value="">{t('session.noSymbols')}</option> : null}
             {symbolGroups.map((g) => (
               <option key={g.key} value={g.key}>
                 {g.symbol} · {g.fileCount} file{g.fileCount === 1 ? '' : 's'} ·{' '}
@@ -178,14 +180,14 @@ export default function CreateSessionDialog({
           </SoftSelect>
         </SoftLabel>
 
-        <SoftLabel caption="Start date">
+        <SoftLabel caption={t('session.startDate')}>
           {group ? (
             <DateCoveragePopover
               mode="pick"
               coverageDays={group.coverageDays}
               selectedDay={startDate}
               disabled={busy}
-              placeholder="Pick a day with data"
+              placeholder={t('session.pickDay')}
               initialMonth={startDate ? startDate.slice(0, 7) : undefined}
               onSelectDay={(day) => {
                 setError(null)
@@ -197,33 +199,33 @@ export default function CreateSessionDialog({
               type="text"
               value=""
               disabled
-              aria-label="Start date"
-              placeholder="Pick a day with data"
+              aria-label={t('session.startDate')}
+              placeholder={t('session.pickDay')}
             />
           )}
         </SoftLabel>
 
         <div className="grid grid-cols-2 gap-3">
-          <SoftLabel caption="Initial balance">
+          <SoftLabel caption={t('session.balance')}>
             <SoftInput
               type="number"
               min="0"
               value={balance}
               disabled={busy}
-              aria-label="Initial balance"
+              aria-label={t('session.balance')}
               className="tabular-nums"
               onChange={(event) => setBalance(event.target.value)}
             />
           </SoftLabel>
 
-          <SoftLabel caption="Strategy">
+          <SoftLabel caption={t('session.strategy')}>
             <SoftSelect
               value={strategyId}
               disabled={busy}
-              aria-label="Strategy"
+              aria-label={t('session.strategy')}
               onChange={(event) => setStrategyId(event.target.value)}
             >
-              <option value="">None</option>
+              <option value="">{t('session.noStrategy')}</option>
               {strategies.map((strategy) => (
                 <option key={strategy.id} value={strategy.id}>
                   {strategy.name}
@@ -233,12 +235,12 @@ export default function CreateSessionDialog({
           </SoftLabel>
         </div>
 
-        <SoftLabel caption="Session name">
+        <SoftLabel caption={t('session.name')}>
           <SoftInput
             type="text"
             value={name}
             disabled={busy}
-            aria-label="Session name"
+            aria-label={t('session.name')}
             placeholder={
               displaySymbol
                 ? `${displaySymbol} ${startDate || 'YYYY-MM-DD'}`

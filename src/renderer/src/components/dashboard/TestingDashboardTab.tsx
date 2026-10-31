@@ -6,6 +6,7 @@ import SoftEmpty from '@/components/ui/SoftEmpty'
 import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { useSessionStore } from '@/store/sessionStore'
+import { useT } from '@/i18n/useT'
 import {
   computeLocalPerformance,
   formatDurationMs,
@@ -25,6 +26,7 @@ export default function TestingDashboardTab({
 }: {
   onStartSession: () => void
 }): ReactNode {
+  const { t } = useT()
   const sessions = useSessionStore((s) => s.sessions)
   const stats = useMemo(() => computeLocalPerformance(sessions), [sessions])
   const maxMonthMs = useMemo(
@@ -45,8 +47,8 @@ export default function TestingDashboardTab({
             <Plus className="h-11 w-11" strokeWidth={2.25} aria-hidden />
           </span>
           <span className="min-w-0">
-            <span className={cn('block', softType.cardTitle)}>Backtesting session</span>
-            <span className={cn('mt-1 block', softType.caption)}>Start a session.</span>
+            <span className={cn('block', softType.cardTitle)}>{t('dashboard.backtestingSession')}</span>
+            <span className={cn('mt-1 block', softType.caption)}>{t('dashboard.startSession')}</span>
           </span>
         </button>
 
@@ -60,16 +62,19 @@ export default function TestingDashboardTab({
             <BookOpen className="h-11 w-11" strokeWidth={2} aria-hidden />
           </span>
           <span className="min-w-0">
-            <span className={cn('block', softType.cardTitle, 'text-zinc-200')}>Tutorials</span>
-            <span className={cn('mt-1 block', softType.caption)}>Local help on GitHub.</span>
+            <span className={cn('block', softType.cardTitle, 'text-zinc-200')}>{t('dashboard.tutorials')}</span>
+            <span className={cn('mt-1 block', softType.caption)}>{t('dashboard.tutorialsHint')}</span>
           </span>
         </a>
       </div>
 
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className={softType.section}>Performance</h2>
+        <h2 className={softType.section}>{t('dashboard.performance')}</h2>
         <span className={softType.caption}>
-          {stats.sessionCount} session{stats.sessionCount === 1 ? '' : 's'} · local only
+          {t('dashboard.sessionsLocal', {
+            count: stats.sessionCount,
+            suffix: stats.sessionCount === 1 ? '' : 's'
+          })}
         </span>
       </div>
 

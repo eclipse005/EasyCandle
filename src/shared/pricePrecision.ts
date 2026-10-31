@@ -101,7 +101,7 @@ export function normalizeSymbolKey(symbol: string): string {
     .replace(/[^A-Z0-9]/g, '')
 }
 
-function parseInstrumentPair(symbol: string): { base: string; quote: string } | null {
+export function parseInstrumentPair(symbol: string): { base: string; quote: string } | null {
   const raw = normalizeSymbolKey(symbol)
   if (raw.length < 6) return null
   return {
@@ -185,6 +185,17 @@ export function formatContractSize(value: number): string {
   if (!Number.isFinite(value)) return '—'
   return value.toLocaleString('en-US')
 }
+
+/** Unit label for “1 lot = N …” — base currency / oz / coin, not quote. */
+export function contractSizeUnitLabel(symbol: string): string {
+  const info = contractSizeInfoForSymbol(symbol)
+  const pair = parseInstrumentPair(symbol)
+  if (info.kind === 'forex' && pair) return pair.base
+  if (info.kind === 'metal') return 'oz'
+  if (pair) return pair.base
+  return 'units'
+}
+
 
 /** Trailing-zero-stripped decimal count, capped so float noise cannot inflate it. */
 export function decimalPlaces(value: number): number {

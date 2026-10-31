@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   contractSizeInfoForSymbol,
+  contractSizeUnitLabel,
   formatContractSize,
   normalizeSymbolKey,
   resolvePricePrecision
@@ -23,6 +24,7 @@ import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
 import { softMotion, softNav, softType } from '@/components/ui/softTokens'
+import { useT } from '@/i18n/useT'
 
 type SymbolRow = {
   symbol: string
@@ -122,6 +124,7 @@ function CategoryTabList({
 
 /** Per-symbol parameter editor with category tabs (Forex / Metals / …). */
 export default function SymbolsTab(): ReactNode {
+  const { t } = useT()
   const imports = useReplayStore((s) => s.importedList)
   const params = useSymbolParamsStore((s) => s.params)
   const ensureCatalogDefaults = useSymbolParamsStore((s) => s.ensureCatalogDefaults)
@@ -197,11 +200,8 @@ export default function SymbolsTab(): ReactNode {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className={softType.section}>Per-symbol defaults</h2>
-        <p className={cn('mt-2 max-w-3xl', softType.bodyMuted)}>
-          Contract size is units per 1.0 lot. Spread (full bid–ask in price) and round-turn commission
-          per lot apply to paper fills. Explicit values always win over name-derived defaults.
-        </p>
+        <h2 className={softType.section}>{t('symbols.title')}</h2>
+        <p className={cn('mt-2 max-w-3xl', softType.bodyMuted)}>{t('symbols.subtitle')}</p>
       </div>
 
       <CategoryTabList groups={visibleGroups} activeKey={activeKey} onChange={setActiveKey} />
@@ -209,8 +209,8 @@ export default function SymbolsTab(): ReactNode {
       {rows.length === 0 ? (
         <SoftEmpty>
           {activeKey === 'other'
-            ? 'No non-catalog imports yet.'
-            : 'No symbols in this category.'}
+            ? t('symbols.emptyOther')
+            : t('symbols.emptyCategory')}
         </SoftEmpty>
       ) : (
         <div className="space-y-2">
@@ -224,8 +224,14 @@ export default function SymbolsTab(): ReactNode {
             const precision = spec.precision ?? resolvePricePrecision(row.symbol)
             const daysPart = row.hasData
               ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
-              : 'No data'
+              : t('symbols.noData')
+            const pipTip = `Price decimals (p${precision}). Pip scale follows instrument precision.`
             const metaText = `${quote} · p${precision} · ${daysPart}`
+            const lotUnit = contractSizeUnitLabel(row.symbol)
+            const lotLabel = `1 lot = ${formatContractSize(effective)} ${lotUnit}`
+            const emptyField =
+              'border-dashed border-white/10 text-zinc-500 placeholder:text-zinc-600'
+            const filledField = 'border-primary-500/35 text-zinc-100'
             return (
               <SoftCard
                 key={key}
@@ -241,7 +247,7 @@ export default function SymbolsTab(): ReactNode {
                   </span>
                   <span
                     className="w-[9.5rem] shrink-0 truncate text-left text-micro text-zinc-400"
-                    title={metaText}
+                    title={`${metaText}\n${pipTip}`}
                   >
                     {metaText}
                   </span>
@@ -249,13 +255,18 @@ export default function SymbolsTab(): ReactNode {
                 <div className="min-w-0 flex-1" aria-hidden />
                 <div className="flex shrink-0 items-center gap-3">
                   <label className="flex shrink-0 items-center justify-start gap-1.5">
-                    <span className={cn('shrink-0', softType.micro)}>Contract</span>
+                    <span className={cn('shrink-0', softType.micro)}>{t('symbols.contract')}</span>
                     <SoftInput
                       type="number"
                       min="0"
                       step="any"
                       placeholder={String(info.contractSize)}
                       aria-label={`Contract size for ${row.symbol}`}
+                      title={
+                        userSize == null
+                          ? `Empty — using default ${info.contractSize} ${lotUnit}`
+                          : `Custom contract size (${lotUnit} per 1.0 lot)`
+                      }
                       value={userSize ?? ''}
                       onChange={(event) => {
                         const text = event.target.value.trim()
@@ -263,19 +274,23 @@ export default function SymbolsTab(): ReactNode {
                       }}
                       className={cn(
                         'h-8 w-[7.5rem] shrink-0 text-caption tabular-nums',
-                        userSize != null ? 'border-primary-500/35' : undefined
+                        userSize != null ? filledField : emptyField
                       )}
                     />
                   </label>
                   <label className="flex shrink-0 items-center justify-start gap-1.5">
-                    <span className={cn('shrink-0', softType.micro)}>Spread</span>
+                    <span className={cn('shrink-0', softType.micro)}>{t('symbols.spread')}</span>
                     <SoftInput
                       type="number"
                       min="0"
                       step="any"
                       placeholder="0"
                       aria-label={`Spread for ${row.symbol}`}
-                      title="Full bid–ask width in price units"
+                      title={
+                        spec.spread == null
+                          ? 'Empty — no spread (0)'
+                          : 'Full bid–ask width in price units'
+                      }
                       value={spec.spread ?? ''}
                       onChange={(event) => {
                         const text = event.target.value.trim()
@@ -283,19 +298,23 @@ export default function SymbolsTab(): ReactNode {
                       }}
                       className={cn(
                         'h-8 w-[4.5rem] shrink-0 text-caption tabular-nums',
-                        spec.spread != null ? 'border-primary-500/35' : undefined
+                        spec.spread != null ? filledField : emptyField
                       )}
                     />
                   </label>
                   <label className="flex shrink-0 items-center justify-start gap-1.5">
-                    <span className={cn('shrink-0', softType.micro)}>Comm</span>
+                    <span className={cn('shrink-0', softType.micro)}>{t('symbols.comm')}</span>
                     <SoftInput
                       type="number"
                       min="0"
                       step="any"
                       placeholder="0"
                       aria-label={`Commission per lot for ${row.symbol}`}
-                      title={`Round-turn commission in ${quote} per 1.0 lot`}
+                      title={
+                        spec.commissionPerLot == null
+                          ? `Empty — no commission (0 ${quote})`
+                          : `Round-turn commission in ${quote} per 1.0 lot`
+                      }
                       value={spec.commissionPerLot ?? ''}
                       onChange={(event) => {
                         const text = event.target.value.trim()
@@ -303,7 +322,7 @@ export default function SymbolsTab(): ReactNode {
                       }}
                       className={cn(
                         'h-8 w-[4.5rem] shrink-0 text-caption tabular-nums',
-                        spec.commissionPerLot != null ? 'border-primary-500/35' : undefined
+                        spec.commissionPerLot != null ? filledField : emptyField
                       )}
                     />
                   </label>
@@ -312,9 +331,9 @@ export default function SymbolsTab(): ReactNode {
                       'w-[9.5rem] shrink-0 truncate text-right tabular-nums',
                       softType.micro
                     )}
-                    title={`1 lot = ${formatContractSize(effective)} ${quote}`}
+                    title={`${lotLabel} (base units, not ${quote})`}
                   >
-                    1 lot = {formatContractSize(effective)} {quote}
+                    {lotLabel}
                   </span>
                 </div>
               </SoftCard>

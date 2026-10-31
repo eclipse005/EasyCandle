@@ -390,11 +390,11 @@ export default function AnalyticsTab(): ReactNode {
         </SoftEmpty>
       ) : view === 'performance' ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard
               label="Win rate"
               value={formatWinRatePct(report.winRate)}
-              hint={`${report.wins}W / ${report.losses}L · ${report.count} trades`}
+              hint={`${report.wins}W / ${report.losses}L · ${report.count} trade${report.count === 1 ? '' : 's'}`}
             />
             <StatCard
               label="Realized PnL"
@@ -446,7 +446,7 @@ export default function AnalyticsTab(): ReactNode {
                   <li key={label} className="flex items-baseline justify-between gap-3">
                     <span className={softType.cardTitle}>{label}</span>
                     <span className={softType.caption}>
-                      {row.n} trades · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
+                      {row.n} trade{row.n === 1 ? '' : 's'} · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
                       <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                         {formatPnl(row.pnl)}
                       </span>
@@ -465,7 +465,7 @@ export default function AnalyticsTab(): ReactNode {
                     <div className="mb-1 flex items-baseline justify-between gap-3">
                       <span className={cn(softType.cardTitle, 'text-zinc-200')}>{row.symbol}</span>
                       <span className={softType.caption}>
-                        {row.trades} trades · {formatWinRatePct(row.winRate)} ·{' '}
+                        {row.trades} trade{row.trades === 1 ? '' : 's'} · {formatWinRatePct(row.winRate)} ·{' '}
                         <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                           {formatPnl(row.pnl)}
                         </span>
@@ -496,7 +496,11 @@ export default function AnalyticsTab(): ReactNode {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <StatCard
               label="Max drawdown"
-              value={formatPnl(dd.maxDrawdown)}
+              value={
+                dd.maxDrawdown <= 0
+                  ? '0.00'
+                  : formatPnl(-Math.abs(dd.maxDrawdown)).replace(/^\+/, '')
+              }
               hint="Peak-to-trough on filtered equity"
               tone={dd.maxDrawdown > 0 ? 'down' : 'neutral'}
             />
@@ -537,12 +541,13 @@ function StatCard({
   tone?: 'up' | 'down' | 'neutral'
 }): ReactNode {
   return (
-    <SoftCard className={softSpace.cardPadSm}>
-      <p className={softType.caption}>{label}</p>
+    <SoftCard className={cn(softSpace.cardPadSm, 'min-w-0 overflow-hidden')}>
+      <p className={cn(softType.caption, 'text-pretty')}>{label}</p>
       <p
         className={cn(
-          'mt-2 tabular-nums',
+          'mt-2 break-words tabular-nums leading-tight',
           softType.metric,
+          'text-[clamp(1.05rem,2.1vw,1.65rem)]',
           tone === 'up' && 'text-emerald-400',
           tone === 'down' && 'text-red-400',
           tone === 'neutral' && 'text-zinc-50'
@@ -550,7 +555,7 @@ function StatCard({
       >
         {value}
       </p>
-      <p className={cn('mt-1', softType.caption, 'text-zinc-600')}>{hint}</p>
+      <p className={cn('mt-1 text-pretty', softType.caption, 'text-zinc-600')}>{hint}</p>
     </SoftCard>
   )
 }
@@ -565,7 +570,7 @@ function BarRow({
   shortLabels?: boolean
 }): ReactNode {
   const maxAbs = Math.max(1, ...buckets.map((b) => Math.abs(b.pnl)))
-  const hasData = buckets.some((b) => b.pnl !== 0)
+  const hasData = buckets.some((b) => b.pnl !== 0 || (b.tradeCount ?? 0) > 0)
   if (!hasData) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>

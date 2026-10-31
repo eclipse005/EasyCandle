@@ -453,7 +453,7 @@ export default function SymbolDatasetsDialog({
         title="Delete file"
         description={
           pendingFileDelete
-            ? `Delete “${pendingFileDelete.originalFileName}”? This cannot be undone.`
+            ? `Delete the file “${pendingFileDelete.originalFileName}”? This cannot be undone.`
             : undefined
         }
         busy={deleteBusy}
