@@ -298,7 +298,7 @@ export default function SymbolsTab(): ReactNode {
                           setContractSize(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[6.25rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[8rem] shrink-0 text-caption tabular-nums',
                           userSize != null ? filledField : emptyField
                         )}
                       />
@@ -322,7 +322,7 @@ export default function SymbolsTab(): ReactNode {
                           setSpread(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[4.25rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[5.75rem] shrink-0 text-caption tabular-nums',
                           spec.spread != null ? filledField : emptyField
                         )}
                       />
@@ -346,7 +346,7 @@ export default function SymbolsTab(): ReactNode {
                           setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                         }}
                         className={cn(
-                          'h-8 w-[4.25rem] shrink-0 text-caption tabular-nums',
+                          'h-8 w-[5.75rem] shrink-0 text-caption tabular-nums',
                           spec.commissionPerLot != null ? filledField : emptyField
                         )}
                       />
