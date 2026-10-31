@@ -226,10 +226,10 @@ export default function SymbolsTab(): ReactNode {
               <SoftCard
                 key={key}
                 elevated
-                className="flex flex-nowrap items-center gap-3 overflow-hidden px-3 py-1.5"
+                className="flex flex-nowrap items-center gap-2 px-3 py-1.5"
               >
                 <span
-                  className="w-[7.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
+                  className="w-[6.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
                   title={row.label}
                 >
                   {row.label}
@@ -299,7 +299,7 @@ export default function SymbolsTab(): ReactNode {
                 </label>
                 <span
                   className={cn(
-                    'w-[10rem] shrink-0 truncate text-right tabular-nums',
+                    'w-[8.5rem] shrink-0 truncate text-right tabular-nums',
                     softType.micro
                   )}
                   title={`1 lot = ${formatContractSize(effective)} ${quote}`}
@@ -307,7 +307,7 @@ export default function SymbolsTab(): ReactNode {
                   1 lot = {formatContractSize(effective)} {quote}
                 </span>
                 <span
-                  className="w-[5.5rem] shrink-0 truncate text-right text-micro tabular-nums text-zinc-400"
+                  className="min-w-[5rem] w-[5.5rem] shrink-0 truncate text-right text-micro tabular-nums text-zinc-400"
                   title={
                     row.hasData
                       ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
