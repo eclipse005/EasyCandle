@@ -1,6 +1,6 @@
 {
   "name": "bar-replay",
-  "version": "0.1.54",
+  "version": "0.1.55",
   "description": "BarReplay — candle replay web app (pure frontend port)",
   "private": true,
   "author": "BarReplay",
