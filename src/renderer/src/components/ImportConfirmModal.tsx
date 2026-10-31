@@ -16,6 +16,8 @@ export type ImportConfirmDetails = {
   symbol: string | null
   symbolFromFilename: boolean
   candles: Candle[]
+  /** Survives parseToken stripping when `candles` is empty. */
+  firstCandle?: Candle
   candleCount: number
   firstTime: number
   lastTime: number
@@ -76,6 +78,7 @@ export default function ImportConfirmModal({
   const firstTime = details.firstTime || details.candles[0]?.time
   const lastTime = details.lastTime || details.candles[details.candles.length - 1]?.time
   const candleCount = details.candleCount || details.candles.length
+  const previewCandle = details.firstCandle ?? details.candles[0]
   const needSymbol = !details.symbolFromFilename
   const spanDays = firstTime && lastTime ? ((lastTime - firstTime) / 86400).toFixed(1) : '—'
   const isReplace = Boolean(details.replaceId && details.noNewer)
@@ -245,15 +248,14 @@ export default function ImportConfirmModal({
               <p className="mt-0.5 tabular-nums text-zinc-200">{spanDays} days</p>
             </div>
 
-            {details.candles[0] ? (
+            {previewCandle ? (
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
                   First bar preview
                 </span>
                 <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
-                  {formatUtcCandleTime(details.candles[0].time)} · O{' '}
-                  {details.candles[0].open} H {details.candles[0].high} L {details.candles[0].low}{' '}
-                  C {details.candles[0].close}
+                  {formatUtcCandleTime(previewCandle.time)} · O {previewCandle.open} H{' '}
+                  {previewCandle.high} L {previewCandle.low} C {previewCandle.close}
                 </p>
               </div>
             ) : null}

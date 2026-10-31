@@ -45,6 +45,7 @@ describe('importWorkerJob', () => {
     expect(client.ok).toBe(true)
     if (!client.ok) return
     expect(client.candles).toEqual([])
+    expect(client.firstCandle).toEqual(parsed.candles[0])
     expect(client.parseToken).toBe('token-1')
     expect(client.candleCount).toBe(parsed.candleCount)
     expect(client.firstTime).toBe(parsed.firstTime)

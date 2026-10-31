@@ -316,9 +316,9 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         </Tooltip>
       </div>
 
-      {!canBuy && !canSell ? (
+      {mark != null && (!canBuy || !canSell) ? (
         <p className="text-[10px] leading-relaxed text-amber-400/80">
-          {ticketValidationHint(orderType, mark ?? null, ticketLevels)}
+          {ticketValidationHint(orderType, mark, ticketLevels)}
         </p>
       ) : null}
     </div>

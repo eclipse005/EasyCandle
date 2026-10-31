@@ -182,6 +182,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
         content: '',
         fileName: fileName || path,
         candles: parsed.candles,
+        firstCandle: parsed.firstCandle ?? parsed.candles[0],
         candleCount: parsed.candleCount,
         firstTime: parsed.firstTime,
         lastTime: parsed.lastTime,

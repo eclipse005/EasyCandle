@@ -46,6 +46,11 @@ export type ImportParseSuccess = {
   candleCount: number
   firstTime: number
   lastTime: number
+  /**
+   * First 1m bar kept when `candles` is stripped for the client (parseToken path).
+   * UI preview uses this; full series stays off-thread.
+   */
+  firstCandle?: Candle
   /** Present when the 1m series is held off-thread (worker / main process). */
   parseToken?: string
   /** Null when the file name did not contain a usable symbol. */
