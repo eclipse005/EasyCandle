@@ -29,9 +29,23 @@ afterEach(() => {
 })
 
 describe('symbolParamsStore', () => {
-  it('starts empty and paramsFor falls back to an empty object', () => {
-    expect(useSymbolParamsStore.getState().params).toEqual({})
-    expect(useSymbolParamsStore.getState().paramsFor('EURUSD')).toEqual({})
+  it('paramsFor falls back to an empty object for unknown symbols', () => {
+    // Catalog may prefill known ids as {} markers; unknown keys stay empty.
+    expect(useSymbolParamsStore.getState().paramsFor('NOTAREALPAIRXYZ')).toEqual({})
+    expect(useSymbolParamsStore.getState().paramsFor('EURUSD')).toEqual(
+      useSymbolParamsStore.getState().params['EURUSD'] ?? {}
+    )
+  })
+
+  it('ensureSymbol adds a missing key without overwriting overrides', () => {
+    const store = useSymbolParamsStore.getState()
+    store.ensureSymbol('CUSTOMXYZ')
+    expect(Object.prototype.hasOwnProperty.call(store.params, 'CUSTOMXYZ') ||
+      Object.prototype.hasOwnProperty.call(useSymbolParamsStore.getState().params, 'CUSTOMXYZ')).toBe(true)
+    useSymbolParamsStore.getState().setSpread('CUSTOMXYZ', 0.1)
+    useSymbolParamsStore.getState().ensureSymbol('CUSTOMXYZ', { contractSize: 1 })
+    expect(useSymbolParamsStore.getState().paramsFor('CUSTOMXYZ').spread).toBe(0.1)
+    expect(useSymbolParamsStore.getState().paramsFor('CUSTOMXYZ').contractSize).toBe(1)
   })
 
   it('normalizes the symbol key for storage and lookup', () => {

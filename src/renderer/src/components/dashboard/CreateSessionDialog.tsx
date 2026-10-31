@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
-import type { ImportedDatasetMeta } from '@shared/importTypes'
+import {
+  earliestCoverageDay,
+  groupImportsBySymbol,
+  isDayCovered
+} from '@shared/dateCoverage'
+import { normalizeSymbolKey } from '@shared/pricePrecision'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftDialog from '@/components/ui/SoftDialog'
 import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
 import SoftLabel from '@/components/ui/SoftLabel'
+import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
 import { DEFAULT_CHART_TIMEZONE, parseSessionParts, toSessionParts } from '@/lib/chartTimezone'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -12,8 +18,8 @@ import { useStrategiesStore } from '@/store/strategiesStore'
 
 export type CreateSessionDialogProps = {
   open: boolean
-  /** When set, the dataset/timeframe/name prefill from this dataset. */
-  presetDataset: ImportedDatasetMeta | null
+  /** Optional symbol prefill (normalized id). */
+  presetSymbol?: string | null
   onClose: () => void
 }
 
@@ -23,19 +29,21 @@ function dateInputFor(unixSeconds: number | null | undefined): string {
 }
 
 /**
- * New-backtesting-session wizard: pick a dataset, timeframe, start date,
- * initial balance, and optional strategy, then enter the session.
+ * New-backtesting-session wizard: pick a **symbol** (not a single CSV),
+ * timeframe, start date within coverage, balance, optional strategy.
  */
 export default function CreateSessionDialog({
   open,
-  presetDataset,
+  presetSymbol = null,
   onClose
 }: CreateSessionDialogProps): ReactNode {
   const imports = useReplayStore((s) => s.importedList)
   const openSession = useSessionStore((s) => s.openSession)
   const strategies = useStrategiesStore((s) => s.strategies)
 
-  const [datasetId, setDatasetId] = useState('')
+  const symbolGroups = useMemo(() => groupImportsBySymbol(imports), [imports])
+
+  const [symbolKey, setSymbolKey] = useState('')
   const [timeframe, setTimeframe] = useState('1m')
   const [startDate, setStartDate] = useState('')
   const [balance, setBalance] = useState('100000')
@@ -44,39 +52,64 @@ export default function CreateSessionDialog({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const dataset = useMemo(
-    () => imports.find((m) => m.id === (presetDataset?.id ?? datasetId)) ?? null,
-    [imports, presetDataset, datasetId]
+  const group = useMemo(
+    () => symbolGroups.find((g) => g.key === symbolKey) ?? null,
+    [symbolGroups, symbolKey]
   )
+
   const timeframes = useMemo(() => {
-    if (!dataset) return []
-    return IMPORT_STORED_TIMEFRAMES.filter((tf) => dataset.timeframes[tf] != null)
-  }, [dataset])
+    if (!group) return []
+    const available = new Set<string>()
+    for (const meta of group.files) {
+      for (const tf of IMPORT_STORED_TIMEFRAMES) {
+        if (meta.timeframes[tf] != null) available.add(tf)
+      }
+    }
+    return IMPORT_STORED_TIMEFRAMES.filter((tf) => available.has(tf))
+  }, [group])
 
   useEffect(() => {
     if (!open) return
     setError(null)
     setBusy(false)
-    const meta = presetDataset ?? imports[0]
-    if (meta) {
-      setDatasetId(meta.id)
-      const tf = meta.timeframes[meta.timeframe] != null ? meta.timeframe : '1m'
+    const pref = presetSymbol ? normalizeSymbolKey(presetSymbol) : ''
+    const initial =
+      (pref && symbolGroups.find((g) => g.key === pref)) || symbolGroups[0] || null
+    if (initial) {
+      setSymbolKey(initial.key)
+      const preferred =
+        initial.files.find((f) => f.timeframes[f.timeframe] != null)?.timeframe
+      const tf =
+        preferred ??
+        (initial.files[0]?.timeframes['1m'] != null ? '1m' : '1m')
       setTimeframe(tf)
-      setStartDate(dateInputFor(meta.timeframes[tf]?.firstTime))
+      const day =
+        earliestCoverageDay(initial.coverageDays) ||
+        dateInputFor(initial.firstTime)
+      setStartDate(day)
     } else {
-      setDatasetId('')
+      setSymbolKey('')
       setTimeframe('1m')
       setStartDate('')
     }
     setBalance('100000')
     setStrategyId('')
     setName('')
-  }, [open, presetDataset, imports])
+  }, [open, presetSymbol, symbolGroups])
 
   useEffect(() => {
-    if (!open || !dataset) return
-    setStartDate(dateInputFor(dataset.timeframes[timeframe]?.firstTime))
-  }, [open, dataset, timeframe])
+    if (!open || !group) return
+    const day =
+      (startDate && isDayCovered(group.coverageDays, startDate) && startDate) ||
+      earliestCoverageDay(group.coverageDays) ||
+      dateInputFor(group.firstTime)
+    setStartDate(day)
+    if (timeframes.length && !timeframes.includes(timeframe as (typeof timeframes)[number])) {
+      setTimeframe(timeframes[0] as string)
+    }
+    // Only reclamp when symbol changes — not on every startDate edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, group?.key])
 
   useEffect(() => {
     if (!open) return
@@ -88,12 +121,16 @@ export default function CreateSessionDialog({
   }, [open, busy, onClose])
 
   function submit(): void {
-    if (!dataset) {
-      setError('Select a dataset.')
+    if (!group) {
+      setError('Select a symbol with imported data.')
       return
     }
     if (!startDate) {
       setError('Start date is required.')
+      return
+    }
+    if (!isDayCovered(group.coverageDays, startDate)) {
+      setError('Start date has no data for this symbol.')
       return
     }
     const seconds = parseSessionParts(startDate, '00:00', DEFAULT_CHART_TIMEZONE)
@@ -111,7 +148,7 @@ export default function CreateSessionDialog({
     setError(null)
     void openSession({
       name,
-      datasetId: dataset.id,
+      symbol: group.symbol,
       timeframe,
       startDate: seconds,
       balance: balanceNumber,
@@ -119,9 +156,11 @@ export default function CreateSessionDialog({
     }).then((id) => {
       setBusy(false)
       if (id) onClose()
-      else setError('Could not start the session — check that the dataset still exists.')
+      else setError('Could not start the session — check that the symbol still has data.')
     })
   }
+
+  const displaySymbol = group?.symbol ?? ''
 
   return (
     <SoftDialog
@@ -130,30 +169,32 @@ export default function CreateSessionDialog({
       closeDisabled={busy}
       labelledBy="create-session-title"
       title="New backtesting session"
-      description="The chart opens at your start date, revealing candles as you step forward."
+      description="Pick a symbol — the engine merges all of its imported CSV files."
+      className="max-w-lg"
       footer={
         <>
           <SoftButton variant="secondary" disabled={busy} onClick={onClose}>
             Cancel
           </SoftButton>
-          <SoftButton variant="primary" disabled={busy || !dataset} onClick={submit}>
+          <SoftButton variant="primary" disabled={busy || !group} onClick={submit}>
             {busy ? 'Preparing…' : 'Start session'}
           </SoftButton>
         </>
       }
     >
       <div className="space-y-3.5 text-[12px]">
-        <SoftLabel caption={`Dataset${imports.length === 0 ? ' — import a CSV first' : ' *'}`}>
+        <SoftLabel caption={`Symbol${symbolGroups.length === 0 ? ' — import a CSV first' : ' *'}`}>
           <SoftSelect
-            value={datasetId}
-            disabled={busy || imports.length === 0}
-            aria-label="Dataset"
-            onChange={(event) => setDatasetId(event.target.value)}
+            value={symbolKey}
+            disabled={busy || symbolGroups.length === 0}
+            aria-label="Symbol"
+            onChange={(event) => setSymbolKey(event.target.value)}
           >
-            {imports.length === 0 ? <option value="">No datasets</option> : null}
-            {imports.map((meta) => (
-              <option key={meta.id} value={meta.id}>
-                {meta.symbol} · {meta.candleCount.toLocaleString()} × 1m
+            {symbolGroups.length === 0 ? <option value="">No symbols with data</option> : null}
+            {symbolGroups.map((g) => (
+              <option key={g.key} value={g.key}>
+                {g.symbol} · {g.fileCount} file{g.fileCount === 1 ? '' : 's'} ·{' '}
+                {g.candleCount.toLocaleString()} candles
               </option>
             ))}
           </SoftSelect>
@@ -163,7 +204,7 @@ export default function CreateSessionDialog({
           <SoftLabel caption="Timeframe">
             <SoftSelect
               value={timeframe}
-              disabled={busy}
+              disabled={busy || timeframes.length === 0}
               aria-label="Timeframe"
               onChange={(event) => setTimeframe(event.target.value)}
             >
@@ -181,10 +222,29 @@ export default function CreateSessionDialog({
               value={startDate}
               disabled={busy}
               aria-label="Start date"
-              onChange={(event) => setStartDate(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value
+                if (!group || isDayCovered(group.coverageDays, next)) {
+                  setStartDate(next)
+                } else {
+                  setError('That day has no data — pick a lit day on the calendar.')
+                }
+              }}
             />
           </SoftLabel>
         </div>
+
+        {group ? (
+          <DateCoverageCalendar
+            coverageDays={group.coverageDays}
+            selectedDay={startDate}
+            onSelectDay={(day) => {
+              setError(null)
+              setStartDate(day)
+            }}
+            initialMonth={startDate ? startDate.slice(0, 7) : undefined}
+          />
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           <SoftLabel caption="Initial balance">
@@ -223,13 +283,15 @@ export default function CreateSessionDialog({
             disabled={busy}
             aria-label="Session name"
             placeholder={
-              dataset ? `${dataset.symbol} ${startDate || 'YYYY-MM-DD'}` : 'Session name'
+              displaySymbol
+                ? `${displaySymbol} ${startDate || 'YYYY-MM-DD'}`
+                : 'Session name'
             }
             onChange={(event) => setName(event.target.value)}
           />
         </SoftLabel>
 
-        {imports.length === 0 && (
+        {symbolGroups.length === 0 && (
           <p className="text-[12px] leading-relaxed text-zinc-400">
             No imported datasets yet — import a CSV from the Datasets tab first.
           </p>

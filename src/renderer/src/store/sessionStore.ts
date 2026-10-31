@@ -99,12 +99,13 @@ type SessionStoreState = {
   saveActiveSession: () => boolean
   setSessionAutoSave: (id: string, enabled: boolean) => void
   /**
-   * Create a brand-new backtesting session from an imported dataset and enter
+   * Create a brand-new backtesting session from a symbol (merged imports) and enter
    * it: the chart is positioned at `startDate` in replay context.
    */
   openSession: (input: {
     name?: string
-    datasetId: string
+    /** Symbol whose imported files are merged for the session. */
+    symbol: string
     timeframe: string
     startDate: number
     balance: number
@@ -721,8 +722,13 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       }
       // Re-read after resetReplayState (it clears importMeta in replay mode).
       const afterReset = useReplayStore.getState()
-      if (afterReset.importMeta?.id !== input.datasetId || afterReset.timeframe !== input.timeframe) {
-        await useReplayStore.getState().selectImportedDataset(input.datasetId, input.timeframe)
+      const wantSymbol = String(input.symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+      const haveSymbol = String(afterReset.importMeta?.symbol || afterReset.symbol || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+      if (haveSymbol !== wantSymbol || afterReset.timeframe !== input.timeframe) {
+        // Merges all CSVs under the symbol; importId on the session = primary file.
+        await useReplayStore.getState().selectImportedSymbol(input.symbol, input.timeframe)
       }
       await useReplayStore.getState().startImportedReplayAtTime(input.startDate)
       useReplayStore.getState().setSpeed(1)

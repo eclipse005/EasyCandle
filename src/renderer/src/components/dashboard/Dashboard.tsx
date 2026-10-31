@@ -17,7 +17,6 @@ import {
   Settings,
   Table2
 } from 'lucide-react'
-import type { ImportedDatasetMeta } from '@shared/importTypes'
 import { APP_NAME } from '@shared/appName'
 import { useReplayStore } from '@/store/replayStore'
 import {
@@ -206,8 +205,6 @@ export default function Dashboard(): ReactNode {
   const testingTab = useUiLayoutStore((s) => s.testingTab)
   const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
-  const imports = useReplayStore((s) => s.importedList)
-  const [createFor, setCreateFor] = useState<ImportedDatasetMeta | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [version, setVersion] = useState('')
 
@@ -234,8 +231,7 @@ export default function Dashboard(): ReactNode {
     }
   }, [setSidebarNav, setTestingTab])
 
-  const openCreate = (datasetId?: string) => {
-    setCreateFor(datasetId ? (imports.find((m) => m.id === datasetId) ?? null) : null)
+  const openCreate = () => {
     setCreateOpen(true)
   }
 
@@ -257,7 +253,7 @@ export default function Dashboard(): ReactNode {
   } else if (sidebarNav === 'strategies') {
     mainBody = <StrategiesTab />
   } else if (sidebarNav === 'datasets') {
-    mainBody = <DatasetsTab onNewSession={openCreate} />
+    mainBody = <DatasetsTab />
   } else if (sidebarNav === 'symbols') {
     mainBody = <SymbolsTab />
   } else {
@@ -346,7 +342,6 @@ export default function Dashboard(): ReactNode {
 
       <CreateSessionDialog
         open={createOpen}
-        presetDataset={createFor}
         onClose={() => setCreateOpen(false)}
       />
       <SessionReportDialog />

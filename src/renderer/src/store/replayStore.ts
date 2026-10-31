@@ -16,7 +16,8 @@ import {
   forexNyCloseOffsetSeconds,
   importedForexSessionOffset
 } from '@shared/forexSession'
-import { dedupeCandlesByTime, findIndexAtOrBefore, type Candle } from '@shared/candleUtils'
+import { dedupeCandlesByTime, findIndexAtOrBefore, mergeCandlesByTime, type Candle } from '@shared/candleUtils'
+import { normalizeSymbolKey } from '@shared/pricePrecision'
 import {
   isMetatraderImport,
   type DataSource,
@@ -591,6 +592,12 @@ type ReplayStore = {
   clearImportedDataset: () => void
   refreshImportedList: () => Promise<void>
   selectImportedDataset: (id: string, timeframe?: string) => Promise<void>
+  /**
+   * Load + merge all imported CSV files for a symbol.
+   * Overlapping timestamps: newer `updatedAt` wins.
+   * Session `importId` is set to the primary (newest) dataset id.
+   */
+  selectImportedSymbol: (symbol: string, timeframe?: string) => Promise<void>
   /** Page older imported bars when the viewport reaches the oldest loaded candle. */
   loadImportedHistory: () => Promise<void>
   startImportedReplay: () => void
@@ -3335,6 +3342,95 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           }
         }
       }
+      if (get().chartSplit) {
+        void loadSecondaryLiveCandles()
+      }
+    },
+
+    async selectImportedSymbol(symbol, timeframe) {
+      const key = normalizeSymbolKey(symbol)
+      if (!key) return
+      if (get().mode === 'replay') return
+
+      set({ status: 'loading', error: null })
+      // Refresh list so we see every file under this symbol.
+      await get().refreshImportedList()
+      const files = get().importedList.filter(
+        (meta) => normalizeSymbolKey(meta.symbol) === key
+      )
+      if (!files.length) {
+        set({ status: 'error', error: `No imported datasets for ${symbol}.` })
+        return
+      }
+
+      // Single file — reuse the existing path (paging intact).
+      if (files.length === 1) {
+        await get().selectImportedDataset(files[0]!.id, timeframe)
+        return
+      }
+
+      // Multi-CSV merge: load each full series for the requested TF.
+      // Sort oldest → newest so later updatedAt overwrites duplicate times.
+      const ordered = [...files].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      const primary = ordered[ordered.length - 1]!
+      const requested = String(timeframe || primary.timeframe || '1m')
+
+      let merged: Candle[] = []
+      let usedTf = requested
+      for (const meta of ordered) {
+        const tf =
+          meta.timeframes[requested] != null
+            ? requested
+            : meta.timeframes['1m'] != null
+              ? '1m'
+              : Object.keys(meta.timeframes)[0]
+        if (!tf) continue
+        usedTf = tf
+        // Full series — multi-file merge does not page (documented shortcut).
+        const loaded = await window.api.loadImport(meta.id, tf)
+        if (!loaded.ok || !loaded.candles.length) continue
+        merged = mergeCandlesByTime(merged, loaded.candles)
+      }
+
+      if (!merged.length) {
+        set({ status: 'error', error: `No candles found for ${symbol} ${requested}.` })
+        return
+      }
+
+      // Synthetic meta for the session: importId = primary (newest) dataset.
+      // Comment locked in data-model-symbol-first.md — primary id is the
+      // newest file by updatedAt; candles are the merged union.
+      const firstTime = merged[0]!.time
+      const lastTime = merged[merged.length - 1]!.time
+      const synthetic: ImportedDatasetMeta = {
+        ...primary,
+        symbol: primary.symbol,
+        timeframe: usedTf,
+        candleCount: merged.length,
+        firstTime,
+        lastTime,
+        timeframes: {
+          ...primary.timeframes,
+          [usedTf]: {
+            candleCount: merged.length,
+            firstTime,
+            lastTime
+          }
+        }
+      }
+
+      // Fully loaded window — hasMoreBefore false so history pager no-ops.
+      const loadedWindow = {
+        loadedFrom: firstTime,
+        loadedTo: lastTime,
+        hasMoreBefore: false,
+        hasMoreAfter: false,
+        totalCount: merged.length
+      }
+      publishImportedPreview(merged, synthetic, loadedWindow)
+      set({
+        replayMessage: `Merged ${ordered.length} files · ${symbol} ${usedTf} · ${merged.length.toLocaleString()} candles (newer import wins on overlap)`
+      })
       if (get().chartSplit) {
         void loadSecondaryLiveCandles()
       }

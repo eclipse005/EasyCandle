@@ -3,7 +3,6 @@ import { Database, FileUp, Replace, Trash2, X } from 'lucide-react'
 import IconButton from '@/components/IconButton'
 import ImportConfirmModal, { type ImportConfirmDetails } from '@/components/ImportConfirmModal'
 import {
-  hasNewerCandles,
   isMetatraderImport,
   type ImportOrigin,
   type ImportedDatasetMeta
@@ -11,6 +10,7 @@ import {
 import { IMPORT_BUILD_UI_PERCENT, type ImportJobProgress } from '@shared/importJobProgress'
 import { yieldToEventLoop } from '@shared/yieldToEventLoop'
 import { useReplayStore } from '@/store/replayStore'
+import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { isDesktopRuntime } from '@/lib/runtime'
 import { formatUtcCandleTime } from '@/lib/utcDateTime'
@@ -65,6 +65,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
   const clearImportedDataset = useReplayStore((s) => s.clearImportedDataset)
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
   const selectImportedDataset = useReplayStore((s) => s.selectImportedDataset)
+  const ensureSymbol = useSymbolParamsStore((s) => s.ensureSymbol)
   const desktop = isDesktopRuntime()
 
   const open = useUiLayoutStore((s) => s.importDataDialogOpen)
@@ -125,25 +126,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
     return () => document.removeEventListener('keydown', onKey)
   }, [open, disabled, closeDialog])
 
-  async function findReplaceTarget(
-    symbolHint: string,
-    incomingLastTime: number
-  ): Promise<{ replaceId?: string; existingSymbol?: string; skip?: string }> {
-    const listed = await window.api.listImports()
-    if (!listed.ok) return {}
-    const existing = listed.imports.find((entry) => normalizeSymbol(entry.symbol) === symbolHint)
-    if (!existing) return {}
-    const target = { replaceId: existing.id, existingSymbol: existing.symbol }
-    const incoming = [{ time: incomingLastTime, open: 0, high: 0, low: 0, close: 0 }]
-    const existingLast = [{ time: existing.lastTime, open: 0, high: 0, low: 0, close: 0 }]
-    if (!hasNewerCandles(existingLast, incoming)) {
-      return {
-        ...target,
-        skip: `${existing.symbol} is already imported through ${formatUtcCandleTime(existing.lastTime)}. This has no newer candles — nothing was updated.`
-      }
-    }
-    return target
-  }
 
   function openConfirm(params: PendingImport): void {
     setMessage(null)
@@ -177,7 +159,6 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
       }
 
       setLoadProgress({ label: 'Checking existing imports…', percent: 98 })
-      const symbolHint = parsed.symbol ? normalizeSymbol(parsed.symbol) : null
       const next: PendingImport = {
         content: '',
         fileName: fileName || path,
@@ -193,16 +174,8 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
         origin: 'csv'
       }
 
-      if (symbolHint) {
-        const match = await findReplaceTarget(symbolHint, parsed.lastTime)
-        next.replaceId = match.replaceId
-        next.existingSymbol = match.existingSymbol
-        if (match.skip && match.replaceId) {
-          offerStaleReplace(next, match.skip)
-          return
-        }
-      }
-
+      // Symbol-first model: each CSV is a new dataset under the symbol.
+      // Overlaps resolve at session load (newer updatedAt wins). No auto-replace.
       openConfirm(next)
     } finally {
       unsub()
@@ -241,23 +214,12 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
     try {
       const symbol = normalizeSymbol(values.symbol)
-      let replaceId = pending.replaceId
+      // Always create a new dataset file (multi-CSV under one symbol).
+      // Explicit replaceId only when the pending payload already carries one
+      // (e.g. user chose "Replace existing" from a stale offer).
+      const replaceId = pending.replaceId
 
-      if (!replaceId) {
-        const match = await findReplaceTarget(symbol, pending.lastTime)
-        if (match.skip && match.replaceId) {
-          setPending({
-            ...pending,
-            symbol,
-            replaceId: match.replaceId,
-            existingSymbol: match.existingSymbol,
-            noNewer: true,
-            skipMessage: match.skip
-          })
-          return
-        }
-        replaceId = match.replaceId
-      }
+      ensureSymbol(symbol, values.contractSize != null ? { contractSize: values.contractSize } : undefined)
 
       const savedResult = await window.api.saveImport({
         content: pending.content,
