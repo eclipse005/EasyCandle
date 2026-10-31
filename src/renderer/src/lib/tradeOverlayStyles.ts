@@ -1,18 +1,18 @@
-/** Chart overlay tokens for open-position / TP / SL chrome. */
+/** Chart overlay tokens for open-position / TP / SL chrome (FX Replay–aligned). */
 export const TRADE_OVERLAY = {
-  longLine: '#2962FF',
-  shortLine: '#F23645',
-  handleFill: '#0B0E11',
+  longLine: '#0260FD',
+  shortLine: '#ED6A5A',
+  handleFill: '#131415',
   handleTextMuted: '#9CA3AF',
-  pnlProfit: '#26A69A',
-  pnlLoss: '#EF5350',
-  tpLine: '#26A69A',
+  pnlProfit: '#06A77D',
+  pnlLoss: '#ED6A5A',
+  tpLine: '#06A77D',
   slLine: '#FF9800',
-  qtyFill: '#2962FF',
+  qtyFill: '#0260FD',
   qtyText: '#FFFFFF',
   closeIcon: '#9EC1FF',
-  connector: '#2962FF',
-  zoneTp: 'rgba(38, 166, 154, 0.08)',
+  connector: '#0260FD',
+  zoneTp: 'rgba(6, 167, 125, 0.10)',
   zoneSl: 'rgba(255, 152, 0, 0.10)',
   /** Active entry uses a solid stroke; pending TP/SL stay dotted. */
   entryDash: undefined as string | undefined,
