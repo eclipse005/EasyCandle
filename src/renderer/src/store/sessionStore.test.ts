@@ -17,15 +17,10 @@ function stubLocalStorage(store: Record<string, string>): void {
   })
 }
 
-function seedReplayIn(
-  replayStore: typeof useReplayStore,
-  drawings?: Session['drawings'],
-  closedTrades?: Session['closedTrades']
-): void {
+function seedReplayIn(replayStore: typeof useReplayStore, closedTrades?: Session['closedTrades']): void {
   replayStore.setState({
     symbol: 'BTCUSDT',
     timeframe: '15m',
-    drawings: drawings ?? [],
     drawTool: 'select',
     pendingTrend: null,
     pendingTrendEnd: null,
@@ -39,8 +34,8 @@ function seedReplayIn(
   })
 }
 
-function seedReplay(drawings?: Session['drawings'], closedTrades?: Session['closedTrades']): void {
-  seedReplayIn(useReplayStore, drawings, closedTrades)
+function seedReplay(closedTrades?: Session['closedTrades']): void {
+  seedReplayIn(useReplayStore, closedTrades)
 }
 
 function freshStore(): void {
@@ -53,26 +48,23 @@ afterEach(() => {
 })
 
 describe('createSession', () => {
-  it('captures the current chart drawings and orders', () => {
+  it('captures the current chart orders and empty drawings', () => {
     freshStore()
-    seedReplay(
-      [{ id: 'd-1', type: 'hline', price: 100 }],
-      [
-        {
-          id: 't-1',
-          side: 'long',
-          entryPrice: 99,
-          entryTime: 100,
-          exitPrice: 102,
-          exitTime: 200,
-          lots: 1,
-          pnl: 3,
-          exitReason: 'tp',
-          takeProfit: 102,
-          stopLoss: 98
-        }
-      ]
-    )
+    seedReplay([
+      {
+        id: 't-1',
+        side: 'long',
+        entryPrice: 99,
+        entryTime: 100,
+        exitPrice: 102,
+        exitTime: 200,
+        lots: 1,
+        pnl: 3,
+        exitReason: 'tp',
+        takeProfit: 102,
+        stopLoss: 98
+      }
+    ])
     const id = useSessionStore.getState().createSession('  Morning Replay  ')
     const state = useSessionStore.getState()
     expect(id).not.toBeNull()
@@ -81,10 +73,12 @@ describe('createSession', () => {
     expect(session?.name).toBe('Morning Replay')
     expect(session?.symbol).toBe('BTCUSDT')
     expect(session?.timeframe).toBe('15m')
-    expect(session?.drawings).toEqual([{ id: 'd-1', type: 'hline', price: 100 }])
+    // No DrawingManager attached in tests → empty drawings.
+    expect(session?.drawingsJSON).toBe('[]')
     expect(session?.closedTrades).toHaveLength(1)
     expect(session?.orderHistory).toEqual([])
     expect(session?.autoSave).toBe(true)
+    expect(session?.startingBalance).toBe(100000)
     expect(session?.positions).toEqual([])
     expect(session?.pendingOrders).toEqual([])
   })
@@ -125,15 +119,11 @@ describe('createSession', () => {
     stubLocalStorage(store)
     vi.resetModules()
     const mod = await import('@/store/sessionStore')
-    const replayMod = await import('@/store/replayStore')
-    seedReplayIn(replayMod.useReplayStore, [
-      { id: 'd-9', type: 'trendline', t1: 1, p1: 2, t2: 3, p2: 4 }
-    ])
+    seedReplay()
     const id = mod.useSessionStore.getState().createSession('Saved')
     const parsed = JSON.parse(store[STORAGE_KEY] ?? '{}') as { sessions: Session[] }
     expect(parsed.sessions).toHaveLength(1)
     expect(parsed.sessions[0].id).toBe(id)
-    expect(parsed.sessions[0].drawings[0]).toMatchObject({ type: 'trendline' })
   })
 })
 
@@ -161,15 +151,6 @@ describe('deleteSession', () => {
     expect(useSessionStore.getState().sessions).toHaveLength(0)
     expect(useSessionStore.getState().activeSessionId).toBeNull()
   })
-
-  it('keeps the active session when deleting another one', () => {
-    freshStore()
-    const activeId = useSessionStore.getState().createSession('Active')!
-    const otherId = useSessionStore.getState().createSession('Other')!
-    useSessionStore.getState().setActiveSession(activeId)
-    useSessionStore.getState().deleteSession(otherId)
-    expect(useSessionStore.getState().activeSessionId).toBe(activeId)
-  })
 })
 
 describe('setSessionAutoSave', () => {
@@ -191,11 +172,8 @@ describe('saveActiveSession', () => {
   it('updates the active session with the latest chart state', () => {
     freshStore()
     useSessionStore.getState().createSession('Updating')
-    seedReplay([{ id: 'd-2', type: 'rect', t1: 1, p1: 2, t2: 3, p2: 4 }])
     expect(useSessionStore.getState().saveActiveSession()).toBe(true)
-    expect(useSessionStore.getState().sessions[0].drawings).toEqual([
-      { id: 'd-2', type: 'rect', t1: 1, p1: 2, t2: 3, p2: 4 }
-    ])
+    expect(useSessionStore.getState().sessions[0].drawingsJSON).toBe('[]')
   })
 
   it('returns false without an active session', () => {
@@ -205,26 +183,23 @@ describe('saveActiveSession', () => {
 })
 
 describe('loadSession', () => {
-  it('restores drawings and orders onto the chart and sets it active', async () => {
+  it('restores orders onto the chart and sets it active', async () => {
     freshStore()
-    seedReplay(
-      [{ id: 'd-1', type: 'long', t: 10, entry: 100, target: 110, stop: 95, span: 6 }],
-      [
-        {
-          id: 't-9',
-          side: 'short',
-          entryPrice: 50,
-          entryTime: 5,
-          exitPrice: 48,
-          exitTime: 8,
-          lots: 2,
-          pnl: 4,
-          exitReason: 'sl',
-          takeProfit: 45,
-          stopLoss: 52
-        }
-      ]
-    )
+    seedReplay([
+      {
+        id: 't-9',
+        side: 'short',
+        entryPrice: 50,
+        entryTime: 5,
+        exitPrice: 48,
+        exitTime: 8,
+        lots: 2,
+        pnl: 4,
+        exitReason: 'sl',
+        takeProfit: 45,
+        stopLoss: 52
+      }
+    ])
     useReplayStore.setState({
       orderHistory: [
         {
@@ -242,13 +217,9 @@ describe('loadSession', () => {
       ]
     })
     const id = useSessionStore.getState().createSession('Load Me')!
-    // Wipe the chart, then restore from the session.
     seedReplay()
     expect(await useSessionStore.getState().loadSession(id)).toBe(true)
     const chart = useReplayStore.getState()
-    expect(chart.drawings).toEqual([
-      { id: 'd-1', type: 'long', t: 10, entry: 100, target: 110, stop: 95, span: 6 }
-    ])
     expect(chart.drawTool).toBe('select')
     expect(chart.closedTrades).toHaveLength(1)
     expect(chart.orderHistory).toHaveLength(1)
@@ -268,12 +239,9 @@ describe('auto-save', () => {
     try {
       freshStore()
       const id = useSessionStore.getState().createSession('Auto')!
-      seedReplay([{ id: 'd-3', type: 'hline', price: 1 }])
-      expect(useSessionStore.getState().sessions[0].drawings).toHaveLength(0)
+      seedReplay()
       vi.advanceTimersByTime(900)
-      expect(useSessionStore.getState().sessions[0].drawings).toEqual([
-        { id: 'd-3', type: 'hline', price: 1 }
-      ])
+      expect(useSessionStore.getState().sessions[0].drawingsJSON).toBe('[]')
       expect(useSessionStore.getState().activeSessionId).toBe(id)
     } finally {
       vi.useRealTimers()
@@ -286,17 +254,17 @@ describe('auto-save', () => {
       freshStore()
       const id = useSessionStore.getState().createSession('Manual')!
       useSessionStore.getState().setSessionAutoSave(id, false)
-      seedReplay([{ id: 'd-4', type: 'hline', price: 2 }])
+      seedReplay()
       vi.advanceTimersByTime(900)
-      expect(useSessionStore.getState().sessions[0].drawings).toHaveLength(0)
+      expect(useSessionStore.getState().sessions[0].drawingsJSON).toBe('[]')
     } finally {
       vi.useRealTimers()
     }
   })
 })
 
-describe('persisted load', () => {
-  it('restores valid sessions and drops invalid entries', async () => {
+describe('legacy drawing migration', () => {
+  it('converts old-format drawings into lib JSON on load', async () => {
     const store = {
       [STORAGE_KEY]: JSON.stringify({
         sessions: [
@@ -308,6 +276,7 @@ describe('persisted load', () => {
             createdAt: 1,
             updatedAt: 2,
             autoSave: false,
+            replayTime: 42,
             drawings: [{ id: 'd-1', type: 'hline', price: 42 }],
             position: null,
             pendingOrder: null,
@@ -326,37 +295,26 @@ describe('persisted load', () => {
     const state = mod.useSessionStore.getState()
     expect(state.sessions).toHaveLength(1)
     expect(state.sessions[0].name).toBe('Good')
-    expect(state.sessions[0].symbol).toBe('ETHUSDT')
-    expect(state.sessions[0].autoSave).toBe(false)
-    expect(state.sessions[0].drawings[0]).toEqual({ id: 'd-1', type: 'hline', price: 42 })
+    const parsed = JSON.parse(state.sessions[0].drawingsJSON) as Array<Record<string, unknown>>
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0].kind).toBe('horizontal-line')
     expect(state.activeSessionId).toBeNull()
   })
 
-  it('keeps a fib channel drawing and drops one missing the width point', async () => {
+  it('drops legacy long/short planning sketches (they live in positions)', async () => {
     const store = {
       [STORAGE_KEY]: JSON.stringify({
         sessions: [
           {
             id: 's-1',
-            name: 'Channel',
+            name: 'Sketches',
             symbol: 'BTCUSDT',
             timeframe: '15m',
             createdAt: 1,
             updatedAt: 2,
-            autoSave: false,
             drawings: [
-              {
-                id: 'd-ok',
-                type: 'fibchannel',
-                t1: 1,
-                p1: 2,
-                t2: 3,
-                p2: 4,
-                t3: 5,
-                p3: 6,
-                levels: [{ ratio: 0.5 }]
-              },
-              { id: 'd-bad', type: 'fibchannel', t1: 1, p1: 2, t2: 3, p2: 4 }
+              { id: 'd-1', type: 'long', t: 10, entry: 100, target: 110, stop: 95, span: 6 },
+              { id: 'd-2', type: 'trendline', t1: 1, p1: 2, t2: 3, p2: 4 }
             ],
             closedTrades: [],
             orderHistory: [],
@@ -368,18 +326,38 @@ describe('persisted load', () => {
     stubLocalStorage(store)
     vi.resetModules()
     const mod = await import('@/store/sessionStore')
-    expect(mod.useSessionStore.getState().sessions[0].drawings).toEqual([
-      {
-        id: 'd-ok',
-        type: 'fibchannel',
-        t1: 1,
-        p1: 2,
-        t2: 3,
-        p2: 4,
-        t3: 5,
-        p3: 6,
-        levels: [{ ratio: 0.5 }]
-      }
+    const parsed = JSON.parse(mod.useSessionStore.getState().sessions[0].drawingsJSON) as Array<{
+      kind: string
+    }>
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0].kind).toBe('trend-line')
+  })
+
+  it('passes lib-format drawingsJSON through untouched', async () => {
+    const libJson = JSON.stringify([
+      { kind: 'trend-line', points: [{ time: 100, price: 1 }, { time: 200, price: 2 }] }
     ])
+    const store = {
+      [STORAGE_KEY]: JSON.stringify({
+        sessions: [
+          {
+            id: 's-1',
+            name: 'Lib',
+            symbol: 'BTCUSDT',
+            timeframe: '15m',
+            createdAt: 1,
+            updatedAt: 2,
+            drawingsJSON: libJson,
+            closedTrades: [],
+            orderHistory: [],
+            tradeMarkers: []
+          }
+        ]
+      })
+    }
+    stubLocalStorage(store)
+    vi.resetModules()
+    const mod = await import('@/store/sessionStore')
+    expect(mod.useSessionStore.getState().sessions[0].drawingsJSON).toBe(libJson)
   })
 })

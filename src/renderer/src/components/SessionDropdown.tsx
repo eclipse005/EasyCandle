@@ -101,7 +101,7 @@ export default function SessionDropdown(): ReactElement {
               </div>
               <div className="mt-1.5 flex items-center justify-between gap-2">
                 <span className="block truncate text-[10px] text-zinc-500">
-                  {active.drawings.length} drawings ·{' '}
+                  {' '}
                   {active.closedTrades.length + active.positions.length} trades
                 </span>
                 <button
@@ -155,7 +155,7 @@ export default function SessionDropdown(): ReactElement {
                             {session.name}
                           </span>
                           <span className="block truncate text-[10px] text-zinc-500">
-                            {session.drawings.length} drawings ·{' '}
+                            {' '}
                             {session.closedTrades.length + session.positions.length} trades
                           </span>
                         </span>

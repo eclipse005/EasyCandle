@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import type { Drawing, FibLevelConfig } from '@/lib/chart/drawingGeometry'
+import {
+  exportDrawings,
+  importDrawings,
+  legacyDrawingsToJSON
+} from '@/lib/drawings/drawingBridge'
 import type {
   ClosedTrade,
   HistoricOrder,
@@ -8,6 +13,7 @@ import type {
   Position
 } from '@/lib/paperTrade'
 import { useReplayStore, type TradeMarker, type ViewMode } from '@/store/replayStore'
+import { useDrawingUiStore } from '@/store/drawingUiStore'
 
 const STORAGE_KEY = 'easy-candle:sessions'
 
@@ -33,7 +39,11 @@ export type Session = {
   updatedAt: number
   /** When true, chart drawing/order edits are written back automatically. */
   autoSave: boolean
-  drawings: Drawing[]
+  /**
+   * Drawings in lightweight-charts-drawing JSON format (source of truth for
+   * the DrawingManager). Legacy hand-built drawings are migrated on load.
+   */
+  drawingsJSON: string
   positions: Position[]
   pendingOrders: PendingOrder[]
   closedTrades: ClosedTrade[]
@@ -60,7 +70,7 @@ type SessionSnapshot = Pick<
   Session,
   | 'symbol'
   | 'timeframe'
-  | 'drawings'
+  | 'drawingsJSON'
   | 'positions'
   | 'pendingOrders'
   | 'closedTrades'
@@ -112,7 +122,7 @@ function chartSnapshot(): SessionSnapshot {
   return {
     symbol: state.symbol,
     timeframe: state.timeframe,
-    drawings: cloneJson(state.drawings),
+    drawingsJSON: exportDrawings(),
     positions: cloneJson(state.positions),
     pendingOrders: cloneJson(state.pendingOrders),
     closedTrades: cloneJson(state.closedTrades),
@@ -451,13 +461,22 @@ function sanitizeSession(raw: unknown): Session | null {
   const createdAt = isFiniteNumber(rec.createdAt) ? rec.createdAt : Date.now()
   const updatedAt = isFiniteNumber(rec.updatedAt) ? rec.updatedAt : createdAt
 
-  const drawings: Drawing[] = []
+  // Legacy hand-built drawings (SVG era) migrate into the lib JSON; lib-format
+  // JSON passes through untouched.
+  const legacyDrawings: Drawing[] = []
   if (Array.isArray(rec.drawings)) {
     for (const item of rec.drawings) {
       const drawing = sanitizeDrawing(item)
-      if (drawing) drawings.push(drawing)
+      if (drawing) legacyDrawings.push(drawing)
     }
   }
+  const drawingsJSON =
+    typeof rec.drawingsJSON === 'string' && rec.drawingsJSON.length > 0
+      ? rec.drawingsJSON
+      : legacyDrawingsToJSON(
+          legacyDrawings,
+          isFiniteNumber(rec.replayTime) ? rec.replayTime : 0
+        )
 
   const closedTrades: ClosedTrade[] = []
   if (Array.isArray(rec.closedTrades)) {
@@ -491,7 +510,7 @@ function sanitizeSession(raw: unknown): Session | null {
     createdAt,
     updatedAt,
     autoSave: rec.autoSave !== false,
-    drawings,
+    drawingsJSON,
     positions: sanitizePositionList(rec.positions, rec.position),
     pendingOrders: sanitizePendingOrderList(rec.pendingOrders, rec.pendingOrder),
     closedTrades,
@@ -651,8 +670,9 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
       // Restore drawings and orders after the replay is positioned so the
       // entering-replay reset does not wipe them.
+      useDrawingUiStore.getState().resetWorkspace()
+      importDrawings(session.drawingsJSON)
       useReplayStore.setState({
-        drawings: cloneJson(session.drawings),
         drawTool: 'select',
         pendingTrend: null,
         pendingTrendEnd: null,
@@ -674,6 +694,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   async openSession(input) {
     suppressAutoSave += 1
     try {
+      useDrawingUiStore.getState().resetWorkspace()
       const replay = useReplayStore.getState()
       if (replay.mode === 'replay') {
         useReplayStore.getState().resetReplayState()
@@ -722,6 +743,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       // otherwise the lingering replay mode would keep the import button on
       // the Datasets tab disabled.
       useReplayStore.getState().resetReplayState()
+      useDrawingUiStore.getState().resetWorkspace()
       useReplayStore.setState({ sessionReport: null })
       set({ activeSessionId: null })
     } finally {
@@ -765,11 +787,11 @@ function scheduleAutoSave(): void {
   }, AUTO_SAVE_DEBOUNCE_MS)
 }
 
-/** Follow drawing/order edits and replay progress so an auto-saving session
- * stays in sync — including the playhead, which is what makes resume possible. */
+/** Follow drawing/order edits, replay progress, and drawing-canvas changes so
+ * an auto-saving session stays in sync — including the playhead, which is what
+ * makes resume possible. */
 useReplayStore.subscribe((state, prev) => {
   if (
-    state.drawings !== prev.drawings ||
     state.positions !== prev.positions ||
     state.pendingOrders !== prev.pendingOrders ||
     state.closedTrades !== prev.closedTrades ||
@@ -782,4 +804,9 @@ useReplayStore.subscribe((state, prev) => {
   ) {
     scheduleAutoSave()
   }
+})
+
+/** Drawing-canvas changes (lib change events bump the revision). */
+useDrawingUiStore.subscribe((state, prev) => {
+  if (state.revision !== prev.revision) scheduleAutoSave()
 })

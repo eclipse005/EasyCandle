@@ -18,9 +18,18 @@ import {
   type Time
 } from 'lightweight-charts'
 import DrawingOverlay from '@/components/DrawingOverlay'
+import ChartContextMenu from '@/components/ChartContextMenu'
 import ActiveIndicatorsLegend from '@/components/ActiveIndicatorsLegend'
 import OhlcLegend from '@/components/OhlcLegend'
 import SmcOverlay from '@/components/SmcOverlay'
+import type { OHLC as DrawingOHLC } from 'lightweight-charts-drawing'
+import {
+  attachPane,
+  detachPane,
+  commitGesture,
+  lastJSON as lastDrawingJSON
+} from '@/lib/drawings/drawingBridge'
+import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useChartPaneModel } from '@/hooks/useChartPaneModel'
 import { themedWordmarkUrl } from '@/lib/chartWordmark'
 import type { ChartOverlay } from '@/lib/indicators'
@@ -209,6 +218,7 @@ export default function CandleChart({
   const priceScaleWidthRef = useRef(0)
   const chartTypeRef = useRef(chartType)
   const seriesTypeRef = useRef<ChartType>(chartType)
+  const drawingManagerRef = useRef<import('lightweight-charts-drawing').DrawingManager | null>(null)
   const haLastRef = useRef<Candle | null>(null)
   const haPrevRef = useRef<Candle | null>(null)
   const pricePrecision = useMemo(
@@ -487,6 +497,54 @@ export default function CandleChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Attach the drawing manager whenever the pane's chart/series pair is
+  // (re)created — chart type swaps rebuild the series in place.
+  useEffect(() => {
+    if (!chartReady) return undefined
+    const paneId = isPrimary ? 'primary' : 'secondary'
+    const ui = useDrawingUiStore.getState()
+    const manager = attachPane(paneId, chartReady.chart, chartReady.series, {
+      bars: () => {
+        const s = useReplayStore.getState()
+        return (s.mode === 'replay' ? s.visibleCandles : s.candles) as unknown as DrawingOHLC[]
+      },
+      magnet: ui.magnet,
+      stayInDrawingMode: ui.stayInDrawingMode,
+      timeInfo: () => ({
+        timeZone: useChartSettingsStore.getState().timezone,
+        intraday: true
+      })
+    })
+    drawingManagerRef.current = manager
+
+    const offChange = manager.on('change', () => {
+      const uiNow = useDrawingUiStore.getState()
+      uiNow.bumpRevision()
+      uiNow.refreshUndoRedo()
+    })
+    const offGesture = manager.on('gestureEnd', () => {
+      commitGesture()
+      useDrawingUiStore.getState().refreshUndoRedo()
+    })
+    const offTool = manager.on('tool', (kind) => useDrawingUiStore.setState({ armedTool: kind }))
+
+    // Re-apply the UI settings (a fresh manager starts from lib defaults) and
+    // restore the workspace drawings into the fresh manager.
+    manager.setDrawingsVisible(useDrawingUiStore.getState().drawingsVisible)
+    manager.setMagnet(useDrawingUiStore.getState().magnet)
+    manager.setStayInDrawingMode(useDrawingUiStore.getState().stayInDrawingMode)
+    const restored = lastDrawingJSON()
+    if (restored !== '[]') manager.importJSON(restored)
+
+    return () => {
+      offChange()
+      offGesture()
+      offTool()
+      detachPane(paneId)
+      drawingManagerRef.current = null
+    }
+  }, [chartReady, isPrimary])
+
   // Swap the series in place when the chart type changes so the crosshair,
   // price scale, markers, and drawing overlay all keep working.
   useEffect(() => {
@@ -690,10 +748,36 @@ export default function CandleChart({
   const seriesCandles = mode === 'replay' ? (visibleCandles ?? []) : (candles ?? [])
   const empty = seriesCandles.length === 0
   const smcOverlay = (overlays ?? []).find((item) => item.type === 'smc')
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    price: number
+    time: number | null
+  } | null>(null)
+
   const smcScene = smcOverlay?.type === 'smc' ? smcOverlay.scene : null
 
   return (
-    <div className="absolute inset-0 h-full w-full">
+    <div
+      className="absolute inset-0 h-full w-full"
+      onContextMenu={(event) => {
+        event.preventDefault()
+        const chart = chartRef.current
+        const series = seriesRef.current
+        if (!chart || !series) return
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const price = series.coordinateToPrice(event.clientY - rect.top)
+        const time = chart.timeScale().coordinateToTime(event.clientX - rect.left)
+        if (price == null) return
+        setContextMenu({
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+          price: Number(price),
+          time: typeof time === 'number' ? time : null
+        })
+      }}
+    >
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
       <img
         src={themedWordmarkUrl(theme)}
@@ -735,6 +819,13 @@ export default function CandleChart({
         <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-zinc-950/40 px-4 text-center text-sm text-zinc-500">
           {mode === 'replay' ? 'No candles in this replay window yet.' : 'No candles to display.'}
         </div>
+      )}
+      {contextMenu && (
+        <ChartContextMenu
+          point={contextMenu}
+          pricePrecision={pricePrecision}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   )
