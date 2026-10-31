@@ -3,7 +3,7 @@ import { cn } from '@/components/ui/cn'
 
 /** Field chrome — radius / border / type from Soft tokens. */
 const FIELD =
-  'h-9 w-full rounded-xl border border-white/10 bg-zinc-900/70 px-2.5 text-caption font-medium text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-primary-500/40 focus:bg-zinc-900 disabled:opacity-40'
+  'h-9 min-w-0 w-full rounded-xl border border-white/10 bg-zinc-900/70 px-2.5 text-caption font-medium text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-primary-500/40 focus:bg-zinc-900 disabled:opacity-40'
 
 type SoftInputProps = InputHTMLAttributes<HTMLInputElement>
 type SoftSelectProps = SelectHTMLAttributes<HTMLSelectElement>
