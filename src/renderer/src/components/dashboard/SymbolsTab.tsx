@@ -223,10 +223,20 @@ export default function SymbolsTab(): ReactNode {
             const quote = quoteCurrencyForSymbol(row.symbol)
             const precision = spec.precision ?? resolvePricePrecision(row.symbol)
             const daysPart = row.hasData
-              ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'}`
+              ? row.coverageDays === 1
+                ? t('symbols.dayOne')
+                : t('symbols.days', { count: row.coverageDays.toLocaleString() })
               : t('symbols.noData')
-            const pipTip = `Price decimals (p${precision}). Pip scale follows instrument precision.`
             const metaText = `${quote} · p${precision} · ${daysPart}`
+            // Soft Tooltip is single-line; native title carries a structured multiline tip.
+            const metaTip = [
+              metaText,
+              t('symbols.metaTipQuote', { quote }),
+              t('symbols.metaTipPrecision', { precision }),
+              row.hasData
+                ? t('symbols.metaTipCoverage', { days: daysPart })
+                : t('symbols.metaTipNoData')
+            ].join('\n')
             const lotUnit = contractSizeUnitLabel(row.symbol)
             const lotLabel = `1 lot = ${formatContractSize(effective)} ${lotUnit}`
             const emptyField =
@@ -247,7 +257,7 @@ export default function SymbolsTab(): ReactNode {
                   </span>
                   <span
                     className="w-[9.5rem] shrink-0 truncate text-left text-micro text-zinc-400"
-                    title={`${metaText}\n${pipTip}`}
+                    title={metaTip}
                   >
                     {metaText}
                   </span>

@@ -1,7 +1,7 @@
 {
   "name": "bar-replay",
-  "version": "0.1.27",
-  "description": "BarReplay \u2014 candle replay web app (pure frontend port)",
+  "version": "0.1.28",
+  "description": "BarReplay — candle replay web app (pure frontend port)",
   "private": true,
   "author": "BarReplay",
   "license": "SEE LICENSE IN LICENSE",
@@ -45,5 +45,11 @@
     "vite": "^7.2.6",
     "vitest": "^3.2.4",
     "wrangler": "^4.86.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.27.3": true,
+    "sharp@0.34.5": true,
+    "workerd@1.20260426.1": true
   }
 }
