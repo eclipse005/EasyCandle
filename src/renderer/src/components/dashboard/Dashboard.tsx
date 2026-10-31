@@ -118,7 +118,7 @@ export default function Dashboard(): ReactNode {
           href="https://github.com/eclipse005/EasyCandle"
           target="_blank"
           rel="noopener noreferrer"
-          title="Original project on GitHub"
+          title="CandleLab on GitHub"
           className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
         >
           <ExternalLink className="h-4 w-4" aria-hidden />
