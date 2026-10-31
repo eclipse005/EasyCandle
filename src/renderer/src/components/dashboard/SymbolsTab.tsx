@@ -261,9 +261,9 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(4.75rem,1.45fr)_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
+                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_max-content_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
                 >
-                  {/* Fixed ticker for meta align; meta nowrap (no ellipsis); Contract slightly wider for 100000; Spread/Comm as-is. */}
+                  {/* Fixed ticker + meta nowrap; Contract input fixed width (no fr) so 100000 fits; Spread/Comm stay compact. */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
@@ -279,7 +279,7 @@ export default function SymbolsTab(): ReactNode {
                     </span>
                   </div>
                   <label
-                    className="flex min-w-0 items-center justify-start gap-1"
+                    className="flex shrink-0 items-center justify-start gap-1"
                     title={lotLabel}
                   >
                     <span className={cn('shrink-0', softType.micro)} title={lotLabel}>
@@ -298,7 +298,8 @@ export default function SymbolsTab(): ReactNode {
                         setContractSize(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        // Fixed width: 7ch (~6 digits headroom) + SoftInput px-2.5*2; !min-w beats FIELD_BASE min-w-0.
+                        'h-8 w-[calc(7ch+1.25rem)] !min-w-[calc(7ch+1.25rem)] shrink-0 text-caption tabular-nums',
                         userSize != null ? filledField : emptyField
                       )}
                     />
