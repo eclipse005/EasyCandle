@@ -74,11 +74,11 @@ function SidebarNavButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-body font-medium transition-colors',
+        'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-body font-medium transition-colors',
         active ? softNav.pillActive : softNav.pillIdle
       )}
     >
-      <Icon className="h-4 w-4 opacity-80" aria-hidden />
+      <Icon className="h-5 w-5 opacity-80" aria-hidden />
       {label}
     </button>
   )
@@ -139,10 +139,10 @@ export default function Dashboard(): ReactNode {
 
   return (
     <div className="flex h-full overflow-hidden bg-zinc-950 font-sans text-zinc-200">
-      <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.05] bg-zinc-950 px-3 py-4">
-        <div className="mb-5 flex items-center gap-2.5 px-2">
-          <img src={iconUrl} alt="" className="h-7 w-7 rounded-lg" aria-hidden />
-          <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-zinc-100">
+      <aside className="flex w-[248px] shrink-0 flex-col border-r border-white/[0.05] bg-zinc-950 px-3.5 py-5">
+        <div className="mb-6 flex items-center gap-3 px-2">
+          <img src={iconUrl} alt="" className="h-8 w-8 rounded-xl" aria-hidden />
+          <span className="text-[14px] font-semibold uppercase tracking-[0.08em] text-zinc-100">
             {APP_NAME}
           </span>
         </div>
@@ -185,13 +185,13 @@ export default function Dashboard(): ReactNode {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="min-h-0 flex-1 overflow-y-auto px-7 py-7">
-          <div className="mx-auto w-full max-w-5xl">
+        <main className="min-h-0 flex-1 overflow-y-auto px-8 py-8 lg:px-10 lg:py-9">
+          <div className="mx-auto w-full max-w-7xl">
             <h1 className={softType.pageTitle}>{PAGE_TITLES[sidebarNav]}</h1>
 
             {sidebarNav === 'testing' ? (
               <div
-                className="mt-4 flex items-center gap-5 border-b border-white/[0.06]"
+                className="mt-5 flex items-center gap-7 border-b border-white/[0.06]"
                 role="tablist"
                 aria-label="Testing sections"
               >
@@ -206,11 +206,11 @@ export default function Dashboard(): ReactNode {
                       aria-selected={active}
                       onClick={() => setTestingTab(tab.id)}
                       className={cn(
-                        'relative -mb-px inline-flex items-center gap-1.5 pb-2.5 text-body font-medium transition-colors',
+                        'relative -mb-px inline-flex items-center gap-2 pb-3 text-body font-medium transition-colors',
                         active ? softNav.tabActive : softNav.tabIdle
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                      <Icon className="h-4 w-4 opacity-80" aria-hidden />
                       {tab.label}
                       {active ? (
                         <span
@@ -223,10 +223,10 @@ export default function Dashboard(): ReactNode {
                 })}
               </div>
             ) : (
-              <div className="mt-3 border-b border-white/[0.04]" />
+              <div className="mt-4 border-b border-white/[0.04]" />
             )}
 
-            <div className="mt-5">{mainBody}</div>
+            <div className="mt-6">{mainBody}</div>
           </div>
         </main>
       </div>

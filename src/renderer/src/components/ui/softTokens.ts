@@ -29,13 +29,13 @@ export const softType = {
 
 /** Spacing rhythm used by Soft* chrome. */
 export const softSpace = {
-  pageX: 'px-7',
-  pageY: 'py-7',
-  cardPad: 'px-5 py-5',
-  cardPadSm: 'px-4 py-3.5',
-  sectionGap: 'space-y-5',
-  stackGap: 'space-y-4',
-  rowGap: 'gap-3'
+  pageX: 'px-8',
+  pageY: 'py-8',
+  cardPad: 'px-6 py-6',
+  cardPadSm: 'px-5 py-5',
+  sectionGap: 'space-y-6',
+  stackGap: 'space-y-5',
+  rowGap: 'gap-4'
 } as const
 
 /** Nav / pill active states (FXR soft SaaS). */
