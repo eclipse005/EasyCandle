@@ -21,7 +21,7 @@ import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput } from '@/components/ui/SoftInput'
 import { cn } from '@/components/ui/cn'
-import { softMotion, softNav, softSpace, softType } from '@/components/ui/softTokens'
+import { softMotion, softNav, softType } from '@/components/ui/softTokens'
 
 type SymbolRow = {
   symbol: string
@@ -195,7 +195,7 @@ export default function SymbolsTab(): ReactNode {
   }, [activeKey, importStats])
 
   return (
-    <section className={softSpace.sectionGap}>
+    <section className="space-y-6">
       <div>
         <h2 className={softType.section}>Per-symbol defaults</h2>
         <p className={cn('mt-2 max-w-3xl', softType.bodyMuted)}>
@@ -213,7 +213,7 @@ export default function SymbolsTab(): ReactNode {
             : 'No symbols in this category.'}
         </SoftEmpty>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {rows.map((row) => {
             const key = normalizeSymbolKey(row.symbol)
             const spec = params[key] ?? {}
@@ -226,24 +226,20 @@ export default function SymbolsTab(): ReactNode {
               <SoftCard
                 key={key}
                 elevated
-                className={cn(softSpace.cardPadSm, 'flex flex-wrap items-end gap-4')}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5"
               >
-                <div className="min-w-0 flex-1 basis-48">
-                  <div className={cn(softType.cardTitle, 'truncate text-zinc-50')}>{row.label}</div>
-                  <div className={cn('mt-1.5', softType.caption)}>
-                    {row.hasData ? (
-                      <>
-                        {row.datasetCount} dataset{row.datasetCount === 1 ? '' : 's'} ·{' '}
-                        {row.candleCount.toLocaleString()} candles · quote {quote} · precision{' '}
-                        {precision}
-                      </>
-                    ) : (
-                      <span className="text-zinc-600">No data · quote {quote} · precision {precision}</span>
-                    )}
+                <div className="min-w-0 flex-1 basis-40">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="truncate text-body font-semibold text-zinc-50">{row.label}</span>
+                    <span className={cn('truncate', softType.micro)}>
+                      {row.hasData
+                        ? `${row.datasetCount} file${row.datasetCount === 1 ? '' : 's'} · ${row.candleCount.toLocaleString()} · ${quote} · p${precision}`
+                        : `No data · ${quote} · p${precision}`}
+                    </span>
                   </div>
                 </div>
-                <label className="flex min-w-[8rem] flex-col gap-1.5">
-                  <span className={softType.caption}>Contract</span>
+                <label className="flex items-center gap-2">
+                  <span className={cn('w-14 shrink-0 text-right', softType.micro)}>Contract</span>
                   <SoftInput
                     type="number"
                     min="0"
@@ -256,13 +252,13 @@ export default function SymbolsTab(): ReactNode {
                       setContractSize(row.symbol, text === '' ? null : Number(text))
                     }}
                     className={cn(
-                      'h-11 w-28 text-body tabular-nums',
+                      'h-9 w-24 text-caption tabular-nums',
                       userSize != null ? 'border-primary-500/35' : undefined
                     )}
                   />
                 </label>
-                <label className="flex min-w-[8rem] flex-col gap-1.5">
-                  <span className={softType.caption}>Spread</span>
+                <label className="flex items-center gap-2">
+                  <span className={cn('w-12 shrink-0 text-right', softType.micro)}>Spread</span>
                   <SoftInput
                     type="number"
                     min="0"
@@ -276,13 +272,13 @@ export default function SymbolsTab(): ReactNode {
                       setSpread(row.symbol, text === '' ? null : Number(text))
                     }}
                     className={cn(
-                      'h-11 w-28 text-body tabular-nums',
+                      'h-9 w-20 text-caption tabular-nums',
                       spec.spread != null ? 'border-primary-500/35' : undefined
                     )}
                   />
                 </label>
-                <label className="flex min-w-[8rem] flex-col gap-1.5">
-                  <span className={softType.caption}>Comm/lot</span>
+                <label className="flex items-center gap-2">
+                  <span className={cn('w-14 shrink-0 text-right', softType.micro)}>Comm/lot</span>
                   <SoftInput
                     type="number"
                     min="0"
@@ -296,12 +292,12 @@ export default function SymbolsTab(): ReactNode {
                       setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                     }}
                     className={cn(
-                      'h-11 w-28 text-body tabular-nums',
+                      'h-9 w-20 text-caption tabular-nums',
                       spec.commissionPerLot != null ? 'border-primary-500/35' : undefined
                     )}
                   />
                 </label>
-                <span className={cn('w-36 shrink-0 pb-2.5 text-right tabular-nums', softType.caption)}>
+                <span className={cn('w-32 shrink-0 text-right tabular-nums', softType.micro)}>
                   1 lot = {formatContractSize(effective)} {quote}
                 </span>
               </SoftCard>
