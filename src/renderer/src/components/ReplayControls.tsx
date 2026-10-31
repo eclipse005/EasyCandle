@@ -15,6 +15,7 @@ import Tooltip from '@/components/Tooltip'
 import {
   defaultSessionParts,
   parseSessionParts,
+  sessionTimezoneTitle,
   sessionUtcOffsetLabel,
   toSessionParts
 } from '@/lib/chartTimezone'
@@ -49,6 +50,7 @@ export default function ReplayControls() {
   const setPauseOnTpSl = useReplayStore((s) => s.setPauseOnTpSl)
   const timezone = useChartSettingsStore((s) => s.timezone)
   const offsetLabel = sessionUtcOffsetLabel(timezone)
+  const timezoneTitle = sessionTimezoneTitle(timezone)
 
   const seed = currentCandle
     ? toSessionParts(currentCandle.time, timezone)
@@ -195,28 +197,32 @@ export default function ReplayControls() {
           </IconButton>
         )}
       >
-        <form onSubmit={onJump} className="flex items-center gap-1 p-2">
-          <SkipForward className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
-          <span className="sr-only">Jump {offsetLabel}</span>
-          <input
-            type="date"
-            value={jumpDate}
-            disabled={busy}
-            aria-label={`Jump date ${offsetLabel}`}
-            onChange={(e) => setJumpDate(e.target.value)}
-            className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
-          />
-          <input
-            type="time"
-            value={jumpTime}
-            disabled={busy}
-            aria-label={`Jump time ${offsetLabel}`}
-            onChange={(e) => setJumpTime(e.target.value)}
-            className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
-          />
-          <IconButton type="submit" disabled={busy}>
-            <SkipForward className="h-4 w-4" />
-          </IconButton>
+        <form onSubmit={onJump} className="flex flex-col gap-1.5 p-2">
+          <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+            Jump · {timezoneTitle}
+          </span>
+          <div className="flex items-center gap-1">
+            <SkipForward className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+            <input
+              type="date"
+              value={jumpDate}
+              disabled={busy}
+              aria-label={`Jump date ${timezoneTitle}`}
+              onChange={(e) => setJumpDate(e.target.value)}
+              className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+            />
+            <input
+              type="time"
+              value={jumpTime}
+              disabled={busy}
+              aria-label={`Jump time ${timezoneTitle}`}
+              onChange={(e) => setJumpTime(e.target.value)}
+              className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+            />
+            <IconButton type="submit" disabled={busy} tooltip={`Jump to ${timezoneTitle}`}>
+              <SkipForward className="h-4 w-4" />
+            </IconButton>
+          </div>
           {jumpError && <span className="text-xs text-red-400">{jumpError}</span>}
         </form>
       </Dropdown>

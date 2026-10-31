@@ -3,6 +3,7 @@ import { ChevronUp } from 'lucide-react'
 import Dropdown from '@/components/Dropdown'
 import {
   CHART_TIMEZONES,
+  chartTimezoneById,
   sessionTimezoneTitle,
   sessionUtcOffsetLabel,
   type ChartTimezone
@@ -27,6 +28,9 @@ export default function ChartTimezoneSelect() {
   const [query, setQuery] = useState('')
 
   const offsetLabel = sessionUtcOffsetLabel(timezone)
+  const zone = chartTimezoneById(timezone)
+  const triggerLabel =
+    zone.id === 'UTC' ? offsetLabel : `${zone.city} · ${offsetLabel}`
   const groups = useMemo(() => {
     const needle = query.trim().toLowerCase()
     const matches = needle
@@ -59,7 +63,7 @@ export default function ChartTimezoneSelect() {
           title={sessionTimezoneTitle(timezone)}
           className="inline-flex h-5 items-center gap-0.5 rounded bg-zinc-950/80 px-1.5 text-[10px] font-medium tabular-nums text-zinc-400 backdrop-blur-sm transition-colors hover:bg-zinc-800 hover:text-zinc-200"
         >
-          {offsetLabel}
+          {triggerLabel}
           <ChevronUp
             className={`h-2.5 w-2.5 shrink-0 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`}
             aria-hidden

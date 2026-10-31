@@ -244,7 +244,27 @@ export default function ImportConfirmModal({
               </span>
               <p className="mt-0.5 tabular-nums text-zinc-200">{spanDays} days</p>
             </div>
+
+            {details.candles[0] ? (
+              <div className="col-span-2">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                  First bar preview
+                </span>
+                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
+                  {formatUtcCandleTime(details.candles[0].time)} · O{' '}
+                  {details.candles[0].open} H {details.candles[0].high} L {details.candles[0].low}{' '}
+                  C {details.candles[0].close}
+                </p>
+              </div>
+            ) : null}
           </div>
+
+          {needSymbol && resolvedSymbol.length > 0 && resolvedSymbol.length < 6 ? (
+            <p className="text-[11px] leading-relaxed text-amber-400/90">
+              Symbol looks short — FX pairs are usually 6 letters (e.g. EURUSD). Confirm before
+              loading if this is intentional.
+            </p>
+          ) : null}
 
           {isUpdate && (
             <p className="text-[11px] leading-relaxed text-sky-300/90">

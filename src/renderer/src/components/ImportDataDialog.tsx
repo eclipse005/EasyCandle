@@ -360,20 +360,23 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
   return (
     <>
-      <IconButton
-        tooltip="Import data"
-        dataTour="import-data"
+      <button
+        type="button"
+        data-tour="import-data"
         disabled={disabled}
-        tone="accent"
+        title="Import MT4/MT5 1-minute CSV"
+        aria-label="Import data"
         onClick={() => {
           setMessage(null)
           setModalError(null)
           setStaleOffer(null)
           setOpen(true)
         }}
+        className="inline-flex h-8 items-center gap-1.5 rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Database className="h-3.5 w-3.5" />
-      </IconButton>
+        <Database className="h-3.5 w-3.5" aria-hidden />
+        Import CSV
+      </button>
 
       {open && (
         <div
