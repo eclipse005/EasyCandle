@@ -94,4 +94,5 @@ Shipped on `main` / https://barreplay.pages.dev/:
 | Soft* large type on blotter / report | **Have** (0.1.3) |
 | Trades open/pending/closed + Type filter | **Have** (0.1.4) |
 | Sessions → Analytics jump | **Have** (0.1.4) |
+| Symbols Soft* spread/commission editors | **Have** (0.1.5) |
 | Live / Battles / Prop / Upgrade / cloud sync | **Skipped** (needs backend) |
