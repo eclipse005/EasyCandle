@@ -17,6 +17,7 @@ import SoftConfirmDialog from '@/components/ui/SoftConfirmDialog'
 import SoftCard from '@/components/ui/SoftCard'
 import SoftEmpty from '@/components/ui/SoftEmpty'
 import { SoftInput, SoftSelect, SoftTextarea } from '@/components/ui/SoftInput'
+import Tooltip from '@/components/Tooltip'
 import { cn } from '@/components/ui/cn'
 import { softMotion, softSpace, softType } from '@/components/ui/softTokens'
 import { idbGet } from '@/lib/importIdb'
@@ -527,30 +528,39 @@ function SessionCard({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <MetricChip
                   label={t('sessions.totalPnl')}
+                  hint={t('sessions.hintTotalPnl')}
                   value={formatPnlCcy(analytics.totalPnl, quote)}
                   tone={analytics.totalPnl >= 0 ? 'up' : 'down'}
                 />
                 <MetricChip
                   label={t('sessions.winRate')}
+                  hint={t('sessions.hintWinRate')}
                   value={
                     analytics.winRate == null
                       ? '—'
                       : `${Math.round(analytics.winRate * 1000) / 10}%`
                   }
                 />
-                <MetricChip label={t('sessions.riskReward')} value={formatRiskRewardRatio(analytics.riskReward)} />
+                <MetricChip
+                  label={t('sessions.riskReward')}
+                  hint={t('sessions.hintRiskReward')}
+                  value={formatRiskRewardRatio(analytics.riskReward)}
+                />
                 <MetricChip
                   label={t('sessions.month')}
+                  hint={t('sessions.hintMonth')}
                   value={formatPnl(analytics.monthPnl)}
                   tone={chipTone(analytics.monthPnl)}
                 />
                 <MetricChip
                   label={t('sessions.week')}
+                  hint={t('sessions.hintWeek')}
                   value={formatPnl(analytics.weekPnl)}
                   tone={chipTone(analytics.weekPnl)}
                 />
                 <MetricChip
                   label={t('sessions.day')}
+                  hint={t('sessions.hintDay')}
                   value={formatPnl(analytics.dayPnl)}
                   tone={chipTone(analytics.dayPnl)}
                 />
@@ -580,10 +590,13 @@ function MiniChartCard({ title, children }: { title: string; children: ReactNode
 
 function MetricChip({
   label,
+  hint,
   value,
   tone = 'neutral'
 }: {
   label: string
+  /** Hover explanation; Info icon only rendered when provided. */
+  hint?: string
   value: string
   tone?: 'up' | 'down' | 'neutral'
 }): ReactNode {
@@ -591,7 +604,16 @@ function MetricChip({
     <div className="min-w-0 rounded-2xl border border-white/[0.05] bg-zinc-950/40 px-4 py-3">
       <div className={cn('flex items-center gap-1.5', softType.caption)}>
         {label}
-        <Info className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
+        {hint ? (
+          <Tooltip text={hint} side="top" sideOffset={6}>
+            <span
+              className="inline-flex shrink-0 cursor-help text-zinc-500 opacity-70 hover:opacity-100"
+              aria-label={hint}
+            >
+              <Info className="h-3.5 w-3.5" aria-hidden />
+            </span>
+          </Tooltip>
+        ) : null}
       </div>
       <p
         className={cn(

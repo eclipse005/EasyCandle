@@ -386,22 +386,22 @@ export default function TradesTab(): ReactNode {
 
       <SoftCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1480px] border-collapse text-left">
+          <table className="w-full min-w-[1760px] border-collapse text-left">
             <thead>
               <tr className="border-b border-white/[0.06] text-caption text-zinc-500">
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.session')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.type')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entry')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.exit')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.asset')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.side')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entryType')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.entryPx')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.exitPx')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnUsd')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnPct')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnR')}</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.reason')}</th>
+                <th className="min-w-[14rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.session')}</th>
+                <th className="min-w-[6.5rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.type')}</th>
+                <th className="min-w-[10rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entry')}</th>
+                <th className="min-w-[10rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.exit')}</th>
+                <th className="min-w-[7rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.asset')}</th>
+                <th className="min-w-[5.5rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.side')}</th>
+                <th className="min-w-[7.5rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entryType')}</th>
+                <th className="min-w-[7rem] whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.entryPx')}</th>
+                <th className="min-w-[7rem] whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.exitPx')}</th>
+                <th className="min-w-[11rem] whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnUsd')}</th>
+                <th className="min-w-[6.5rem] whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnPct')}</th>
+                <th className="min-w-[5.5rem] whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnR')}</th>
+                <th className="min-w-[9rem] whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.reason')}</th>
               </tr>
             </thead>
             <tbody>
@@ -417,15 +417,15 @@ export default function TradesTab(): ReactNode {
                     className="border-b border-white/[0.04] text-body text-zinc-300 last:border-0"
                   >
                     <td
-                      className="max-w-[12rem] truncate px-4 py-3 text-zinc-200"
+                      className="min-w-[14rem] max-w-[18rem] truncate whitespace-nowrap px-4 py-3 text-zinc-200"
                       title={row.sessionName}
                     >
                       {row.sessionName}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="min-w-[6.5rem] whitespace-nowrap px-4 py-3">
                       <span
                         className={cn(
-                          'rounded-lg px-2 py-0.5 text-caption font-medium',
+                          'inline-block whitespace-nowrap rounded-lg px-2 py-0.5 text-caption font-medium',
                           badge.className
                         )}
                       >
@@ -438,11 +438,13 @@ export default function TradesTab(): ReactNode {
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
                       {row.exitTime != null ? formatAccountDateTime(row.exitTime, accountTimezone) : '—'}
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-zinc-200">{row.symbol}</td>
-                    <td className="px-4 py-3">
+                    <td className="min-w-[7rem] whitespace-nowrap px-4 py-3 tabular-nums text-zinc-200">
+                      {row.symbol}
+                    </td>
+                    <td className="min-w-[5.5rem] whitespace-nowrap px-4 py-3">
                       <span
                         className={cn(
-                          'rounded-lg px-2 py-0.5 text-caption font-medium',
+                          'inline-block whitespace-nowrap rounded-lg px-2 py-0.5 text-caption font-medium',
                           row.side === 'long'
                             ? 'bg-emerald-500/15 text-emerald-400'
                             : 'bg-red-500/15 text-red-400'
@@ -451,15 +453,15 @@ export default function TradesTab(): ReactNode {
                         {row.side === 'long' ? t('trades.buy') : t('trades.sell')}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <span className="rounded-lg bg-zinc-800/60 px-2 py-0.5 text-caption text-zinc-400">
+                    <td className="min-w-[7.5rem] whitespace-nowrap px-4 py-3">
+                      <span className="inline-block whitespace-nowrap rounded-lg bg-zinc-800/60 px-2 py-0.5 text-caption text-zinc-400">
                         {entryTypeLabel(row)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-400">
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-zinc-400">
                       {formatAssetPrice(row.entryPrice, precision)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-400">
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-zinc-400">
                       {row.exitPrice != null ? formatAssetPrice(row.exitPrice, precision) : '—'}
                     </td>
                     <td
@@ -476,7 +478,7 @@ export default function TradesTab(): ReactNode {
                     </td>
                     <td
                       className={cn(
-                        'px-4 py-3 text-right tabular-nums',
+                        'whitespace-nowrap px-4 py-3 text-right tabular-nums',
                         pct == null
                           ? 'text-zinc-600'
                           : pct >= 0
@@ -488,7 +490,7 @@ export default function TradesTab(): ReactNode {
                     </td>
                     <td
                       className={cn(
-                        'px-4 py-3 text-right tabular-nums',
+                        'whitespace-nowrap px-4 py-3 text-right tabular-nums',
                         rMult == null
                           ? 'text-zinc-600'
                           : rMult >= 0
@@ -498,11 +500,11 @@ export default function TradesTab(): ReactNode {
                     >
                       {rMult == null ? 'N/A' : `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R`}
                     </td>
-                    <td className="px-4 py-3 text-caption text-zinc-500">
+                    <td className="min-w-[9rem] whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
                       {row.exitReason ? formatExitReason(row.exitReason) : '—'}
                       {row.note ? (
-                        <span className="mt-0.5 block truncate text-zinc-600" title={row.note}>
-                          {row.note}
+                        <span className="ml-1 inline truncate text-zinc-600" title={row.note}>
+                          · {row.note}
                         </span>
                       ) : null}
                     </td>

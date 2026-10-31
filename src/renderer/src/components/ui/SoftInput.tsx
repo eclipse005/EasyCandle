@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/components/ui/cn'
 
 /** Field chrome — radius / border / type from Soft tokens. */
@@ -18,9 +18,12 @@ type SoftInputProps = InputHTMLAttributes<HTMLInputElement>
 type SoftSelectProps = SelectHTMLAttributes<HTMLSelectElement>
 type SoftTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>
 
-export function SoftInput({ className, ...rest }: SoftInputProps) {
-  return <input className={cn(fieldClass(className), className)} {...rest} />
-}
+export const SoftInput = forwardRef<HTMLInputElement, SoftInputProps>(function SoftInput(
+  { className, ...rest },
+  ref
+) {
+  return <input ref={ref} className={cn(fieldClass(className), className)} {...rest} />
+})
 
 export function SoftSelect({ className, ...rest }: SoftSelectProps) {
   return <select className={cn(fieldClass(className), className)} {...rest} />
