@@ -40,13 +40,12 @@ export default function TimeframeSelect() {
   const imported = dataSource === 'imported'
   const disabled = status === 'loading' || replayLoading
 
-  const availableIds = useMemo(
-    () =>
-      imported && importMeta?.timeframes
-        ? TIMEFRAME_IDS.filter((id) => importMeta.timeframes[id] != null)
-        : TIMEFRAME_IDS,
-    [imported, importMeta]
-  )
+  const availableIds = useMemo(() => {
+    if (!imported || !importMeta?.timeframes) return TIMEFRAME_IDS
+    // With stored 1m, every listed TF is available (lazy build + cache on switch).
+    if (importMeta.timeframes['1m'] != null) return TIMEFRAME_IDS
+    return TIMEFRAME_IDS.filter((id) => importMeta.timeframes[id] != null)
+  }, [imported, importMeta])
 
   const favoriteIds = availableIds.filter((id) => favorites.includes(id))
   const currentLabel = TIMEFRAMES[timeframe]?.label ?? timeframe

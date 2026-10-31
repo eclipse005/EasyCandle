@@ -4,13 +4,23 @@ export type TimeframeConfig = {
   seconds: number
 }
 
+/**
+ * Full available list (TradingView-like). Month id is `1M` (distinct from `1m`).
+ * Favorites stay empty until the user stars; DEFAULT_TIMEFRAME stays 15m.
+ */
 export const TIMEFRAMES: Record<string, TimeframeConfig> = {
   '1m': { id: '1m', label: '1m', seconds: 60 },
+  '3m': { id: '3m', label: '3m', seconds: 180 },
   '5m': { id: '5m', label: '5m', seconds: 300 },
   '15m': { id: '15m', label: '15m', seconds: 900 },
+  '30m': { id: '30m', label: '30m', seconds: 1800 },
   '1h': { id: '1h', label: '1h', seconds: 3600 },
   '4h': { id: '4h', label: '4h', seconds: 14400 },
-  '1d': { id: '1d', label: '1d', seconds: 86400 }
+  '6h': { id: '6h', label: '6h', seconds: 21600 },
+  '1d': { id: '1d', label: '1d', seconds: 86400 },
+  '1w': { id: '1w', label: '1w', seconds: 604800 },
+  // Nominal 30d; real month buckets use NY calendar + NY close (see forexSession).
+  '1M': { id: '1M', label: '1M', seconds: 2592000 }
 }
 
 export const TIMEFRAME_IDS: string[] = Object.keys(TIMEFRAMES)

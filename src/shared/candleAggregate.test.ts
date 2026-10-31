@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   aggregateCandles,
+  aggregateToTimeframe,
   buildImportTimeframes,
   buildImportTimeframesAsync,
   formingHigherTfCandle,
   overlayFormingHigherTf,
   IMPORT_DERIVED_TIMEFRAMES
 } from './candleAggregate'
+import { floorToForexMonthOpen, floorToForexWeekOpen } from './forexSession'
 import type { Candle } from './candleUtils'
 import { forexNyCloseOffsetSeconds } from './forexSession'
 import { hasNewerCandles } from './importTypes'
@@ -103,9 +105,12 @@ describe('buildImportTimeframes', () => {
     expect(map['1m']).toHaveLength(60 * 24)
     expect(map['5m']?.length).toBe(12 * 24)
     expect(map['15m']?.length).toBe(4 * 24)
+    expect(map['30m']?.length).toBe(2 * 24)
     expect(map['1h']?.length).toBe(24)
     expect(map['4h']?.length).toBe(6)
     expect(map['1d']?.length).toBe(1)
+    expect(map['3m']).toBeUndefined()
+    expect(map['1w']).toBeUndefined()
   })
 
   it('buildImportTimeframesAsync matches the sync builder', async () => {
@@ -126,9 +131,10 @@ describe('buildImportTimeframes', () => {
       percents.push(progress.percent)
     })
     expect(percents[0]).toBe(0)
+    expect(percents).toContain(50)
+    expect(percents).toContain(52)
     expect(percents).toContain(55)
-    expect(percents).toContain(57)
-    expect(percents).toContain(59)
+    expect(percents).toContain(58)
     expect(percents).toContain(61)
     expect(percents[percents.length - 1]).toBe(63)
   })
@@ -151,6 +157,7 @@ describe('buildImportTimeframes', () => {
     expect(map['5m']).toEqual(aggregateCandles(candles1m, TIMEFRAMES['5m'].seconds))
     expect(map['5m'].every((c) => c.time % 300 === 0)).toBe(true)
     expect(map['15m']).toEqual(aggregateCandles(candles1m, TIMEFRAMES['15m'].seconds))
+    expect(map['30m']).toEqual(aggregateCandles(candles1m, TIMEFRAMES['30m'].seconds))
     expect(map['1h']).toEqual(aggregateCandles(candles1m, TIMEFRAMES['1h'].seconds))
     expect(map['4h']).toEqual(
       aggregateCandles(candles1m, TIMEFRAMES['4h'].seconds, undefined, forexNyCloseOffsetSeconds)
@@ -222,5 +229,32 @@ describe('overlayFormingHigherTf', () => {
       close: 101.5
     })
     expect(completed[0].close).toBe(111.5)
+  })
+})
+
+describe('aggregateToTimeframe week/month', () => {
+  it('builds 1w on NY Monday close buckets', () => {
+    const weekOpen = Date.UTC(2020, 7, 24, 21) / 1000
+    const candles = series(60 * 24 * 3, 60, weekOpen)
+    const weeks = aggregateToTimeframe(candles, '1w')
+    expect(weeks[0].time).toBe(floorToForexWeekOpen(weekOpen))
+    expect(weeks.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('builds 1M on NY calendar month buckets', () => {
+    const start = Date.UTC(2020, 7, 1, 21) / 1000
+    const candles = series(60 * 24 * 40, 60, start)
+    const months = aggregateToTimeframe(candles, '1M')
+    expect(months[0].time).toBe(floorToForexMonthOpen(start))
+    expect(months.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('builds 3m and 30m on UTC grids', () => {
+    const start = 1699999200
+    expect(start % 180).toBe(0)
+    expect(start % 1800).toBe(0)
+    const candles = series(30, 60, start)
+    expect(aggregateToTimeframe(candles, '3m')).toHaveLength(10)
+    expect(aggregateToTimeframe(candles, '30m')).toHaveLength(1)
   })
 })

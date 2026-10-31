@@ -1,5 +1,9 @@
 import type { Candle } from './candleUtils'
-import { floorToInterval, importedForexSessionOffset } from './forexSession'
+import {
+  floorOpenForTimeframe,
+  floorToInterval,
+  importedForexSessionOffset
+} from './forexSession'
 import {
   IMPORT_BUILD_STAGE_PERCENT,
   IMPORT_BUILD_UI_PERCENT,
@@ -18,11 +22,22 @@ function resolveSessionOffset(
   return Number.isFinite(off) ? off : 0
 }
 
-/** Timeframes derived from an imported 1m series (excludes source 1m). */
-export const IMPORT_DERIVED_TIMEFRAMES = ['5m', '15m', '1h', '4h', '1d'] as const
+/**
+ * Precomputed at import (cascade from 1m): 5m/15m/30m/1h/4h/1d.
+ * Lazy on first switch (+ IDB cache): 3m/6h/1w/1M.
+ */
+export const IMPORT_DERIVED_TIMEFRAMES = ['5m', '15m', '30m', '1h', '4h', '1d'] as const
 
-/** All timeframes stored for an imported symbol. */
+export const IMPORT_LAZY_TIMEFRAMES = ['3m', '6h', '1w', '1M'] as const
+
+/** All timeframes written at import time (excludes lazy). */
 export const IMPORT_STORED_TIMEFRAMES = ['1m', ...IMPORT_DERIVED_TIMEFRAMES] as const
+
+/** Every TF key that may exist in IDB for a dataset (stored + lazy cache). */
+export const IMPORT_CACHEABLE_TIMEFRAMES = [
+  ...IMPORT_STORED_TIMEFRAMES,
+  ...IMPORT_LAZY_TIMEFRAMES
+] as const
 
 export type ImportStoredTimeframe = (typeof IMPORT_STORED_TIMEFRAMES)[number]
 
@@ -33,14 +48,16 @@ export type ImportBuildProgress = {
 
 /**
  * Aggregate lower-timeframe candles into a higher interval in one linear pass.
- * Open time is floored to `intervalSeconds` (UTC when `sessionOffset` is omitted).
+ * Open time is floored to `intervalSeconds` (UTC when `sessionOffset` is omitted),
+ * or via `bucketOpenFn` when provided (week/month).
  * Incomplete final buckets are kept.
  */
 export function aggregateCandles(
   candles: Candle[],
   intervalSeconds: number,
   onChunk?: (processed: number, total: number) => void,
-  sessionOffset?: SessionOffset
+  sessionOffset?: SessionOffset,
+  bucketOpenFn?: (timeSeconds: number) => number
 ): Candle[] {
   const step = Math.max(1, Math.floor(intervalSeconds) || 1)
   if (!Array.isArray(candles) || candles.length === 0) return []
@@ -66,7 +83,9 @@ export function aggregateCandles(
     const candle = candles[i]
     const t = Math.floor(Number(candle.time))
     if (!Number.isFinite(t)) continue
-    const openTime = floorToInterval(t, step, resolveSessionOffset(sessionOffset, t))
+    const openTime = bucketOpenFn
+      ? bucketOpenFn(t)
+      : floorToInterval(t, step, resolveSessionOffset(sessionOffset, t))
 
     if (openTime !== bucketOpen) {
       flush()
@@ -95,6 +114,27 @@ export function aggregateCandles(
 
   flush()
   return out
+}
+
+/** Aggregate 1m (or finer) candles into any app timeframe id. */
+export function aggregateToTimeframe(
+  candles: Candle[],
+  timeframe: string,
+  onChunk?: (processed: number, total: number) => void
+): Candle[] {
+  if (!Array.isArray(candles) || candles.length === 0) return []
+  if (timeframe === '1m') return candles
+  const tf = TIMEFRAMES[timeframe]
+  if (!tf) return []
+
+  if (timeframe === '1w' || timeframe === '1M') {
+    return aggregateCandles(candles, tf.seconds, onChunk, undefined, (t) =>
+      floorOpenForTimeframe(timeframe, t)
+    )
+  }
+
+  const offset = importedForexSessionOffset(timeframe)
+  return aggregateCandles(candles, tf.seconds, onChunk, offset)
 }
 
 /**
@@ -165,7 +205,7 @@ export function overlayFormingHigherTf(
 
 /**
  * Nested intervals: each derived TF is built from the previous one
- * (5m←1m, 15m←5m, 1h←15m, …) instead of scanning 1m five times.
+ * (5m←1m, 15m←5m, 30m←15m, 1h←30m, 4h←1h, 1d←4h).
  */
 function cascadeSourceId(derivedIndex: number): string {
   return derivedIndex <= 0 ? '1m' : IMPORT_DERIVED_TIMEFRAMES[derivedIndex - 1]

@@ -86,6 +86,7 @@ describe('parseMtFilename', () => {
 
   it('rejects unsupported periods', () => {
     expect(parseMtFilename('EURUSD_M30.csv').unsupportedPeriod).toBe('M30')
+    expect(parseMtFilename('EURUSD_M3.csv').unsupportedPeriod).toBe('M3')
     expect(parseMtFilename('XAUUSDM30.csv').unsupportedPeriod).toBe('M30')
   })
 })

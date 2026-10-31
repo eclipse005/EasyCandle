@@ -1,5 +1,5 @@
 import type { Candle } from '@shared/candleUtils'
-import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
+import { IMPORT_CACHEABLE_TIMEFRAMES, IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
 
 const DB_NAME = 'barreplay_db'
@@ -140,7 +140,11 @@ export async function idbWriteImportDataset(params: {
         params.content && params.content.length <= MAX_SOURCE_CHARS ? params.content : ''
       track(tx.objectStore('sources').put({ id: params.meta.id, content: sourceContent }))
       const candleStore = tx.objectStore('candles')
-      for (const tf of IMPORT_STORED_TIMEFRAMES) {
+      const tfIds = new Set<string>([
+        ...IMPORT_STORED_TIMEFRAMES,
+        ...Object.keys(params.candlesByTimeframe)
+      ])
+      for (const tf of tfIds) {
         const series = params.candlesByTimeframe[tf]
         if (!series) continue
         track(candleStore.put({ key: `${params.meta.id}:${tf}`, candles: series }))
@@ -182,7 +186,7 @@ export async function idbDeleteImportDataset(id: string): Promise<boolean> {
       tx.objectStore('metas').delete(id)
       tx.objectStore('sources').delete(id)
       const candleStore = tx.objectStore('candles')
-      for (const tf of IMPORT_STORED_TIMEFRAMES) {
+      for (const tf of IMPORT_CACHEABLE_TIMEFRAMES) {
         candleStore.delete(`${id}:${tf}`)
       }
       tx.oncomplete = () => resolve(true)

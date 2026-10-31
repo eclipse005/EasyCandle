@@ -10,12 +10,9 @@ import {
   replayRange,
   tailRange
 } from '@/lib/importWindow'
-import { aggregateCandles, overlayFormingHigherTf } from '@shared/candleAggregate'
-import {
-  floorToInterval,
-  forexNyCloseOffsetSeconds,
-  importedForexSessionOffset
-} from '@shared/forexSession'
+import { aggregateToTimeframe, overlayFormingHigherTf } from '@shared/candleAggregate'
+import { floorOpenForTimeframe, importedForexSessionOffset } from '@shared/forexSession'
+import { backfillMissingDerivedTimeframes } from '@/lib/webApiBridge'
 import { dedupeCandlesByTime, findIndexAtOrBefore, mergeCandlesByTime, type Candle } from '@shared/candleUtils'
 import { normalizeSymbolKey } from '@shared/pricePrecision'
 import {
@@ -368,12 +365,17 @@ export function selectPriceFollowCandle(s: {
 
 function displayedFromSource(source1m: Candle[], timeframe: string): Candle[] {
   if (!source1m.length) return []
-  if (timeframe === '1m') return source1m
-  const seconds = intervalSecondsFor(timeframe)
-  if (timeframe === '4h' || timeframe === '1d') {
-    return aggregateCandles(source1m, seconds, undefined, forexNyCloseOffsetSeconds)
-  }
-  return aggregateCandles(source1m, seconds)
+  return aggregateToTimeframe(source1m, timeframe)
+}
+
+function importHasTimeframe<T extends { timeframes?: Record<string, unknown> }>(
+  meta: T | null | undefined,
+  tf: string
+): meta is T {
+  if (!meta?.timeframes) return false
+  if (meta.timeframes[tf] != null) return true
+  // Lazy + migration: any listed TF can be built from stored 1m.
+  return tf !== '1m' && meta.timeframes['1m'] != null && Boolean(TIMEFRAMES[tf])
 }
 
 /** Patch a coarser pane's current bar from the finer pane's playhead (live-style). */
@@ -1362,7 +1364,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           candles = displayedFromSource(source1m, secondaryTimeframe)
         } else if (secondaryTimeframe === timeframe) {
           candles = importedCandles
-        } else if (importMeta.timeframes?.[secondaryTimeframe]) {
+        } else if (importHasTimeframe(importMeta, secondaryTimeframe)) {
           const loaded = await loadImportedSeries(importMeta.id, secondaryTimeframe, tailRange())
           if (generation !== secondaryLoadGeneration || !get().chartSplit) return
           if (!loaded?.candles.length) {
@@ -1442,7 +1444,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (isMetatraderImport(importMeta) && source1m.length) {
         series = displayedFromSource(source1m, secondaryTimeframe)
       } else if (secondaryTimeframe !== timeframe) {
-        if (!importMeta.timeframes?.[secondaryTimeframe]) {
+        if (!importHasTimeframe(importMeta, secondaryTimeframe)) {
           set({
             secondaryLoading: false,
             secondaryStatus: 'error',
@@ -2534,15 +2536,14 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     const previousTimeframe = get().timeframe
     const nextIntervalSec = intervalSecondsFor(nextTimeframe)
-    const importedOffset =
-      get().dataSource === 'imported' ? importedForexSessionOffset(nextTimeframe) : undefined
-    const seekTime = importedOffset
-      ? floorToInterval(anchorOpen, nextIntervalSec, importedOffset(anchorOpen))
-      : alignTimeToInterval(anchorOpen, nextIntervalSec)
+    const seekTime =
+      get().dataSource === 'imported'
+        ? floorOpenForTimeframe(nextTimeframe, anchorOpen)
+        : alignTimeToInterval(anchorOpen, nextIntervalSec)
 
     if (get().dataSource === 'imported') {
       const meta = get().importMeta
-      if (!meta?.timeframes?.[nextTimeframe]) {
+      if (!importHasTimeframe(meta, nextTimeframe)) {
         set({
           replayMessage: `Timeframe ${nextTimeframe} is not available for this import.`
         })
@@ -3191,7 +3192,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
       if (get().dataSource === 'imported') {
         const meta = get().importMeta
-        if (!meta?.timeframes?.[timeframe]) {
+        if (!importHasTimeframe(meta, timeframe)) {
           set({ error: `Timeframe ${timeframe} is not available for this import.` })
           return
         }
@@ -3328,7 +3329,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
       if (get().dataSource === 'imported') {
         const meta = get().importMeta
-        if (!meta?.timeframes?.[timeframe]) {
+        if (!importHasTimeframe(meta, timeframe)) {
           set({ secondaryError: `Timeframe ${timeframe} is not available for this import.` })
           return
         }
@@ -3512,6 +3513,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const loadedWindow = loaded.window ?? null
       publishImportedPreview(candles, loaded.meta, loadedWindow)
       set({ replayMessage: importedLoadMessage(loaded.meta, loadedWindow) })
+      void backfillMissingDerivedTimeframes(id)
 
       if (isMetatraderImport(loaded.meta)) {
         // MT datasets aggregate higher TFs from 1m, so that series stays whole.

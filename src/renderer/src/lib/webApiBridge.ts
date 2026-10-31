@@ -1,6 +1,13 @@
 import type { Candle } from '@shared/candleUtils'
-import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
-import { buildImportedDatasetMeta } from '@shared/importMeta'
+import {
+  aggregateToTimeframe,
+  buildImportTimeframes,
+  IMPORT_CACHEABLE_TIMEFRAMES,
+  IMPORT_DERIVED_TIMEFRAMES
+} from '@shared/candleAggregate'
+import { forexNyCloseOffsetSeconds } from '@shared/forexSession'
+import { buildImportedDatasetMeta, statsForImportedSeries } from '@shared/importMeta'
+import { TIMEFRAMES } from '@shared/timeframes'
 import { decodeMtTextBuffer } from '@shared/mtTextDecode'
 import type { BarReplayApi } from '@shared/appApi'
 import type {
@@ -62,9 +69,8 @@ function rememberDataset(
   memoryMetas.set(meta.id, meta)
   memorySources.set(meta.id, content)
   if (!candlesByTimeframe) return
-  for (const tf of IMPORT_STORED_TIMEFRAMES) {
-    const series = candlesByTimeframe[tf]
-    if (series) memoryCandles.set(`${meta.id}:${tf}`, series)
+  for (const [tf, series] of Object.entries(candlesByTimeframe)) {
+    if (series?.length) memoryCandles.set(`${meta.id}:${tf}`, series)
   }
 }
 
@@ -172,28 +178,110 @@ async function listImportDatasets(): Promise<ImportListResult> {
   }
 }
 
+async function loadCandleSeries(id: string, tf: string): Promise<Candle[] | null> {
+  const key = `${id}:${tf}`
+  const storedCandles = await idbGet<{ key: string; candles: Candle[] }>('candles', key)
+  return storedCandles?.candles || memoryCandles.get(key) || null
+}
+
+async function persistTimeframeSeries(
+  meta: ImportedDatasetMeta,
+  timeframe: string,
+  series: Candle[]
+): Promise<ImportedDatasetMeta> {
+  if (!series.length) return meta
+  const key = `${meta.id}:${timeframe}`
+  memoryCandles.set(key, series)
+  await idbPut('candles', { key, candles: series })
+  const nextMeta: ImportedDatasetMeta = {
+    ...meta,
+    timeframes: {
+      ...meta.timeframes,
+      [timeframe]: statsForImportedSeries(series)
+    },
+    updatedAt: new Date().toISOString()
+  }
+  memoryMetas.set(meta.id, nextMeta)
+  await idbPut('metas', nextMeta)
+  return nextMeta
+}
+
+/** Build + cache a missing TF from stored 1m (lazy TFs and migration gaps). */
+async function ensureTimeframeSeries(
+  meta: ImportedDatasetMeta,
+  timeframe: string
+): Promise<{ meta: ImportedDatasetMeta; candles: Candle[] } | null> {
+  if (!TIMEFRAMES[timeframe]) return null
+  const existing = await loadCandleSeries(meta.id, timeframe)
+  if (existing?.length) {
+    let nextMeta = meta
+    if (meta.timeframes[timeframe] == null) {
+      nextMeta = await persistTimeframeSeries(meta, timeframe, existing)
+    }
+    return { meta: nextMeta, candles: existing }
+  }
+  if (timeframe === '1m') return null
+  const source1m = await loadCandleSeries(meta.id, '1m')
+  if (!source1m?.length) return null
+  const built = aggregateToTimeframe(source1m, timeframe)
+  if (!built.length) return null
+  const nextMeta = await persistTimeframeSeries(meta, timeframe, built)
+  return { meta: nextMeta, candles: built }
+}
+
+/** Backfill missing precompute TFs (e.g. 30m) on old datasets in the background. */
+export async function backfillMissingDerivedTimeframes(id: string): Promise<void> {
+  try {
+    const meta = (await idbGet<ImportedDatasetMeta>('metas', id)) || memoryMetas.get(id)
+    if (!meta?.timeframes?.['1m']) return
+    const missing = IMPORT_DERIVED_TIMEFRAMES.filter((tf) => meta.timeframes[tf] == null)
+    if (!missing.length) return
+    const source1m = await loadCandleSeries(id, '1m')
+    if (!source1m?.length) return
+    const built = buildImportTimeframes(source1m, forexNyCloseOffsetSeconds)
+    let nextMeta = meta
+    for (const tf of missing) {
+      const series = built[tf]
+      if (!series?.length) continue
+      nextMeta = await persistTimeframeSeries(nextMeta, tf, series)
+    }
+  } catch {
+    // Best-effort migration; switch path can still lazy-build.
+  }
+}
+
 async function loadImportDataset(
   id: string,
   timeframe?: string,
   range?: ImportLoadRange
 ): Promise<ImportLoadResult> {
   try {
-    const meta = (await idbGet<ImportedDatasetMeta>('metas', id)) || memoryMetas.get(id)
+    let meta = (await idbGet<ImportedDatasetMeta>('metas', id)) || memoryMetas.get(id)
     if (!meta) return { ok: false, error: 'Saved import not found.' }
 
     const requested = String(timeframe || meta.timeframe || '1m')
-    const tf =
-      meta.timeframes[requested] != null
-        ? requested
-        : meta.timeframes['1m'] != null
-          ? '1m'
-          : Object.keys(meta.timeframes)[0]
+    let tf = requested
+    let stored = await loadCandleSeries(id, tf)
 
-    if (!tf) return { ok: false, error: 'Imported dataset has no candle series.' }
+    if (!stored?.length && TIMEFRAMES[requested] && requested !== '1m' && meta.timeframes['1m']) {
+      const ensured = await ensureTimeframeSeries(meta, requested)
+      if (ensured) {
+        meta = ensured.meta
+        stored = ensured.candles
+        tf = requested
+      }
+    }
 
-    const key = `${id}:${tf}`
-    const storedCandles = await idbGet<{ key: string; candles: Candle[] }>('candles', key)
-    const stored = storedCandles?.candles || memoryCandles.get(key)
+    if (!stored?.length) {
+      tf =
+        meta.timeframes[requested] != null
+          ? requested
+          : meta.timeframes['1m'] != null
+            ? '1m'
+            : Object.keys(meta.timeframes)[0]
+      if (!tf) return { ok: false, error: 'Imported dataset has no candle series.' }
+      stored = await loadCandleSeries(id, tf)
+    }
 
     if (!stored?.length) {
       return { ok: false, error: `No candles found for timeframe ${tf}.` }
@@ -220,7 +308,7 @@ async function deleteImportDataset(id: string): Promise<ImportDeleteResult> {
   try {
     memoryMetas.delete(id)
     memorySources.delete(id)
-    for (const tf of IMPORT_STORED_TIMEFRAMES) {
+    for (const tf of IMPORT_CACHEABLE_TIMEFRAMES) {
       memoryCandles.delete(`${id}:${tf}`)
     }
     await idbDeleteImportDataset(id)

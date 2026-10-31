@@ -47,7 +47,7 @@ const COMPACT_MINUTES_TO_TIMEFRAME: Record<string, string> = {
   '1440': '1d'
 }
 
-const UNSUPPORTED_PERIODS = new Set(['M30', 'H12', 'W1', 'MN1', '30', '10080', '43200'])
+const UNSUPPORTED_PERIODS = new Set(['M3', 'M30', 'H6', 'H12', 'W1', 'MN1', '3', '30', '360', '10080', '43200'])
 
 const QUOTE_SUFFIX = /(?:USDT|USDC|USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD|BTC|ETH|XAU|XAG)$/
 
