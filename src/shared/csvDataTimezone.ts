@@ -1,4 +1,5 @@
 import type { Candle } from './candleUtils'
+import { isAccountTimezoneId } from './accountTimezoneIds'
 
 /**
  * CSV timestamps are wall-clock strings from the broker/export.
@@ -8,41 +9,9 @@ import type { Candle } from './candleUtils'
  * provisional seconds into true UTC unix for storage.
  */
 
-export type CsvDataTimezoneOption = {
-  id: string
-  label: string
-  /**
-   * Optional i18n message key (MessageKey) for the helper under Import Confirm's
-   * TZ picker. UI must call t(hintKey) — never show a hard-coded English string.
-   */
-  hintKey?: string
-}
-
-/** Curated zones for Import Confirm — user must pick explicitly (no default). */
-export const CSV_DATA_TIMEZONE_OPTIONS: readonly CsvDataTimezoneOption[] = [
-  { id: 'UTC', label: 'UTC', hintKey: 'importConfirm.tzHintUtc' },
-  { id: 'America/New_York', label: 'New York (ET)', hintKey: 'importConfirm.tzHintNewYork' },
-  { id: 'America/Chicago', label: 'Chicago (CT)' },
-  { id: 'America/Los_Angeles', label: 'Los Angeles (PT)' },
-  { id: 'Europe/London', label: 'London (UK)' },
-  { id: 'Europe/Berlin', label: 'Berlin / Frankfurt (CET/CEST)' },
-  { id: 'Europe/Athens', label: 'Athens / EET', hintKey: 'importConfirm.tzHintAthens' },
-  { id: 'Asia/Dubai', label: 'Dubai (GMT+4)', hintKey: 'importConfirm.tzHintDubai' },
-  { id: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { id: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { id: 'Australia/Sydney', label: 'Sydney' }
-]
-
-const ALLOWED = new Set(CSV_DATA_TIMEZONE_OPTIONS.map((o) => o.id))
-
+/** Same curated whole-hour city list as Settings Account timezone. */
 export function isCsvDataTimezone(id: string): boolean {
-  if (!id || !ALLOWED.has(id)) return false
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: id })
-    return true
-  } catch {
-    return false
-  }
+  return isAccountTimezoneId(id)
 }
 
 function pad2(n: number): string {

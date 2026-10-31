@@ -1,4 +1,5 @@
 /** Session display timezones for the chart. Candle `time` stays UTC unix seconds. */
+import { ACCOUNT_TIMEZONE_IDS } from '@shared/accountTimezoneIds'
 
 export type ChartTimezone = {
   id: string
@@ -178,37 +179,9 @@ export function chartTimezoneById(id: string): ChartTimezone {
 }
 
 /**
- * Settings Account timezone picker — one well-known city per whole-hour UTC
- * offset (≈ UTC−11…UTC+12, plus +14). IANA id stays the stored value; UI shows
- * `City (UTC±N)`. Half-hour zones (e.g. India) are omitted on purpose.
+ * Settings Account timezone picker — IANA ids from shared accountTimezoneIds
+ * (one city per whole-hour offset). UI shows `City (UTC±N)`.
  */
-const ACCOUNT_TIMEZONE_IDS: readonly string[] = [
-  'Pacific/Pago_Pago', // UTC-11
-  'Pacific/Honolulu', // UTC-10
-  'America/Anchorage', // UTC-9 / -8 DST
-  'America/Los_Angeles', // UTC-8 / -7 DST
-  'America/Denver', // UTC-7 / -6 DST
-  'America/Chicago', // UTC-6 / -5 DST
-  'America/New_York', // UTC-5 / -4 DST
-  'America/Halifax', // UTC-4 / -3 DST
-  'America/Sao_Paulo', // UTC-3
-  'America/Noronha', // UTC-2
-  'Atlantic/Cape_Verde', // UTC-1
-  'UTC', // UTC+0
-  'Europe/Paris', // UTC+1 / +2 DST
-  'Africa/Cairo', // UTC+2
-  'Europe/Moscow', // UTC+3
-  'Asia/Dubai', // UTC+4
-  'Asia/Karachi', // UTC+5
-  'Asia/Dhaka', // UTC+6
-  'Asia/Bangkok', // UTC+7
-  'Asia/Shanghai', // UTC+8
-  'Asia/Tokyo', // UTC+9
-  'Australia/Brisbane', // UTC+10
-  'Pacific/Noumea', // UTC+11
-  'Pacific/Auckland', // UTC+12 / +13 DST
-  'Pacific/Kiritimati' // UTC+14
-]
 
 function offsetMinutesAt(zoneId: string, atSeconds: number): number {
   if (zoneId === 'UTC' || zoneId === 'Etc/UTC') return 0

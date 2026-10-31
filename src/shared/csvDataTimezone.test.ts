@@ -8,9 +8,12 @@ import {
 } from './csvDataTimezone'
 
 describe('csvDataTimezone', () => {
-  it('accepts curated ids only', () => {
+  it('accepts account/import curated ids only', () => {
     expect(isCsvDataTimezone('UTC')).toBe(true)
     expect(isCsvDataTimezone('America/New_York')).toBe(true)
+    expect(isCsvDataTimezone('Asia/Shanghai')).toBe(true)
+    expect(isCsvDataTimezone('Pacific/Pago_Pago')).toBe(true)
+    expect(isCsvDataTimezone('Europe/Athens')).toBe(false) // not in account list
     expect(isCsvDataTimezone('')).toBe(false)
     expect(isCsvDataTimezone('Not/AZone')).toBe(false)
   })

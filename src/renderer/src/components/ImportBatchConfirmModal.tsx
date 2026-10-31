@@ -8,11 +8,11 @@ import { IMPORT_SOURCE_TIMEFRAME } from '@shared/importConstants'
 import type { ImportOrigin } from '@shared/importTypes'
 import { toUtcParts } from '@/lib/utcDateTime'
 import {
-  CSV_DATA_TIMEZONE_OPTIONS,
   formatCsvWallClock,
   formatRemappedUtc,
   isCsvDataTimezone
 } from '@shared/csvDataTimezone'
+import TimezonePicker from '@/components/TimezonePicker'
 import {
   contractSizeInfoForSymbol,
   formatContractSize,
@@ -29,8 +29,7 @@ function csvTimezoneHelperText(
   t: (key: MessageKey, vars?: Record<string, string | number>) => string
 ): string {
   if (!dataTimezone) return t('importConfirm.tzRequiredHint')
-  const hintKey = CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hintKey
-  if (hintKey) return t(hintKey as MessageKey)
+  if (dataTimezone === 'UTC' || dataTimezone === 'Etc/UTC') return t('importConfirm.tzHintUtc')
   return t('importConfirm.tzRemapHint')
 }
 
@@ -412,24 +411,18 @@ export default function ImportBatchConfirmModal({
                 </span>
                 {allTimestampsAbsolute ? null : (
                   <>
-                    <select
+                    <TimezonePicker
                       value={dataTimezone}
                       disabled={busy}
-                      aria-label={t('importConfirm.csvTzAria')}
-                      aria-required="true"
-                      onChange={(event) => {
-                        setDataTimezone(event.target.value)
+                      ariaLabel={t('importConfirm.csvTzAria')}
+                      placeholder={t('importConfirm.selectTz')}
+                      className="mt-1 max-w-md"
+                      triggerClassName="h-8 border-zinc-800 bg-zinc-900 px-2 text-[12px] hover:border-zinc-500 focus:border-primary-500/50"
+                      onChange={(id) => {
+                        setDataTimezone(id)
                         setFormError(null)
                       }}
-                      className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-                    >
-                      <option value="">{t('importConfirm.selectTz')}</option>
-                      {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {/* Fixed min-height so switching TZ (and hint text) never resizes the panel */}
                     <p className="mt-1 min-h-[2.5rem] text-[10px] leading-relaxed text-zinc-500">
                       {csvTimezoneHelperText(dataTimezone, t)}
@@ -830,24 +823,18 @@ export default function ImportBatchConfirmModal({
             </span>
             {allTimestampsAbsolute ? null : (
               <>
-                <select
+                <TimezonePicker
                   value={dataTimezone}
                   disabled={busy}
-                  aria-label={t('importConfirm.csvTzAria')}
-                  aria-required="true"
-                  onChange={(event) => {
-                    setDataTimezone(event.target.value)
+                  ariaLabel={t('importConfirm.csvTzAria')}
+                  placeholder={t('importConfirm.selectTzBatch')}
+                  className="mt-1.5 max-w-md"
+                  triggerClassName="h-8 border-zinc-800 bg-zinc-900 px-2 text-[12px] hover:border-zinc-500 focus:border-primary-500/50"
+                  onChange={(id) => {
+                    setDataTimezone(id)
                     setFormError(null)
                   }}
-                  className="mt-1.5 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-                >
-                  <option value="">{t('importConfirm.selectTzBatch')}</option>
-                  {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                />
                 <p className="mt-1.5 min-h-[2.5rem] text-[10px] leading-relaxed text-zinc-500">
                   {t('importConfirm.batchTzHint')}
                 </p>
