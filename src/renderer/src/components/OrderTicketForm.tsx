@@ -240,6 +240,40 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           </button>
         </Tooltip>
       </div>
+
+      {!canBuy && !canSell ? (
+        <p className="text-[10px] leading-relaxed text-amber-400/80">
+          {ticketValidationHint(orderType, mark ?? null, ticketLevels)}
+        </p>
+      ) : null}
     </div>
   )
+}
+
+function ticketValidationHint(
+  orderType: TicketOrderType,
+  markPrice: number | null,
+  levels: { takeProfit: number | null; stopLoss: number | null; limitPrice: number | null }
+): string {
+  if (markPrice == null) return 'Waiting for price data.'
+  const entry = isPendingTicketType(orderType) ? levels.limitPrice : markPrice
+  if (entry == null || !Number.isFinite(entry)) {
+    return isPendingTicketType(orderType) ? 'Enter a limit price first.' : 'Waiting for price data.'
+  }
+  if (levels.takeProfit != null && levels.stopLoss != null) {
+    return 'Long: TP above entry, SL below. Short: TP below, SL above.'
+  }
+  if (levels.stopLoss != null) {
+    const slAbove = levels.stopLoss > entry
+    return slAbove
+      ? 'SL is above entry — valid for Short, not for Long.'
+      : 'SL is below entry — valid for Long, not for Short.'
+  }
+  if (levels.takeProfit != null) {
+    const tpAbove = levels.takeProfit > entry
+    return tpAbove
+      ? 'TP is above entry — valid for Long, not for Short.'
+      : 'TP is below entry — valid for Short, not for Long.'
+  }
+  return 'Order cannot be placed with the current TP/SL levels.'
 }

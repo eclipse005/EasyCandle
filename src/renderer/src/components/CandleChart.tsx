@@ -114,12 +114,14 @@ function focusLatestCandle(
   if (!chart || candleCount <= 0) return
 
   const last = candleCount - 1
-  const span = Math.min(leftBars, Math.max(candleCount - 1, 1))
+  // Always show ~DEFAULT_VISIBLE_BARS total width regardless of candle count,
+  // with the playhead at ~20% from the left edge. This prevents single-candle
+  // sessions (replay start) from appearing as giant blocks.
+  const visibleBars = Math.max(leftBars, candleCount)
+  const from = last - Math.floor(visibleBars * 0.2)
+  const to = from + visibleBars
 
-  chart.timeScale().setVisibleLogicalRange({
-    from: last - span,
-    to: last + span
-  })
+  chart.timeScale().setVisibleLogicalRange({ from, to })
 }
 
 function addSeries(

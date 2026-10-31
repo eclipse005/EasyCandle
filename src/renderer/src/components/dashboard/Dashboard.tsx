@@ -15,6 +15,7 @@ import DatasetsTab from '@/components/dashboard/DatasetsTab'
 import SymbolsTab from '@/components/dashboard/SymbolsTab'
 import StrategiesTab from '@/components/dashboard/StrategiesTab'
 import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog'
+import SessionReportDialog from '@/components/SessionReportDialog'
 import iconUrl from '@/assets/easycandle-icon.svg'
 
 const TABS: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -133,6 +134,7 @@ export default function Dashboard(): ReactNode {
         presetDataset={createFor}
         onClose={() => setCreateOpen(false)}
       />
+      <SessionReportDialog />
     </div>
   )
 }

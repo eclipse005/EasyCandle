@@ -708,6 +708,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       useReplayStore.getState().setSpeed(1)
       // A stale report from a previously closed session must not pop here.
       useReplayStore.setState({ sessionReport: null })
+      // A stale report from a previously closed session must not pop here.
+      useReplayStore.setState({ sessionReport: null })
 
       const snap = chartSnapshot()
       const symbol = snap.symbol || 'Session'
@@ -735,8 +737,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     if (id == null) return
     suppressAutoSave += 1
     try {
-      // Flatten open trades and build the report without leaving replay mode —
-      // the chart state (mode/replayTime/drawings) is snapshotted as-is.
+      // Flatten open trades and build the report — sessionReport is kept in
+      // the store so the Dashboard can show it before the user dismisses it.
       useReplayStore.getState().finalizeSessionTrades()
       updateSessionSnapshot(id, chartSnapshot())
       // Return the chart store to its neutral state while on the dashboard:
@@ -744,7 +746,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       // the Datasets tab disabled.
       useReplayStore.getState().resetReplayState()
       useDrawingUiStore.getState().resetWorkspace()
-      useReplayStore.setState({ sessionReport: null })
       set({ activeSessionId: null })
     } finally {
       suppressAutoSave -= 1

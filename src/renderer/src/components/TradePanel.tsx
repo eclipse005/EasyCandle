@@ -434,7 +434,7 @@ export default function TradePanel() {
   return (
     <div
       inert={preview || undefined}
-      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-800 bg-zinc-950/90 ${
+      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-800 bg-zinc-950/90 pb-1 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { cumulativeRealizedPnl, summarizeSession } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
@@ -6,23 +6,45 @@ import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 
 function StrategyStats({ strategyId }: { strategyId: string }): ReactNode {
-  const sessions = useSessionStore((s) => s.sessions.filter((x) => x.strategyId === strategyId))
-  const trades = sessions.flatMap((s) => s.closedTrades)
-  if (trades.length === 0) {
-    return <span className="text-[11px] text-zinc-600">no trades yet</span>
+  // Stable selector: subscribe to the raw array, filter in useMemo.
+  const sessions = useSessionStore((s) => s.sessions)
+  const filtered = useMemo(
+    () => sessions.filter((x) => x.strategyId === strategyId),
+    [sessions, strategyId]
+  )
+  const trades = useMemo(() => filtered.flatMap((s) => s.closedTrades), [filtered])
+
+  const stats = useMemo(() => {
+    if (trades.length === 0) return null
+    const summary = summarizeSession(trades)
+    const byCurrency = new Map<string, number>()
+    for (const session of filtered) {
+      const quote = quoteCurrencyForSymbol(session.symbol)
+      byCurrency.set(
+        quote,
+        (byCurrency.get(quote) ?? 0) + cumulativeRealizedPnl(session.closedTrades)
+      )
+    }
+    return { summary, byCurrency, sessionCount: filtered.length }
+  }, [trades, filtered])
+
+  if (!stats) {
+    return (
+      <span className="text-[11px] text-zinc-600">
+        {filtered.length} session{filtered.length === 1 ? '' : 's'} · no trades yet
+      </span>
+    )
   }
-  const summary = summarizeSession(trades)
-  // Aggregate P/L per session currency (single symbol per session).
-  const byCurrency = new Map<string, number>()
-  for (const session of sessions) {
-    const quote = quoteCurrencyForSymbol(session.symbol)
-    byCurrency.set(quote, (byCurrency.get(quote) ?? 0) + cumulativeRealizedPnl(session.closedTrades))
-  }
+
   return (
     <span className="text-[11px] tabular-nums text-zinc-400">
-      {sessions.length} session{sessions.length === 1 ? '' : 's'} · {summary.overall.count} trades ·{' '}
-      {summary.overall.winRate == null ? '—' : `${Math.round(summary.overall.winRate * 100)}%`} win ·{' '}
-      {[...byCurrency.entries()].map(([ccy, v]) => formatPnlCcy(v, ccy)).join(' / ')}
+      {stats.sessionCount} session{stats.sessionCount === 1 ? '' : 's'} ·{' '}
+      {stats.summary.overall.count} trades ·{' '}
+      {stats.summary.overall.winRate == null
+        ? '—'
+        : `${Math.round(stats.summary.overall.winRate * 100)}%`}{' '}
+      win ·{' '}
+      {[...stats.byCurrency.entries()].map(([ccy, v]) => formatPnlCcy(v, ccy)).join(' / ')}
     </span>
   )
 }
