@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Candle } from '@shared/candleUtils'
 import { IMPORT_SOURCE_TIMEFRAME, MIN_IMPORT_DAYS } from '@shared/importConstants'
-import { formatUtcCandleTime } from '@/lib/utcDateTime'
+import {
+  CSV_DATA_TIMEZONE_OPTIONS,
+  formatCsvWallClock,
+  formatRemappedUtc,
+  isCsvDataTimezone
+} from '@shared/csvDataTimezone'
 import {
   contractSizeInfoForSymbol,
   formatContractSize,
@@ -35,7 +40,7 @@ type ImportConfirmModalProps = {
   busy?: boolean
   progress?: ImportProgress | null
   serverError?: string | null
-  onConfirm: (values: { symbol: string; contractSize?: number }) => void
+  onConfirm: (values: { symbol: string; contractSize?: number; dataTimezone: string }) => void
   onCancel: () => void
 }
 
@@ -54,12 +59,14 @@ export default function ImportConfirmModal({
   const [symbol, setSymbol] = useState('')
   const [contractSizeText, setContractSizeText] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [dataTimezone, setDataTimezone] = useState('')
 
   useEffect(() => {
     if (!details) return
     setSymbol(details.symbol ?? '')
     setContractSizeText('')
     setFormError(null)
+    setDataTimezone('')
   }, [details])
 
   useEffect(() => {
@@ -98,6 +105,10 @@ export default function ImportConfirmModal({
       setFormError('Symbol is required.')
       return
     }
+    if (!isCsvDataTimezone(dataTimezone)) {
+      setFormError('Choose the CSV data timezone before saving. We never guess it.')
+      return
+    }
     if (nextSymbol.length < 3) {
       setFormError('Enter a valid symbol (e.g. XAUUSD).')
       return
@@ -115,7 +126,7 @@ export default function ImportConfirmModal({
     }
 
     setFormError(null)
-    onConfirm({ symbol: nextSymbol, contractSize })
+    onConfirm({ symbol: nextSymbol, contractSize, dataTimezone })
   }
 
   return (
@@ -221,19 +232,55 @@ export default function ImportConfirmModal({
 
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Start (UTC)
+                CSV data timezone <span className="text-amber-400/90">required</span>
               </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">
-                {formatUtcCandleTime(firstTime) || '—'}
+              <select
+                value={dataTimezone}
+                disabled={busy}
+                aria-label="CSV data timezone"
+                aria-required="true"
+                onChange={(event) => {
+                  setDataTimezone(event.target.value)
+                  setFormError(null)
+                }}
+                className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+              >
+                <option value="">Select timezone of timestamps in this CSV…</option>
+                {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                We never guess broker/server time — pick the zone that matches the file.
               </p>
             </div>
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                End (UTC)
+                Start (CSV wall)
               </span>
               <p className="mt-0.5 tabular-nums text-zinc-200">
-                {formatUtcCandleTime(lastTime) || '—'}
+                {formatCsvWallClock(firstTime)}
               </p>
+              {dataTimezone ? (
+                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                  → {formatRemappedUtc(firstTime, dataTimezone)}
+                </p>
+              ) : null}
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                End (CSV wall)
+              </span>
+              <p className="mt-0.5 tabular-nums text-zinc-200">
+                {formatCsvWallClock(lastTime)}
+              </p>
+              {dataTimezone ? (
+                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                  → {formatRemappedUtc(lastTime, dataTimezone)}
+                </p>
+              ) : null}
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
@@ -254,7 +301,7 @@ export default function ImportConfirmModal({
                   First bar preview
                 </span>
                 <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
-                  {formatUtcCandleTime(previewCandle.time)} · O {previewCandle.open} H{' '}
+                  {formatCsvWallClock(previewCandle.time)} · O {previewCandle.open} H{' '}
                   {previewCandle.high} L {previewCandle.low} C {previewCandle.close}
                 </p>
               </div>
@@ -306,7 +353,7 @@ export default function ImportConfirmModal({
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !isCsvDataTimezone(dataTimezone)}
             onClick={submit}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >

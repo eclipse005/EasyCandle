@@ -25,6 +25,9 @@ const en = {
   'settings.appearanceHint': 'Soft dark canvas by default. Theme also applies inside chart sessions.',
   'settings.dark': 'Dark',
   'settings.light': 'Light',
+  'settings.accountTimezone': 'Account timezone',
+  'settings.accountTimezoneHint':
+    'Day cuts for Analytics and Trades follow this zone (FXR-style). Chart bottom-right timezone is display-only and does not change buckets or PnL.',
   'settings.about': 'About',
   'settings.aboutBody':
     '{app} is a pure-frontend candle replay and paper-trading app. All data stays in your browser (IndexedDB + localStorage).',
@@ -125,6 +128,9 @@ const zh: Record<MessageKey, string> = {
   'settings.appearanceHint': '默认柔和深色画布。主题同样作用于图表会话。',
   'settings.dark': '深色',
   'settings.light': '浅色',
+  'settings.accountTimezone': '账户时区',
+  'settings.accountTimezoneHint':
+    '分析与成交的日切按此时区（类似 FXR）。图表右下角时区仅用于显示，不改变分桶或盈亏。',
   'settings.about': '关于',
   'settings.aboutBody':
     '{app} 是纯前端的 K 线回放与模拟交易应用。所有数据保存在本机浏览器（IndexedDB + localStorage）。',

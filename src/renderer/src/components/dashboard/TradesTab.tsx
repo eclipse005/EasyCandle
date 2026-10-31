@@ -16,7 +16,9 @@ import {
   type AggregatedTradeRow,
   type TradeRowStatus
 } from '@/lib/localPerformance'
-import { ANALYTICS_TIMEZONE, analyticsDayBounds } from '@/lib/sessionAnalytics'
+import { analyticsDayBounds } from '@/lib/sessionAnalytics'
+import { chartTimezoneById, sessionUtcOffsetLabel } from '@/lib/chartTimezone'
+import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 
 type SideFilter = 'all' | 'long' | 'short'
 type StatusFilter = 'all' | TradeRowStatus
@@ -84,6 +86,8 @@ function statusBadge(status: TradeRowStatus): { label: string; className: string
 /** Aggregate open / pending / closed trades — FXR Basic filters locally. */
 export default function TradesTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const accountTzLabel = `${chartTimezoneById(accountTimezone).city} (${sessionUtcOffsetLabel(accountTimezone)})`
   const allRows = useMemo(() => aggregateTrades(sessions), [sessions])
 
   const [sessionFilter, setSessionFilter] = useState<string>('all')
@@ -113,7 +117,7 @@ export default function TradesTab(): ReactNode {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo)
+    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo, accountTimezone)
     let rows = allRows
     if (sessionFilter !== 'all') rows = rows.filter((r) => r.sessionId === sessionFilter)
     if (sideFilter !== 'all') rows = rows.filter((r) => r.side === sideFilter)
@@ -170,7 +174,8 @@ export default function TradesTab(): ReactNode {
     dateFrom,
     dateTo,
     query,
-    sortKey
+    sortKey,
+    accountTimezone
   ])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
@@ -358,9 +363,9 @@ export default function TradesTab(): ReactNode {
       <p className={softType.caption}>
         {filtered.length} trade{filtered.length === 1 ? '' : 's'}
         {filtered.length !== allRows.length ? ` (of ${allRows.length})` : ''} · local only
-        <span className="text-zinc-600" title={ANALYTICS_TIMEZONE}>
+        <span className="text-zinc-600" title={accountTimezone}>
           {' '}
-          · dates in New York (ET)
+          · dates in {accountTzLabel}
         </span>
       </p>
 

@@ -3,7 +3,13 @@ import { Trash2, X } from 'lucide-react'
 import type { Candle } from '@shared/candleUtils'
 import { IMPORT_SOURCE_TIMEFRAME, MIN_IMPORT_DAYS } from '@shared/importConstants'
 import type { ImportOrigin } from '@shared/importTypes'
-import { formatUtcCandleTime, toUtcParts } from '@/lib/utcDateTime'
+import { toUtcParts } from '@/lib/utcDateTime'
+import {
+  CSV_DATA_TIMEZONE_OPTIONS,
+  formatCsvWallClock,
+  formatRemappedUtc,
+  isCsvDataTimezone
+} from '@shared/csvDataTimezone'
 import {
   contractSizeInfoForSymbol,
   formatContractSize,
@@ -37,6 +43,8 @@ export type ImportBatchSaveRequest = {
   id: string
   symbol: string
   contractSize?: number
+  /** Explicit CSV data timezone chosen on confirm (required). */
+  dataTimezone: string
   item: ImportBatchItem
 }
 
@@ -96,12 +104,15 @@ export default function ImportBatchConfirmModal({
   const [rows, setRows] = useState<ImportBatchItem[]>([])
   const [drafts, setDrafts] = useState<Record<string, SymbolDraft>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  /** Empty until the user explicitly chooses — never guess UTC. */
+  const [dataTimezone, setDataTimezone] = useState('')
 
   useEffect(() => {
     if (!items) {
       setRows([])
       setDrafts({})
       setFormError(null)
+      setDataTimezone('')
       return
     }
     setRows(items)
@@ -113,6 +124,7 @@ export default function ImportBatchConfirmModal({
     }
     setDrafts(next)
     setFormError(null)
+    setDataTimezone('')
   }, [items, lockedSymbol])
 
   useEffect(() => {
@@ -222,6 +234,10 @@ export default function ImportBatchConfirmModal({
       setFormError('No valid files to import.')
       return
     }
+    if (!isCsvDataTimezone(dataTimezone)) {
+      setFormError('Choose the CSV data timezone before saving. We never guess it.')
+      return
+    }
 
     const saves: ImportBatchSaveRequest[] = []
     const contractBySymbol = new Map<string, number | undefined>()
@@ -255,6 +271,7 @@ export default function ImportBatchConfirmModal({
         id: row.id,
         symbol,
         contractSize: contractBySymbol.get(symbol),
+        dataTimezone,
         item: row
       })
     }
@@ -390,21 +407,62 @@ export default function ImportBatchConfirmModal({
                 <p className="mt-0.5 text-zinc-200">5m · 15m · 1h · 4h · 1d</p>
               </div>
 
+
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  Start (UTC)
+                  CSV data timezone <span className="text-amber-400/90">required</span>
+                </span>
+                <select
+                  value={dataTimezone}
+                  disabled={busy}
+                  aria-label="CSV data timezone"
+                  aria-required="true"
+                  onChange={(event) => {
+                    setDataTimezone(event.target.value)
+                    setFormError(null)
+                  }}
+                  className="mt-1 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+                >
+                  <option value="">Select timezone of timestamps in this CSV…</option>
+                  {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                  {dataTimezone
+                    ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
+                      'Timestamps remapped to UTC on save using this zone.'
+                    : 'Do not skip — broker/server time is often not UTC. We never assume it.'}
+                </p>
+              </div>
+
+              <div className="col-span-2">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                  Start (CSV wall)
                 </span>
                 <p className="mt-0.5 tabular-nums text-zinc-200">
-                  {formatUtcCandleTime(firstTime) || '—'}
+                  {formatCsvWallClock(firstTime)}
                 </p>
+                {dataTimezone ? (
+                  <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                    → {formatRemappedUtc(firstTime, dataTimezone)}
+                  </p>
+                ) : null}
               </div>
               <div className="col-span-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                  End (UTC)
+                  End (CSV wall)
                 </span>
                 <p className="mt-0.5 tabular-nums text-zinc-200">
-                  {formatUtcCandleTime(lastTime) || '—'}
+                  {formatCsvWallClock(lastTime)}
                 </p>
+                {dataTimezone ? (
+                  <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                    → {formatRemappedUtc(lastTime, dataTimezone)}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
@@ -425,7 +483,7 @@ export default function ImportBatchConfirmModal({
                     First bar preview
                   </span>
                   <p className="mt-0.5 font-mono text-[11px] tabular-nums text-zinc-300">
-                    {formatUtcCandleTime(previewCandle.time)} · O {previewCandle.open} H{' '}
+                    {formatCsvWallClock(previewCandle.time)} · O {previewCandle.open} H{' '}
                     {previewCandle.high} L {previewCandle.low} C {previewCandle.close}
                   </p>
                 </div>
@@ -461,7 +519,7 @@ export default function ImportBatchConfirmModal({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !isCsvDataTimezone(dataTimezone)}
               onClick={submit}
               className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
             >
@@ -695,7 +753,37 @@ export default function ImportBatchConfirmModal({
             })}
           </div>
 
-          {(formError || serverError) && (
+          
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+            <label className="block">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                CSV data timezone <span className="text-amber-400/90">required</span>
+              </span>
+              <select
+                value={dataTimezone}
+                disabled={busy}
+                aria-label="CSV data timezone"
+                aria-required="true"
+                onChange={(event) => {
+                  setDataTimezone(event.target.value)
+                  setFormError(null)
+                }}
+                className="mt-1.5 h-8 w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[12px] font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+              >
+                <option value="">Select timezone of timestamps in these CSVs…</option>
+                {CSV_DATA_TIMEZONE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+              Applies to every file in this batch. We never guess broker/server time.
+            </p>
+          </div>
+
+{(formError || serverError) && (
             <p className="text-[11px] leading-relaxed text-red-400">{formError || serverError}</p>
           )}
           {busy && progress && <ImportProgressBar progress={progress} />}
@@ -712,7 +800,7 @@ export default function ImportBatchConfirmModal({
           </button>
           <button
             type="button"
-            disabled={busy || okRows.length === 0}
+            disabled={busy || okRows.length === 0 || !isCsvDataTimezone(dataTimezone)}
             onClick={submit}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >

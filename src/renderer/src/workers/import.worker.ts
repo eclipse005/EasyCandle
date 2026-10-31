@@ -6,6 +6,7 @@ import {
   parseImportBytes
 } from '@shared/importWorkerJob'
 import type { Candle } from '@shared/candleUtils'
+import { isCsvDataTimezone, remapCandlesCsvTimezone } from '@shared/csvDataTimezone'
 import type { ImportWorkerInbound, ImportWorkerOutbound } from '@shared/importWorkerProtocol'
 import { idbGet, idbWriteImportDataset } from '../lib/importIdb'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
@@ -85,7 +86,17 @@ async function handle(
         return
       }
 
-      const candlesByTimeframe = buildImportTimeframesJob(stored.candles, (progress) => {
+      if (!isCsvDataTimezone(message.dataTimezone)) {
+        post({
+          type: 'error',
+          requestId,
+          error: 'Choose the CSV data timezone before saving.'
+        })
+        return
+      }
+
+      const candles1m = remapCandlesCsvTimezone(stored.candles, message.dataTimezone)
+      const candlesByTimeframe = buildImportTimeframesJob(candles1m, (progress) => {
         post({ type: 'progress', requestId, progress })
       })
 

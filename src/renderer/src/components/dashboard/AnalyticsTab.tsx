@@ -7,7 +7,6 @@ import { cn } from '@/components/ui/cn'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { formatPnl, type ClosedTrade } from '@/lib/paperTrade'
 import {
-  ANALYTICS_TIMEZONE,
   analyticsDayBounds,
   analyticsTodayStartSec,
   averageRiskReward,
@@ -19,6 +18,8 @@ import {
   weekdayPnlBuckets,
   type PeriodBucket
 } from '@/lib/sessionAnalytics'
+import { chartTimezoneById, sessionUtcOffsetLabel } from '@/lib/chartTimezone'
+import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { formatWinRatePct } from '@/lib/localPerformance'
@@ -47,6 +48,8 @@ function entryTypeOf(t: ClosedTrade): 'market' | 'limit' | 'stop-limit' {
 export default function AnalyticsTab(): ReactNode {
   const sessions = useSessionStore((s) => s.sessions)
   const strategies = useStrategiesStore((s) => s.strategies)
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const accountTzLabel = `${chartTimezoneById(accountTimezone).city} (${sessionUtcOffsetLabel(accountTimezone)})`
 
   const [sideFilter, setSideFilter] = useState<SideFilter>('all')
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all')
@@ -88,8 +91,8 @@ export default function AnalyticsTab(): ReactNode {
   )
 
   const filtered = useMemo(() => {
-    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo)
-    const startOfDay = analyticsTodayStartSec()
+    const { fromSec, toSec } = analyticsDayBounds(dateFrom, dateTo, accountTimezone)
+    const startOfDay = analyticsTodayStartSec(Date.now(), accountTimezone)
     return allTrades.filter((t) => {
       if (sideFilter !== 'all' && t.side !== sideFilter) return false
       if (outcomeFilter === 'win' && !(t.pnl > 0)) return false
@@ -121,15 +124,16 @@ export default function AnalyticsTab(): ReactNode {
     strategyFilter,
     dateFrom,
     dateTo,
-    pnlChip
+    pnlChip,
+    accountTimezone
   ])
 
   const report = useMemo(() => sideReport(filtered), [filtered])
   const rr = useMemo(() => averageRiskReward(filtered), [filtered])
   const exp = useMemo(() => expectancy(filtered), [filtered])
   const pf = useMemo(() => profitFactor(filtered), [filtered])
-  const monthly = useMemo(() => monthlyPnlBuckets(filtered, 6), [filtered])
-  const daily = useMemo(() => weekdayPnlBuckets(filtered), [filtered])
+  const monthly = useMemo(() => monthlyPnlBuckets(filtered, 6, Date.now(), accountTimezone), [filtered, accountTimezone])
+  const daily = useMemo(() => weekdayPnlBuckets(filtered, accountTimezone), [filtered, accountTimezone])
 
   const startingBalance = useMemo(() => {
     if (sessionFilter !== 'all') {
@@ -319,8 +323,8 @@ export default function AnalyticsTab(): ReactNode {
           </SoftButton>
         </div>
 
-        <p className={cn(softType.micro, 'text-zinc-600')} title={ANALYTICS_TIMEZONE}>
-          Date filters and monthly / daily buckets use New York (ET).
+        <p className={cn(softType.micro, 'text-zinc-600')} title={accountTimezone}>
+          Date filters and monthly / daily buckets use account timezone ({accountTzLabel}).
         </p>
 
         <div className="flex flex-wrap items-center gap-2">

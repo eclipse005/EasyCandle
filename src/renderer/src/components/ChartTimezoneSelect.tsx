@@ -1,3 +1,4 @@
+/** Chart bottom-right timezone — display-only; does not affect analytics day cuts or stored data. */
 import { useMemo, useState } from 'react'
 import { ChevronUp } from 'lucide-react'
 import Dropdown from '@/components/Dropdown'

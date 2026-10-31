@@ -101,6 +101,7 @@ export async function saveImportInWebWorker(
     token: params.parseToken,
     symbol: params.symbol,
     originalFileName: params.originalFileName,
+    dataTimezone: params.dataTimezone,
     replaceId: params.replaceId,
     origin: params.origin,
     contractSize: params.contractSize

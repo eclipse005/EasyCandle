@@ -8,51 +8,60 @@ import {
 } from '@/lib/chartTimezone'
 
 /**
- * Fixed zone for Analytics / Trades date filters and monthly·daily buckets.
- * Matches FXR / chart default (America/New_York). Paper times are fixed — no
- * per-filter timezone switch.
+ * Default account timezone for Analytics / Trades day cuts (FXR-style).
+ * Call sites pass the Settings account timezone; this constant is the fallback
+ * and the Settings default. Chart bottom-right TZ is display-only — never use it here.
+ * No per-filter timezone field on Analytics.
  */
-export const ANALYTICS_TIMEZONE = DEFAULT_CHART_TIMEZONE
+export const DEFAULT_ACCOUNT_TIMEZONE = DEFAULT_CHART_TIMEZONE
+/** @deprecated Use DEFAULT_ACCOUNT_TIMEZONE — kept for older imports/tests. */
+export const ANALYTICS_TIMEZONE = DEFAULT_ACCOUNT_TIMEZONE
 
-/** `YYYY-MM-DD` From/To → inclusive unix-second bounds in {@link ANALYTICS_TIMEZONE}. */
+/** `YYYY-MM-DD` From/To → inclusive unix-second bounds in account timezone. */
 export function analyticsDayBounds(
   from: string,
-  to: string
+  to: string,
+  timeZone: string = DEFAULT_ACCOUNT_TIMEZONE
 ): { fromSec: number | null; toSec: number | null } {
-  const fromSec = from ? parseSessionParts(from, '00:00:00', ANALYTICS_TIMEZONE) : null
-  const toSec = to ? parseSessionParts(to, '23:59:59', ANALYTICS_TIMEZONE) : null
+  const zone = timeZone || DEFAULT_ACCOUNT_TIMEZONE
+  const fromSec = from ? parseSessionParts(from, '00:00:00', zone) : null
+  const toSec = to ? parseSessionParts(to, '23:59:59', zone) : null
   return {
     fromSec: fromSec != null && Number.isFinite(fromSec) ? fromSec : null,
     toSec: toSec != null && Number.isFinite(toSec) ? toSec : null
   }
 }
 
-/** Start of the current civil day in {@link ANALYTICS_TIMEZONE}, as unix seconds. */
-export function analyticsTodayStartSec(nowMs = Date.now()): number {
-  const p = sessionDateTimeParts(Math.floor(nowMs / 1000), ANALYTICS_TIMEZONE)
+/** Start of the current civil day in account timezone, as unix seconds. */
+export function analyticsTodayStartSec(
+  nowMs = Date.now(),
+  timeZone: string = DEFAULT_ACCOUNT_TIMEZONE
+): number {
+  const zone = timeZone || DEFAULT_ACCOUNT_TIMEZONE
+  const p = sessionDateTimeParts(Math.floor(nowMs / 1000), zone)
   if (!p) {
     const d = new Date(nowMs)
     d.setUTCHours(0, 0, 0, 0)
     return Math.floor(d.getTime() / 1000)
   }
   const date = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
-  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  const sec = parseSessionParts(date, '00:00:00', zone)
   return sec != null ? sec : Math.floor(nowMs / 1000)
 }
 
-function wallParts(unixSeconds: number) {
-  return sessionDateTimeParts(unixSeconds, ANALYTICS_TIMEZONE)
+function wallParts(unixSeconds: number, timeZone: string) {
+  return sessionDateTimeParts(unixSeconds, timeZone)
 }
 
-function wallMonthKey(unixSeconds: number): string | null {
-  const p = wallParts(unixSeconds)
+function wallMonthKey(unixSeconds: number, timeZone: string): string | null {
+  const p = wallParts(unixSeconds, timeZone)
   if (!p) return null
   return `${p.year}-${String(p.month).padStart(2, '0')}`
 }
 
-/** Civil weekday (Sun=0) for the wall-calendar day in {@link ANALYTICS_TIMEZONE}. */
-function wallWeekday(unixSeconds: number): number | null {
-  const p = wallParts(unixSeconds)
+/** Civil weekday (Sun=0) for the wall-calendar day in account timezone. */
+function wallWeekday(unixSeconds: number, timeZone: string): number | null {
+  const p = wallParts(unixSeconds, timeZone)
   if (!p) return null
   return new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
 }
@@ -85,8 +94,10 @@ const DOW_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fri
 /** Analytics for one session's closed trades (FXR Sessions charts / chips). */
 export function computeSessionAnalytics(
   session: Session | null | undefined,
-  now = Date.now()
+  now = Date.now(),
+  timeZone: string = DEFAULT_ACCOUNT_TIMEZONE
 ): SessionAnalytics {
+  const zone = timeZone || DEFAULT_ACCOUNT_TIMEZONE
   const starting =
     session && Number.isFinite(session.startingBalance) && session.startingBalance > 0
       ? session.startingBalance
@@ -102,11 +113,11 @@ export function computeSessionAnalytics(
     winRate: report.winRate,
     riskReward: averageRiskReward(trades),
     equity,
-    monthly: monthlyPnlBuckets(trades, 6, now),
-    daily: weekdayPnlBuckets(trades),
-    monthPnl: periodPnl(trades, startOfLocalMonth(now), now),
-    weekPnl: periodPnl(trades, startOfLocalWeek(now), now),
-    dayPnl: periodPnl(trades, startOfLocalDay(now), now)
+    monthly: monthlyPnlBuckets(trades, 6, now, zone),
+    daily: weekdayPnlBuckets(trades, zone),
+    monthPnl: periodPnl(trades, startOfLocalMonth(now, zone), now),
+    weekPnl: periodPnl(trades, startOfLocalWeek(now, zone), now),
+    dayPnl: periodPnl(trades, startOfLocalDay(now, zone), now)
   }
 }
 
@@ -137,8 +148,10 @@ export function averageRiskReward(trades: ClosedTrade[]): number | null {
 export function monthlyPnlBuckets(
   trades: ClosedTrade[],
   count = 6,
-  now = Date.now()
+  now = Date.now(),
+  timeZone: string = DEFAULT_ACCOUNT_TIMEZONE
 ): PeriodBucket[] {
+  const zone = timeZone || DEFAULT_ACCOUNT_TIMEZONE
   const list = Array.isArray(trades) ? trades : []
   // Anchor to latest closed trade so historical replay months show bars
   // (Daily weekday buckets already include all trades regardless of calendar year).
@@ -148,7 +161,7 @@ export function monthlyPnlBuckets(
     if (Number.isFinite(t.exitTime)) latest = Math.max(latest, t.exitTime * 1000)
   }
   if (Number.isFinite(latest) && latest > 0) endMs = latest
-  const endParts = wallParts(Math.floor(endMs / 1000))
+  const endParts = wallParts(Math.floor(endMs / 1000), zone)
   const endYear = endParts?.year ?? new Date(endMs).getUTCFullYear()
   const endMonthIndex = (endParts?.month ?? new Date(endMs).getUTCMonth() + 1) - 1
   const buckets: PeriodBucket[] = []
@@ -163,7 +176,7 @@ export function monthlyPnlBuckets(
   }
   for (const t of list) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
-    const key = wallMonthKey(t.exitTime)
+    const key = wallMonthKey(t.exitTime, zone)
     if (!key) continue
     const i = index.get(key)
     if (i == null) continue
@@ -174,7 +187,11 @@ export function monthlyPnlBuckets(
 }
 
 /** Aggregate PnL by weekday name (Sunday→Saturday), for Daily Performance bars. */
-export function weekdayPnlBuckets(trades: ClosedTrade[]): PeriodBucket[] {
+export function weekdayPnlBuckets(
+  trades: ClosedTrade[],
+  timeZone: string = DEFAULT_ACCOUNT_TIMEZONE
+): PeriodBucket[] {
+  const zone = timeZone || DEFAULT_ACCOUNT_TIMEZONE
   const buckets: PeriodBucket[] = DOW_LABELS.map((label, i) => ({
     key: String(i),
     label,
@@ -183,7 +200,7 @@ export function weekdayPnlBuckets(trades: ClosedTrade[]): PeriodBucket[] {
   }))
   for (const t of Array.isArray(trades) ? trades : []) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue
-    const dow = wallWeekday(t.exitTime)
+    const dow = wallWeekday(t.exitTime, zone)
     if (dow == null) continue
     buckets[dow].pnl += t.pnl
     buckets[dow].tradeCount = (buckets[dow].tradeCount ?? 0) + 1
@@ -201,31 +218,31 @@ function periodPnl(trades: ClosedTrade[], fromMs: number, toMs: number): number 
   return sum
 }
 
-function startOfLocalDay(now: number): number {
-  const p = wallParts(Math.floor(now / 1000))
+function startOfLocalDay(now: number, timeZone: string): number {
+  const p = wallParts(Math.floor(now / 1000), timeZone)
   if (!p) return now
   const date = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
-  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  const sec = parseSessionParts(date, '00:00:00', timeZone)
   return sec != null ? sec * 1000 : now
 }
 
-function startOfLocalWeek(now: number): number {
-  const p = wallParts(Math.floor(now / 1000))
+function startOfLocalWeek(now: number, timeZone: string): number {
+  const p = wallParts(Math.floor(now / 1000), timeZone)
   if (!p) return now
   const dow = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
   // Monday-start week (FXR-ish)
   const diff = dow === 0 ? 6 : dow - 1
   const monday = new Date(Date.UTC(p.year, p.month - 1, p.day - diff))
   const date = `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`
-  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  const sec = parseSessionParts(date, '00:00:00', timeZone)
   return sec != null ? sec * 1000 : now
 }
 
-function startOfLocalMonth(now: number): number {
-  const p = wallParts(Math.floor(now / 1000))
+function startOfLocalMonth(now: number, timeZone: string): number {
+  const p = wallParts(Math.floor(now / 1000), timeZone)
   if (!p) return now
   const date = `${p.year}-${String(p.month).padStart(2, '0')}-01`
-  const sec = parseSessionParts(date, '00:00:00', ANALYTICS_TIMEZONE)
+  const sec = parseSessionParts(date, '00:00:00', timeZone)
   return sec != null ? sec * 1000 : now
 }
 

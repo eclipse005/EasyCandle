@@ -136,8 +136,8 @@ describe('analytics metrics', () => {
 })
 
 
-describe('analytics timezone (America/New_York)', () => {
-  it('exports New York as the fixed analytics zone', () => {
+describe('analytics timezone (America/New_York default)', () => {
+  it('defaults account analytics zone to New York', () => {
     expect(ANALYTICS_TIMEZONE).toBe('America/New_York')
   })
 

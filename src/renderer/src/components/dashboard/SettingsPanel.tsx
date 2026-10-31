@@ -1,10 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ExternalLink, Moon, Sun } from 'lucide-react'
 import SoftCard from '@/components/ui/SoftCard'
+import { SoftSelect } from '@/components/ui/SoftInput'
 import SoftButton from '@/components/ui/SoftButton'
 import { softSpace, softType } from '@/components/ui/softTokens'
 import { cn } from '@/components/ui/cn'
 import { useThemeStore } from '@/store/themeStore'
+import {
+  ACCOUNT_TIMEZONE_OPTIONS,
+  useAccountPrefsStore
+} from '@/store/accountPrefsStore'
+import { chartTimezoneById } from '@/lib/chartTimezone'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
 import { LOCALE_OPTIONS, type Locale } from '@/i18n/messages'
@@ -12,13 +18,16 @@ import { APP_NAME } from '@shared/appName'
 
 const GITHUB_URL = 'https://github.com/eclipse005/BarReplay'
 
-/** Settings — Language / Appearance / About in a denser two-column Soft SaaS layout. */
+/** Settings — Language / Appearance / Account timezone / About Soft SaaS layout. */
 export default function SettingsPanel(): ReactNode {
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const setAccountTimezone = useAccountPrefsStore((s) => s.setAccountTimezone)
   const setAboutOpen = useUiLayoutStore((s) => s.setAboutDialogOpen)
   const { locale, t, setLocale } = useT()
   const [version, setVersion] = useState('')
+  const accountZoneLabel = chartTimezoneById(accountTimezone).city
 
   useEffect(() => {
     void window.api.getAppVersion().then(setVersion)
@@ -82,8 +91,32 @@ export default function SettingsPanel(): ReactNode {
           </div>
         </SoftCard>
 
-        {/* Below Language (left column): About */}
+        {/* Account timezone — analytics day-cut (FXR-style) */}
         <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-1 md:row-start-2')}>
+          <h2 className={softType.section}>{t('settings.accountTimezone')}</h2>
+          <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.accountTimezoneHint')}</p>
+          <label className="mt-5 block">
+            <span className="sr-only">{t('settings.accountTimezone')}</span>
+            <SoftSelect
+              className="h-11 max-w-sm text-body"
+              value={accountTimezone}
+              aria-label={t('settings.accountTimezone')}
+              onChange={(e) => setAccountTimezone(e.target.value)}
+            >
+              {ACCOUNT_TIMEZONE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+              {!ACCOUNT_TIMEZONE_OPTIONS.some((o) => o.id === accountTimezone) ? (
+                <option value={accountTimezone}>{accountZoneLabel}</option>
+              ) : null}
+            </SoftSelect>
+          </label>
+        </SoftCard>
+
+        {/* Below Account timezone: About */}
+        <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-2 md:row-start-2')}>
           <h2 className={softType.section}>{t('settings.about')}</h2>
           <p className={`mt-1 leading-relaxed ${softType.bodyMuted}`}>
             {t('settings.aboutBody', { app: APP_NAME })}

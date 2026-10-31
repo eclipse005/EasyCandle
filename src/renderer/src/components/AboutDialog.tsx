@@ -91,8 +91,9 @@ export default function AboutDialog() {
             Replay charts and paper-trade without risk.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-            Analytics / trade day cuts use New York (ET). Chart timezone (bottom-right) is
-            display-only and does not change stored data or buckets.
+            Analytics / trade day cuts follow Settings → Account timezone (default New York).
+            Chart timezone (bottom-right) is display-only and does not change stored data or
+            buckets. Import Confirm requires an explicit CSV data timezone before save.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
             Charts built with{' '}

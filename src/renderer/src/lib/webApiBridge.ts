@@ -24,6 +24,7 @@ import {
   idbPut,
   idbWriteImportDataset
 } from './importIdb'
+import { isCsvDataTimezone, remapCandlesCsvTimezone } from '@shared/csvDataTimezone'
 import {
   discardWebImportParse,
   onWebImportProgress,
@@ -83,6 +84,10 @@ async function parseImportFile(path: string): Promise<ImportParseResult> {
 
 async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveResult> {
   try {
+    if (!isCsvDataTimezone(params.dataTimezone)) {
+      return { ok: false, error: 'Choose the CSV data timezone before saving.' }
+    }
+
     if (params.parseToken) {
       const saved = await saveImportInWebWorker({ ...params, parseToken: params.parseToken })
       if (saved.ok) {
@@ -91,8 +96,17 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
       return saved
     }
 
-    const candlesByTimeframe = params.candlesByTimeframe
-    const candles1m = candlesByTimeframe?.['1m'] ?? params.candles1m
+    let candlesByTimeframe = params.candlesByTimeframe
+    if (candlesByTimeframe) {
+      const remapped: Record<string, typeof candlesByTimeframe[string]> = {}
+      for (const [tf, series] of Object.entries(candlesByTimeframe)) {
+        remapped[tf] = remapCandlesCsvTimezone(series, params.dataTimezone)
+      }
+      candlesByTimeframe = remapped
+    }
+    const candles1m =
+      candlesByTimeframe?.['1m'] ??
+      remapCandlesCsvTimezone(params.candles1m ?? [], params.dataTimezone)
     if (!candles1m?.length || !candlesByTimeframe) {
       return { ok: false, error: 'Missing 1-minute candles for import.' }
     }

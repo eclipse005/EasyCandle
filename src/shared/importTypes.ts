@@ -100,6 +100,11 @@ export type ImportReadResult =
 export type ImportSaveParams = {
   originalFileName: string
   symbol: string
+  /**
+   * Explicit CSV data timezone (IANA). Required — parser only packs wall clocks
+   * provisionally; save remaps into true UTC unix before building timeframes.
+   */
+  dataTimezone: string
   /** Raw CSV text stored as source. Optional when `parseToken` is set. */
   content?: string
   /** All stored timeframes keyed by id (must include 1m). Optional when `parseToken` is set. */

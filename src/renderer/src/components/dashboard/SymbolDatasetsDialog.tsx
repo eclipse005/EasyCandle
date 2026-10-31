@@ -275,7 +275,8 @@ export default function SymbolDatasetsDialog({
           parseToken: save.item.parseToken,
           candles1m: save.item.parseToken ? undefined : save.item.candles,
           origin: save.item.origin,
-          contractSize: save.contractSize
+          contractSize: save.contractSize,
+          dataTimezone: save.dataTimezone
         })
 
         if (!savedResult.ok) {

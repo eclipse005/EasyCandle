@@ -219,6 +219,10 @@ function parseMtDateTime(datePart: string, timePart?: string): number | null {
   )
 }
 
+/**
+ * Pack CSV wall-clock fields via Date.UTC as *provisional* seconds.
+ * Not a claim the file is UTC — Import Confirm remaps with an explicit data timezone.
+ */
 function utcSeconds(
   year: number,
   month: number,

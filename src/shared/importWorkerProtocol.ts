@@ -21,6 +21,8 @@ export type ImportWorkerSaveRequest = {
   token: string
   symbol: string
   originalFileName: string
+  /** Explicit CSV data timezone — remaps provisional walls before build/save. */
+  dataTimezone: string
   replaceId?: string
   origin?: ImportOrigin
   /** Units per 1.0 lot from the import form (issue #51). */

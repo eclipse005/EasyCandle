@@ -31,6 +31,7 @@ import { clearSessionNote, getSessionNote, setSessionNote } from '@/lib/sessionN
 import { formatPnl, summarizeSession } from '@/lib/paperTrade'
 import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
+import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
@@ -281,7 +282,8 @@ function SessionCard({
     }
   }, [session.importId])
 
-  const analytics = useMemo(() => computeSessionAnalytics(session), [session])
+  const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
+  const analytics = useMemo(() => computeSessionAnalytics(session, Date.now(), accountTimezone), [session, accountTimezone])
   const quote = quoteCurrencyForSymbol(session.symbol)
   const remaining = daysRemaining(
     session.replayTime,
