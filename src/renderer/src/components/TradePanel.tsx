@@ -28,15 +28,17 @@ import Tooltip from '@/components/Tooltip'
 type HistoryTab = 'positions' | 'openOrders' | 'orderHistory' | 'positionHistory'
 
 const TABS: { id: HistoryTab; label: string }[] = [
-  { id: 'positions', label: 'Positions' },
-  { id: 'openOrders', label: 'Open Orders' },
+  { id: 'positions', label: 'Open positions' },
+  { id: 'openOrders', label: 'Pending orders' },
   { id: 'orderHistory', label: 'Order History' },
-  { id: 'positionHistory', label: 'Position History' }
+  { id: 'positionHistory', label: 'Closed positions' }
 ]
 
 function tabClass(active: boolean): string {
   return `shrink-0 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
-    active ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300'
+    active
+      ? 'bg-zinc-800 text-zinc-100 ring-1 ring-inset ring-primary-500/50'
+      : 'text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300'
   }`
 }
 
@@ -450,7 +452,7 @@ export default function TradePanel() {
   return (
     <div
       inert={preview || undefined}
-      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-800 bg-zinc-950/90 pb-12 ${
+      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-700 bg-zinc-900 pb-12 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >

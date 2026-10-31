@@ -3,6 +3,8 @@ import { Minimize2 } from 'lucide-react'
 import AboutDialog from '@/components/AboutDialog'
 import AppTour from '@/components/AppTour'
 import ChartSettingsDialog from '@/components/ChartSettingsDialog'
+import ChartInstantTrade from '@/components/ChartInstantTrade'
+import ChartSessionEquity from '@/components/ChartSessionEquity'
 import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
 import DrawingToolbar from '@/components/DrawingToolbar'
 import DrawingSettingsDialog from '@/components/DrawingSettingsDialog'
@@ -96,13 +98,19 @@ export default function AppShell({
         }`}
       >
         <div
-          className={`relative flex gap-1 min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
+          className={`relative flex gap-0.5 min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
             chartFullscreen ? 'rounded-none border-0 shadow-none' : ''
           }`}
         >
           {showDrawingToolbar && <DrawingToolbar />}
-          <div className="relative h-full min-h-0 min-w-0 flex-1 rounded-sm border border-zinc-800">
+          <div className="relative h-full min-h-0 min-w-0 flex-1 rounded-sm border border-zinc-700">
             {children}
+            {showPaperTrade && inReplay && !chartFullscreen && (
+              <>
+                <ChartInstantTrade />
+                <ChartSessionEquity priceScaleWidth={priceScaleWidth} />
+              </>
+            )}
             <div
               className="pointer-events-none absolute z-20"
               style={{
