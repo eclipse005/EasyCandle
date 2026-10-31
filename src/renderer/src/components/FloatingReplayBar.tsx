@@ -3,8 +3,10 @@ import ReplayControls from '@/components/ReplayControls'
 import { TIMEFRAMES } from '@shared/timeframes'
 import { useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { useT } from '@/i18n/useT'
 
 export default function FloatingReplayBar() {
+  const { t } = useT()
   const chartSplit = useReplayStore((s) => s.chartSplit)
   const driverPane = useReplayStore((s) => s.driverPane)
   const timeframe = useReplayStore((s) => s.timeframe)
@@ -15,18 +17,16 @@ export default function FloatingReplayBar() {
   const setReplayControlsMinimized = useUiLayoutStore((s) => s.setReplayControlsMinimized)
   const setReplayControlsPos = useUiLayoutStore((s) => s.setReplayControlsPos)
 
-  const driverLabel =
+  const driverTf =
     chartSplit && driverPane === 'secondary'
-      ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · R`
-      : chartSplit
-        ? `${TIMEFRAMES[timeframe]?.label ?? timeframe} · L`
-        : null
-
-  const minimizedLabel = driverLabel ? `Replay · ${driverLabel}` : 'Replay'
+      ? TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe
+      : TIMEFRAMES[timeframe]?.label ?? timeframe
+  const driverSide = chartSplit ? (driverPane === 'secondary' ? ' · R' : ' · L') : ''
+  const minimizedLabel = `${t('replay.next')} · ${driverTf}${driverSide}`
 
   return (
     <FloatingPanel
-      title="Replay"
+      title={`Replay · ${t('replay.next')}`}
       minimized={minimized}
       minimizedLabel={minimizedLabel}
       pos={pos}

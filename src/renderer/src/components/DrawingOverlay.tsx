@@ -106,6 +106,7 @@ import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { selectPriceFollowCandle, useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useThemeStore } from '@/store/themeStore'
+import { useT } from '@/i18n/useT'
 import type { PendingOrder, Position } from '@/lib/paperTrade'
 
 type WorkingOverlayItem = {
@@ -521,6 +522,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
   const setTakeProfit = useReplayStore((s) => s.setTakeProfit)
   const setStopLoss = useReplayStore((s) => s.setStopLoss)
   const paperClose = useReplayStore((s) => s.paperClose)
+  const paperClosePartial = useReplayStore((s) => s.paperClosePartial)
   const cancelPending = useReplayStore((s) => s.cancelPending)
   const setPendingPrice = useReplayStore((s) => s.setPendingPrice)
   const pricePick = useReplayStore((s) => s.pricePick)
@@ -538,6 +540,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
   const replayStatus = useReplayStore((s) => s.replayStatus)
   const symbol = useReplayStore((s) => s.symbol)
   const quoteCurrency = quoteCurrencyForSymbol(symbol)
+  const { t } = useT()
   const theme = useThemeStore((s) => s.theme)
   const chrome = CHART_PALETTES[theme]
   const colorOverrides = useChartSettingsStore((s) => s.colors)
@@ -653,6 +656,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     tp?: number
     sl?: number
   } | null>(null)
+  const [closeMenu, setCloseMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const suppressClickRef = useRef(false)
   const levelPreviewRef = useRef(levelPreview)
@@ -673,6 +677,22 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     pendingPreviewRef.current = pendingPreview
     ticketPreviewRef.current = ticketPreview
   })
+
+  useEffect(() => {
+    if (!closeMenu) return undefined
+    function onDoc(event: MouseEvent): void {
+      const el = event.target
+      if (el instanceof Element && el.closest('[data-close-menu]')) return
+      setCloseMenu(null)
+    }
+    const id = window.setTimeout(() => {
+      window.addEventListener('mousedown', onDoc, true)
+    }, 0)
+    return () => {
+      window.clearTimeout(id)
+      window.removeEventListener('mousedown', onDoc, true)
+    }
+  }, [closeMenu])
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -2114,7 +2134,10 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
               ? defaultPositionLevels(
                   working.side,
                   working.entryPrice,
-                  readVisiblePriceRange()
+                  readVisiblePriceRange() ?? {
+                    from: working.entryPrice * 0.99,
+                    to: working.entryPrice * 1.01
+                  }
                 )
               : null
           const itemTpPrice = previewHere
@@ -2356,8 +2379,17 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
                     onClose: canEditTrade
                       ? (e) => {
                           stopAction(e)
-                          if (isPending) cancelPending(workingId)
-                          else paperClose(workingId)
+                          if (isPending) {
+                            cancelPending(workingId)
+                            return
+                          }
+                          const rect = (e.currentTarget as SVGElement)
+                            .ownerSVGElement
+                            ?.parentElement
+                            ?.getBoundingClientRect()
+                          const localX = e.clientX - (rect?.left ?? 0)
+                          const localY = e.clientY - (rect?.top ?? 0)
+                          setCloseMenu({ id: workingId, x: localX, y: localY })
                         }
                       : undefined
                   })}
@@ -3025,6 +3057,47 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
             onDelete={onDeleteSelectedDrawing}
           />
         )}
+
+      {closeMenu && canEditTrade && (
+        <div
+          className="pointer-events-auto absolute z-[40] min-w-[8.5rem] overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950/95 py-1 shadow-xl shadow-black/40"
+          style={{ left: Math.max(8, closeMenu.x - 40), top: Math.max(8, closeMenu.y + 8) }}
+          role="menu"
+          data-close-menu
+          aria-label={t('overlay.closeMenuTitle')}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+            onClick={() => {
+              paperClosePartial(0.5, closeMenu.id)
+              setCloseMenu(null)
+            }}
+          >
+            {t('overlay.close50')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+            onClick={() => {
+              paperClose(closeMenu.id)
+              setCloseMenu(null)
+            }}
+          >
+            {t('overlay.close100')}
+          </button>
+          <button
+            type="button"
+            className="flex w-full px-3 py-1.5 text-left text-[11px] text-zinc-500 hover:bg-zinc-800"
+            onClick={() => setCloseMenu(null)}
+          >
+            {t('common.cancel')}
+          </button>
+        </div>
+      )}
     </>
   )
 }, (prev, next) => {

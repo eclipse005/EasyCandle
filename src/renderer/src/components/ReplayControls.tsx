@@ -78,6 +78,8 @@ export default function ReplayControls() {
   const stepBackward = useReplayStore((s) => s.stepBackward)
   const setSpeed = useReplayStore((s) => s.setSpeed)
   const setDriverPane = useReplayStore((s) => s.setDriverPane)
+  const setChartSplit = useReplayStore((s) => s.setChartSplit)
+  const setTimeframe = useReplayStore((s) => s.setTimeframe)
   const jumpToTime = useReplayStore((s) => s.jumpToTime)
   const seekToIndex = useReplayStore((s) => s.seekToIndex)
   const confirmPendingSeek = useReplayStore((s) => s.confirmPendingSeek)
@@ -291,8 +293,8 @@ export default function ReplayControls() {
         </IconButton>
       </div>
 
-      {chartSplit && (
-        <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1">
+        {chartSplit ? (
           <Tooltip text={t('replay.toggleNext')} kbds={['Tab']} side="top">
             <button
               type="button"
@@ -312,6 +314,33 @@ export default function ReplayControls() {
               </span>
             </button>
           </Tooltip>
+        ) : (
+          <Tooltip text={t('replay.timestepSingleTip')} side="top">
+            <label
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300"
+              title={t('replay.timestepTip')}
+            >
+              <span className="text-zinc-500">{t('replay.next')}</span>
+              <select
+                disabled={busy}
+                aria-label={t('replay.timestepTip')}
+                value={timeframe}
+                onChange={(event) => {
+                  setTimeframe(event.target.value)
+                  event.currentTarget.blur()
+                }}
+                className="max-w-[4.5rem] rounded bg-transparent font-medium text-primary-300 outline-none disabled:opacity-40"
+              >
+                {Object.keys(TIMEFRAMES).map((id) => (
+                  <option key={id} value={id} className="bg-zinc-900 text-zinc-100">
+                    {TIMEFRAMES[id]?.label ?? id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Tooltip>
+        )}
+        {chartSplit ? (
           <Tooltip text={t('replay.syncTip')} side="top">
             <span
               className="inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-900/60 bg-emerald-950/40 px-2 text-[11px] font-medium text-emerald-300"
@@ -321,8 +350,24 @@ export default function ReplayControls() {
               {t('replay.syncOn')}
             </span>
           </Tooltip>
-        </div>
-      )}
+        ) : (
+          <Tooltip text={t('replay.syncOffTip')} side="top">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={(event) => {
+                setChartSplit(true)
+                event.currentTarget.blur()
+              }}
+              aria-label={t('replay.enableSplitSync')}
+              className="inline-flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[11px] font-medium text-zinc-400 transition-colors enabled:hover:border-emerald-800 enabled:hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Link2 className="h-3.5 w-3.5" aria-hidden />
+              {t('replay.sync')}
+            </button>
+          </Tooltip>
+        )}
+      </div>
 
       <div className="flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 text-xs text-zinc-400">
         <Gauge className="ml-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
