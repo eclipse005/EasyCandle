@@ -57,7 +57,6 @@ export default function ChartSessionEquity({
       <span className="text-zinc-500">
         Session{' '}
         <span className={`font-semibold ${pnlPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-          {pnlPositive ? '+' : ''}
           {formatPnlCcy(sessionPnl, quoteCurrency)}
         </span>
       </span>
