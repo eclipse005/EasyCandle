@@ -482,6 +482,10 @@ const en = {
   'importConfirm.tzRemapHint': 'Timestamps remapped to UTC on save using this zone.',
   'importConfirm.tzRequiredHint':
     'Do not skip — broker/server time is often not UTC. We never assume it.',
+  'importConfirm.tzHintUtc': 'Timestamps already in Coordinated Universal Time.',
+  'importConfirm.tzHintNewYork': 'US Eastern — common for NY-session exports.',
+  'importConfirm.tzHintAthens': 'Common MetaTrader broker server time (GMT+2/+3).',
+  'importConfirm.tzHintDubai': 'Common MetaTrader broker server time (no DST).',
   'importConfirm.tzLocked': 'UTC (locked)',
   'importConfirm.tzLockedHint': 'ISO timestamps with Z/offset — absolute UTC.',
   'importConfirm.startWall': 'Start (CSV wall)',
@@ -1081,6 +1085,10 @@ const zh: Record<MessageKey, string> = {
   'importConfirm.tzRemapHint': '保存时按此时区将时间戳映射到 UTC。',
   'importConfirm.tzRequiredHint':
     '请勿跳过 — 券商/服务器时间通常不是 UTC。我们不会自行猜测。',
+  'importConfirm.tzHintUtc': '时间戳已是协调世界时（UTC）。',
+  'importConfirm.tzHintNewYork': '美国东部时间 — 常见于纽约时段导出。',
+  'importConfirm.tzHintAthens': '常见 MetaTrader 券商服务器时间（GMT+2/+3）。',
+  'importConfirm.tzHintDubai': '常见 MetaTrader 券商服务器时间（无夏令时）。',
   'importConfirm.tzLocked': 'UTC（已锁定）',
   'importConfirm.tzLockedHint': '含 Z/偏移的 ISO 时间戳 — 绝对 UTC。',
   'importConfirm.startWall': '开始（CSV 原始时间）',

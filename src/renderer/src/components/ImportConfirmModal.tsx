@@ -16,7 +16,19 @@ import {
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
 import { useT } from '@/i18n/useT'
+import type { MessageKey } from '@/i18n/messages'
 import { translateImportWarnings } from '@/i18n/importWarnings'
+
+
+function csvTimezoneHelperText(
+  dataTimezone: string,
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string
+): string {
+  if (!dataTimezone) return t('importConfirm.tzRequiredHint')
+  const hintKey = CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hintKey
+  if (hintKey) return t(hintKey as MessageKey)
+  return t('importConfirm.tzRemapHint')
+}
 
 export type ImportConfirmDetails = {
   fileName: string
@@ -243,11 +255,9 @@ export default function ImportConfirmModal({
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                    {dataTimezone
-                      ? CSV_DATA_TIMEZONE_OPTIONS.find((o) => o.id === dataTimezone)?.hint ||
-                        t('importConfirm.tzRemapHint')
-                      : t('importConfirm.tzRequiredHint')}
+                  {/* Fixed min-height so switching TZ (and hint text) never resizes the modal */}
+                  <p className="mt-1 min-h-[2.5rem] text-[10px] leading-relaxed text-zinc-500">
+                    {csvTimezoneHelperText(dataTimezone, t)}
                   </p>
                 </>
               )}
@@ -257,31 +267,41 @@ export default function ImportConfirmModal({
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
                 {timestampsAbsolute ? t('importConfirm.startUtc') : t('importConfirm.startWall')}
               </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">
-                {timestampsAbsolute
-                  ? formatRemappedUtc(firstTime, 'UTC')
-                  : formatCsvWallClock(firstTime)}
+              <p className="mt-0.5 flex min-h-[1.25rem] flex-wrap items-baseline gap-x-2 tabular-nums">
+                <span className="text-zinc-200">
+                  {timestampsAbsolute
+                    ? formatRemappedUtc(firstTime, 'UTC')
+                    : formatCsvWallClock(firstTime)}
+                </span>
+                {!timestampsAbsolute ? (
+                  <span
+                    className={`text-[10px] text-zinc-500 ${dataTimezone ? '' : 'invisible'}`}
+                    aria-hidden={!dataTimezone}
+                  >
+                    {dataTimezone ? `→ ${formatRemappedUtc(firstTime, dataTimezone)}` : '\u00a0'}
+                  </span>
+                ) : null}
               </p>
-              {!timestampsAbsolute && dataTimezone ? (
-                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-                  → {formatRemappedUtc(firstTime, dataTimezone)}
-                </p>
-              ) : null}
             </div>
             <div className="col-span-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
                 {timestampsAbsolute ? t('importConfirm.endUtc') : t('importConfirm.endWall')}
               </span>
-              <p className="mt-0.5 tabular-nums text-zinc-200">
-                {timestampsAbsolute
-                  ? formatRemappedUtc(lastTime, 'UTC')
-                  : formatCsvWallClock(lastTime)}
+              <p className="mt-0.5 flex min-h-[1.25rem] flex-wrap items-baseline gap-x-2 tabular-nums">
+                <span className="text-zinc-200">
+                  {timestampsAbsolute
+                    ? formatRemappedUtc(lastTime, 'UTC')
+                    : formatCsvWallClock(lastTime)}
+                </span>
+                {!timestampsAbsolute ? (
+                  <span
+                    className={`text-[10px] text-zinc-500 ${dataTimezone ? '' : 'invisible'}`}
+                    aria-hidden={!dataTimezone}
+                  >
+                    {dataTimezone ? `→ ${formatRemappedUtc(lastTime, dataTimezone)}` : '\u00a0'}
+                  </span>
+                ) : null}
               </p>
-              {!timestampsAbsolute && dataTimezone ? (
-                <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-                  → {formatRemappedUtc(lastTime, dataTimezone)}
-                </p>
-              ) : null}
             </div>
 
             <div>

@@ -11,32 +11,23 @@ import type { Candle } from './candleUtils'
 export type CsvDataTimezoneOption = {
   id: string
   label: string
-  /** Short hint shown under the select. */
-  hint?: string
+  /**
+   * Optional i18n message key (MessageKey) for the helper under Import Confirm's
+   * TZ picker. UI must call t(hintKey) — never show a hard-coded English string.
+   */
+  hintKey?: string
 }
 
 /** Curated zones for Import Confirm — user must pick explicitly (no default). */
 export const CSV_DATA_TIMEZONE_OPTIONS: readonly CsvDataTimezoneOption[] = [
-  { id: 'UTC', label: 'UTC', hint: 'Timestamps already in Coordinated Universal Time' },
-  {
-    id: 'America/New_York',
-    label: 'New York (ET)',
-    hint: 'US Eastern — common for NY-session exports'
-  },
+  { id: 'UTC', label: 'UTC', hintKey: 'importConfirm.tzHintUtc' },
+  { id: 'America/New_York', label: 'New York (ET)', hintKey: 'importConfirm.tzHintNewYork' },
   { id: 'America/Chicago', label: 'Chicago (CT)' },
   { id: 'America/Los_Angeles', label: 'Los Angeles (PT)' },
   { id: 'Europe/London', label: 'London (UK)' },
   { id: 'Europe/Berlin', label: 'Berlin / Frankfurt (CET/CEST)' },
-  {
-    id: 'Europe/Athens',
-    label: 'Athens / EET',
-    hint: 'Common MetaTrader broker server time (GMT+2/+3)'
-  },
-  {
-    id: 'Asia/Dubai',
-    label: 'Dubai (GMT+4)',
-    hint: 'Common MetaTrader broker server time (no DST)'
-  },
+  { id: 'Europe/Athens', label: 'Athens / EET', hintKey: 'importConfirm.tzHintAthens' },
+  { id: 'Asia/Dubai', label: 'Dubai (GMT+4)', hintKey: 'importConfirm.tzHintDubai' },
   { id: 'Asia/Shanghai', label: 'Shanghai (CST)' },
   { id: 'Asia/Tokyo', label: 'Tokyo (JST)' },
   { id: 'Australia/Sydney', label: 'Sydney' }
