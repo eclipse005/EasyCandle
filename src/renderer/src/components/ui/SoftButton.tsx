@@ -1,0 +1,50 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { cn } from '@/components/ui/cn'
+
+export type SoftButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+
+type SoftButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  children: ReactNode
+  variant?: SoftButtonVariant
+  size?: 'sm' | 'md'
+}
+
+const VARIANT: Record<SoftButtonVariant, string> = {
+  primary:
+    'bg-primary-500/90 text-white hover:bg-primary-400 border border-transparent shadow-sm shadow-primary-950/40',
+  secondary:
+    'border border-white/10 bg-zinc-900/60 text-zinc-300 hover:border-white/15 hover:bg-zinc-800/80 hover:text-zinc-100',
+  ghost: 'border border-transparent text-zinc-500 hover:bg-white/5 hover:text-zinc-300',
+  danger:
+    'border border-transparent text-zinc-500 hover:bg-red-950/50 hover:text-red-300'
+}
+
+const SIZE = {
+  sm: 'h-7 gap-1 rounded-xl px-2.5 text-[11px] font-medium',
+  md: 'h-8 gap-1.5 rounded-xl px-3 text-xs font-medium'
+} as const
+
+/** Soft fill / soft hover buttons — prefer primary soft fill over sharp outlines. */
+export default function SoftButton({
+  children,
+  variant = 'secondary',
+  size = 'md',
+  className,
+  type = 'button',
+  ...rest
+}: SoftButtonProps) {
+  return (
+    <button
+      type={type}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        SIZE[size],
+        VARIANT[variant],
+        className
+      )}
+      {...rest}
+    >
+      {children}
+    </button>
+  )
+}

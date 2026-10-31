@@ -23,7 +23,7 @@ export default function ChartSnapshotDropdown() {
             data-tour="snapshot"
             className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2 text-xs font-medium transition-colors ${
               open
-                ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
+                ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
                 : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
             }`}
           >

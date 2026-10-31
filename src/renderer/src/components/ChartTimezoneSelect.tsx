@@ -107,7 +107,7 @@ export default function ChartTimezoneSelect() {
                       }}
                       className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors ${
                         selected
-                          ? 'bg-amber-950/40 text-amber-300'
+                          ? 'bg-amber-950/40 text-primary-300'
                           : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-zinc-100'
                       }`}
                     >

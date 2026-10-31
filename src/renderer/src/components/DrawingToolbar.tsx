@@ -64,7 +64,7 @@ export default memo(function DrawingToolbar() {
             onClick={() => arm(armedTool === tool.kind ? null : tool.kind)}
             className={`flex w-full items-center px-3 py-1.5 text-left text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               armedTool === tool.kind
-                ? 'bg-zinc-800 text-amber-300'
+                ? 'bg-zinc-800 text-primary-300'
                 : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
             }`}
           >

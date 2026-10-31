@@ -231,7 +231,7 @@ function ColorField({
                 onChange={(event) =>
                   onChange(toColorString({ r, g, b, a: Number(event.target.value) / 100 }))
                 }
-                className="h-3 min-w-0 flex-1 cursor-pointer accent-amber-500"
+                className="h-3 min-w-0 flex-1 cursor-pointer accent-primary-500"
                 aria-label={`${label} opacity`}
               />
               <span className="w-9 shrink-0 text-right text-[10px] tabular-nums text-zinc-400">
@@ -299,7 +299,7 @@ function ToggleField({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-          checked ? 'bg-amber-500/80' : 'bg-zinc-700'
+          checked ? 'bg-primary-500/80' : 'bg-zinc-700'
         }`}
       >
         <span
@@ -634,7 +634,7 @@ export default function ChartSettingsDialog(): ReactElement | null {
               onClick={() => setTemplateMenuOpen((value) => !value)}
               className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium transition-colors ${
                 templateMenuOpen
-                  ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
+                  ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
                   : 'border-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
               }`}
             >

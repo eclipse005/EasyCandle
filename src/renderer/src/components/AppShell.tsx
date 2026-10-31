@@ -94,11 +94,11 @@ export default function AppShell({
 
       <main
         className={`relative flex min-h-0 flex-1 flex-col ${
-          chartFullscreen ? 'p-0' : showDrawingToolbar ? 'py-1.5 px-2 sm:py-2' : 'p-1.5 sm:p-2'
+          chartFullscreen ? 'p-0' : showDrawingToolbar ? 'py-2 px-2.5 sm:py-2.5' : 'p-2 sm:p-2.5'
         }`}
       >
         <div
-          className={`relative flex gap-0.5 min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
+          className={`relative flex gap-1.5 min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
             chartFullscreen ? 'rounded-none border-0 shadow-none' : ''
           }`}
         >

@@ -62,14 +62,14 @@ export default function TradeSizeControl({
 
   return (
     <div
-      className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 px-1 py-0.5"
+      className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/60 px-1 py-0.5"
       title={
         kind === 'lot'
           ? 'Lot size 0.01–100 (0.01 step). Type to enter.'
           : 'Coin amount. Type any positive size — no maximum.'
       }
     >
-      <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+      <span className="px-0.5 text-[11px] font-medium text-zinc-400">
         {label}
       </span>
       <div className="ml-auto flex items-center gap-1">

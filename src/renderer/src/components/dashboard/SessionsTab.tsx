@@ -7,6 +7,9 @@ import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import type { SessionReport } from '@/store/replayStore'
+import SoftButton from '@/components/ui/SoftButton'
+import SoftCard from '@/components/ui/SoftCard'
+import SoftEmpty from '@/components/ui/SoftEmpty'
 
 function sessionToReport(session: Session): SessionReport | null {
   if (!session.closedTrades.length) return null
@@ -41,59 +44,64 @@ function SessionCard({
   const hasReport = session.closedTrades.length > 0
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20">
+    <SoftCard
+      elevated
+      className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:border-white/10"
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-xs font-semibold text-zinc-100">{session.name}</span>
+          <span className="truncate text-[13px] font-semibold text-zinc-100">{session.name}</span>
           {strategyName ? (
-            <span className="rounded bg-sky-950/60 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+            <span className="rounded-lg bg-sky-950/50 px-1.5 py-0.5 text-[10px] font-medium text-sky-300/90">
               {strategyName}
             </span>
           ) : null}
         </div>
-        <div className="mt-0.5 text-[11px] text-zinc-500">
-          {session.symbol} · {session.timeframe} · {session.closedTrades.length} trades ·{' '}
-          {wins}W · {formatPositionText(session)} · playhead {playhead}
+        <div className="mt-1 text-[12px] leading-relaxed text-zinc-500">
+          {session.symbol} · {session.timeframe} · {session.closedTrades.length} trades · {wins}W ·{' '}
+          {formatPositionText(session)} · playhead {playhead}
         </div>
       </div>
       <span
-        className={`shrink-0 text-xs font-medium tabular-nums ${
+        className={`shrink-0 text-[13px] font-medium tabular-nums ${
           pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
         }`}
       >
         {formatPnlCcy(pnl, quote)}
       </span>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
+      <div className="flex shrink-0 items-center gap-1.5">
+        <SoftButton
+          size="sm"
+          variant="secondary"
           aria-label={`Open performance for ${session.name}`}
           disabled={!hasReport}
           title={hasReport ? 'Equity curve & session report' : 'No closed trades yet'}
           onClick={onReport}
-          className="inline-flex h-7 items-center gap-1 rounded-xl border border-zinc-800 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <BarChart3 className="h-3 w-3" aria-hidden />
+          <BarChart3 className="h-3.5 w-3.5" aria-hidden />
           Report
-        </button>
-        <button
-          type="button"
-          aria-label={`Open session ${session.name}`}
+        </SoftButton>
+        <SoftButton
+          size="sm"
+          variant="primary"
+          aria-label={`Resume session ${session.name}`}
           onClick={onOpen}
-          className="inline-flex h-7 items-center gap-1 rounded-xl border border-zinc-800 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+          className="!px-3"
         >
-          <Play className="h-3 w-3" aria-hidden />
-          Open
-        </button>
-        <button
-          type="button"
+          <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
+          Resume
+        </SoftButton>
+        <SoftButton
+          size="sm"
+          variant="ghost"
           aria-label={`Delete session ${session.name}`}
           onClick={onDelete}
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+          className="!h-7 !w-7 !px-0 hover:text-red-300"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        </button>
+        </SoftButton>
       </div>
-    </div>
+    </SoftCard>
   )
 }
 
@@ -129,24 +137,22 @@ export default function SessionsTab({
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-100">Backtesting sessions</h2>
-        <button
-          type="button"
-          onClick={onNewSession}
-          className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200"
-        >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-[13px] font-medium text-zinc-400">
+          {summary ? 'Recent sessions' : 'All sessions'}
+        </h2>
+        <SoftButton variant="primary" onClick={onNewSession}>
           <Plus className="h-4 w-4" aria-hidden />
           New session
-        </button>
+        </SoftButton>
       </div>
 
       {ordered.length === 0 ? (
-        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
-          No sessions yet — create one from a dataset below.
-        </p>
+        <SoftEmpty>
+          No sessions yet — create one from a dataset to start replaying candles.
+        </SoftEmpty>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {visible.map((session) => (
             <SessionCard
               key={session.id}
@@ -161,7 +167,7 @@ export default function SessionsTab({
             />
           ))}
           {summary && ordered.length > visible.length ? (
-            <p className="text-center text-[11px] text-zinc-600">
+            <p className="pt-1 text-center text-[12px] text-zinc-600">
               {ordered.length - visible.length} more on the Sessions tab
             </p>
           ) : null}

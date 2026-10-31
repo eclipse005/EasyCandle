@@ -82,7 +82,7 @@
 - [x] Blotter tab labels: Open positions / Pending orders / Closed positions (Order History retained)
 - [x] Ticket field reorder (Sell|Buy → risk chips → type) — **P1**
 - [x] Chart entry/SL/TP label polish — **P1**
-- [ ] Dashboard productization — **P2**
+- [x] Dashboard productization (P2 lite: page titles, soft cards, Resume primary) — **P2**
 
 ## P1 shipped (2026-10-31)
 
@@ -91,5 +91,12 @@
 - [x] Stop Limit labeled **Stop** in the type segment (underlying `stopLimit` unchanged)
 - [x] Chart trade overlay tags: entry/qty/connector primary `#0260FD`, TP/pnl up `#06A77D`, SL orange, short/loss `#ED6A5A`
 - [ ] Replay scrubber — deferred
-- [ ] Dashboard productization — **P2**
+- [x] Dashboard productization (P2 lite) — **P2**
 - [ ] Shortcuts panel + light Journal — **P3**
+
+## Soft pass 2 (2026-10-31)
+
+- [x] Further away from cyber/HUD: sentence-case captions, softer white/06 borders, primary soft-fill CTAs, muted amber leftovers on interactive chrome → primary
+- [x] Dashboard breathing room + Soft* primitives (`components/ui/`)
+- [x] Ticket/blotter density closer to FXR (labels/spacing; field order unchanged)
+- [x] Double-chevron icon retained

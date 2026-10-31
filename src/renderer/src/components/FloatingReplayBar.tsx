@@ -33,7 +33,7 @@ export default function FloatingReplayBar() {
       onPosChange={setReplayControlsPos}
       onMinimizedChange={setReplayControlsMinimized}
       defaultPlacement="bottom-center"
-      className="!rounded-2xl !border-white/10 bg-zinc-900/95 shadow-lg shadow-black/30"
+      className="!rounded-2xl !border-white/[0.08] bg-zinc-900/90 shadow-lg shadow-black/25"
     >
       <ReplayControls />
     </FloatingPanel>

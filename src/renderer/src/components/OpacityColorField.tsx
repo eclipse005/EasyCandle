@@ -66,7 +66,7 @@ export function OpacitySlider({
           onChange={(event) =>
             onChange(toColorString({ ...parsed, a: Number(event.target.value) / 100 }))
           }
-          className="h-3 min-w-0 flex-1 cursor-pointer accent-amber-500"
+          className="h-3 min-w-0 flex-1 cursor-pointer accent-primary-500"
         />
         <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-zinc-400">
           {alphaPercent}%
@@ -122,7 +122,7 @@ export function ColorPickerPopup({
           title={label}
           onClick={() => setOpen((o) => !o)}
           className={`relative block h-6 w-full cursor-pointer overflow-hidden rounded-xl border transition-colors ${
-            open ? 'border-amber-500/70' : 'border-zinc-800 hover:border-zinc-500'
+            open ? 'border-primary-500/50' : 'border-zinc-800 hover:border-zinc-500'
           }`}
           style={{ background: CHECKERBOARD }}
         >

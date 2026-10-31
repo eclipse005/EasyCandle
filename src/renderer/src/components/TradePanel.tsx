@@ -35,10 +35,10 @@ const TABS: { id: HistoryTab; label: string }[] = [
 ]
 
 function tabClass(active: boolean): string {
-  return `shrink-0 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+  return `shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
     active
-      ? 'bg-zinc-800 text-zinc-100 ring-1 ring-inset ring-primary-500/50'
-      : 'text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300'
+      ? 'bg-zinc-800/80 text-zinc-100'
+      : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
   }`
 }
 
@@ -78,7 +78,7 @@ function PendingOrderRow({
       }`}
     >
       <button type="button" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left" onClick={onSelect}>
-        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300/90">
+        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-primary-300/90">
           Working
         </span>
       <span className={sideClass(order.side)}>{formatOrderSideLabel(order.side, order.kind)}</span>
@@ -100,7 +100,7 @@ function PendingOrderRow({
       </button>
       <button
         type="button"
-        className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+        className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
         onClick={onCancel}
       >
         Cancel
@@ -141,7 +141,7 @@ function OpenPositionRow({
         className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left"
         onClick={onSelect}
       >
-        <span className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+        <span className="rounded-md bg-primary-950/40 px-1.5 py-0.5 text-[10px] font-medium text-primary-300">
           Open
         </span>
         <span className={sideClass(position.side)}>{position.side.toUpperCase()}</span>
@@ -171,7 +171,7 @@ function OpenPositionRow({
       </button>
       <button
         type="button"
-        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
         onClick={onClose}
       >
         Close
@@ -193,7 +193,7 @@ function HistoricOrderRow({
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 tabular-nums text-zinc-400">
       <span
-        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
           canceled ? 'bg-zinc-900 text-zinc-500' : 'bg-zinc-900 text-emerald-400/80'
         }`}
       >
@@ -241,12 +241,12 @@ function ClosedPositionRow({
   return (
     <li className="flex flex-col gap-0.5 py-1.5 text-zinc-400">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 tabular-nums">
-        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
           Closed
         </span>
         <span className={sideClass(trade.side, true)}>{trade.side.toUpperCase()}</span>
         <span className="text-zinc-500">{formatPositionSize(trade.lots, symbol)}</span>
-        <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+        <span className="rounded bg-zinc-900/80 px-1 py-0.5 text-[10px] font-medium text-zinc-500">
           {formatExitReason(trade.exitReason)}
         </span>
         <span>
@@ -452,12 +452,12 @@ export default function TradePanel() {
   return (
     <div
       inert={preview || undefined}
-      className={`mt-1.5 shrink-0 rounded-2xl border border-white/10 bg-zinc-900/80 pb-12 shadow-lg shadow-black/20 ${
+      className={`mt-2 shrink-0 rounded-2xl border border-white/[0.08] bg-zinc-900/75 pb-12 shadow-lg shadow-black/20 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800/80 px-3 py-2">
-        <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Paper trade</span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
+        <span className="text-[12px] font-medium text-zinc-400">Paper trade</span>
 
         <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
           {activeSession ? (
@@ -526,7 +526,7 @@ export default function TradePanel() {
           <div
             role="tablist"
             aria-label="Trade history"
-            className="flex gap-0.5 overflow-x-auto border-b border-zinc-800/80 px-2 py-1"
+            className="flex gap-1 overflow-x-auto border-b border-white/[0.06] px-2.5 py-1.5"
           >
             {TABS.map((item) => {
               const active = tab === item.id

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { X } from 'lucide-react'
 import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
+import SoftButton from '@/components/ui/SoftButton'
+import SoftDialog from '@/components/ui/SoftDialog'
+import { SoftInput, SoftSelect } from '@/components/ui/SoftInput'
+import SoftLabel from '@/components/ui/SoftLabel'
 import { DEFAULT_CHART_TIMEZONE, parseSessionParts, toSessionParts } from '@/lib/chartTimezone'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -84,8 +87,6 @@ export default function CreateSessionDialog({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, busy, onClose])
 
-  if (!open) return null
-
   function submit(): void {
     if (!dataset) {
       setError('Select a dataset.')
@@ -123,177 +124,118 @@ export default function CreateSessionDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
-      role="presentation"
-      onClick={() => {
-        if (!busy) onClose()
-      }}
+    <SoftDialog
+      open={open}
+      onClose={onClose}
+      closeDisabled={busy}
+      labelledBy="create-session-title"
+      title="New backtesting session"
+      description="The chart opens at your start date, revealing candles as you step forward."
+      footer={
+        <>
+          <SoftButton variant="secondary" disabled={busy} onClick={onClose}>
+            Cancel
+          </SoftButton>
+          <SoftButton variant="primary" disabled={busy || !dataset} onClick={submit}>
+            {busy ? 'Preparing…' : 'Start session'}
+          </SoftButton>
+        </>
+      }
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-session-title"
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
-          <div>
-            <h2 id="create-session-title" className="text-sm font-semibold text-zinc-100">
-              New backtesting session
-            </h2>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
-              The chart opens at your start date, revealing candles as you step forward.
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Close"
-            disabled={busy}
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+      <div className="space-y-3.5 text-[12px]">
+        <SoftLabel caption={`Dataset${imports.length === 0 ? ' — import a CSV first' : ' *'}`}>
+          <SoftSelect
+            value={datasetId}
+            disabled={busy || imports.length === 0}
+            aria-label="Dataset"
+            onChange={(event) => setDatasetId(event.target.value)}
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+            {imports.length === 0 ? <option value="">No datasets</option> : null}
+            {imports.map((meta) => (
+              <option key={meta.id} value={meta.id}>
+                {meta.symbol} · {meta.candleCount.toLocaleString()} × 1m
+              </option>
+            ))}
+          </SoftSelect>
+        </SoftLabel>
 
-        <div className="space-y-3 px-4 py-4 text-[12px]">
-          <label className="block">
-            <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-              Dataset{imports.length === 0 ? ' — import a CSV first' : ' *'}
-            </span>
-            <select
-              value={datasetId}
-              disabled={busy || imports.length === 0}
-              aria-label="Dataset"
-              onChange={(event) => setDatasetId(event.target.value)}
-              className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+        <div className="grid grid-cols-2 gap-3">
+          <SoftLabel caption="Timeframe">
+            <SoftSelect
+              value={timeframe}
+              disabled={busy}
+              aria-label="Timeframe"
+              onChange={(event) => setTimeframe(event.target.value)}
             >
-              {imports.length === 0 ? <option value="">No datasets</option> : null}
-              {imports.map((meta) => (
-                <option key={meta.id} value={meta.id}>
-                  {meta.symbol} · {meta.candleCount.toLocaleString()} × 1m
+              {timeframes.map((tf) => (
+                <option key={tf} value={tf}>
+                  {tf}
                 </option>
               ))}
-            </select>
-          </label>
+            </SoftSelect>
+          </SoftLabel>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Timeframe
-              </span>
-              <select
-                value={timeframe}
-                disabled={busy}
-                aria-label="Timeframe"
-                onChange={(event) => setTimeframe(event.target.value)}
-                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              >
-                {timeframes.map((tf) => (
-                  <option key={tf} value={tf}>
-                    {tf}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Start date
-              </span>
-              <input
-                type="date"
-                value={startDate}
-                disabled={busy}
-                aria-label="Start date"
-                onChange={(event) => setStartDate(event.target.value)}
-                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Initial balance
-              </span>
-              <input
-                type="number"
-                min="0"
-                value={balance}
-                disabled={busy}
-                aria-label="Initial balance"
-                onChange={(event) => setBalance(event.target.value)}
-                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                Strategy
-              </span>
-              <select
-                value={strategyId}
-                disabled={busy}
-                aria-label="Strategy"
-                onChange={(event) => setStrategyId(event.target.value)}
-                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
-              >
-                <option value="">None</option>
-                {strategies.map((strategy) => (
-                  <option key={strategy.id} value={strategy.id}>
-                    {strategy.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-              Session name
-            </span>
-            <input
-              type="text"
-              value={name}
+          <SoftLabel caption="Start date">
+            <SoftInput
+              type="date"
+              value={startDate}
               disabled={busy}
-              aria-label="Session name"
-              placeholder={
-                dataset ? `${dataset.symbol} ${startDate || 'YYYY-MM-DD'}` : 'Session name'
-              }
-              onChange={(event) => setName(event.target.value)}
-              className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
+              aria-label="Start date"
+              onChange={(event) => setStartDate(event.target.value)}
             />
-          </label>
-
-          {imports.length === 0 && (
-            <p className="text-[11px] leading-relaxed text-amber-400/90">
-              No imported datasets yet — import a CSV from the Datasets tab first.
-            </p>
-          )}
-          {error && <p className="text-[11px] text-red-400">{error}</p>}
+          </SoftLabel>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-zinc-800 px-4 py-3">
-          <button
-            type="button"
+        <div className="grid grid-cols-2 gap-3">
+          <SoftLabel caption="Initial balance">
+            <SoftInput
+              type="number"
+              min="0"
+              value={balance}
+              disabled={busy}
+              aria-label="Initial balance"
+              className="tabular-nums"
+              onChange={(event) => setBalance(event.target.value)}
+            />
+          </SoftLabel>
+
+          <SoftLabel caption="Strategy">
+            <SoftSelect
+              value={strategyId}
+              disabled={busy}
+              aria-label="Strategy"
+              onChange={(event) => setStrategyId(event.target.value)}
+            >
+              <option value="">None</option>
+              {strategies.map((strategy) => (
+                <option key={strategy.id} value={strategy.id}>
+                  {strategy.name}
+                </option>
+              ))}
+            </SoftSelect>
+          </SoftLabel>
+        </div>
+
+        <SoftLabel caption="Session name">
+          <SoftInput
+            type="text"
+            value={name}
             disabled={busy}
-            onClick={onClose}
-            className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy || !dataset}
-            onClick={submit}
-            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {busy ? 'Preparing…' : 'Start session'}
-          </button>
-        </div>
+            aria-label="Session name"
+            placeholder={
+              dataset ? `${dataset.symbol} ${startDate || 'YYYY-MM-DD'}` : 'Session name'
+            }
+            onChange={(event) => setName(event.target.value)}
+          />
+        </SoftLabel>
+
+        {imports.length === 0 && (
+          <p className="text-[12px] leading-relaxed text-zinc-400">
+            No imported datasets yet — import a CSV from the Datasets tab first.
+          </p>
+        )}
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
       </div>
-    </div>
+    </SoftDialog>
   )
 }

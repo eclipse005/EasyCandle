@@ -85,7 +85,7 @@ function MenuEntryView({ entry, onClose }: { entry: MenuEntry; onClose: () => vo
         <span
           aria-hidden
           className={`ml-3 inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
-            entry.checked ? 'bg-amber-500/90' : 'bg-zinc-700'
+            entry.checked ? 'bg-primary-500/90' : 'bg-zinc-700'
           }`}
         >
           <span

@@ -5,6 +5,9 @@ import { formatUtcCandleTime } from '@/lib/utcDateTime'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import ImportDataDialog from '@/components/ImportDataDialog'
+import SoftButton from '@/components/ui/SoftButton'
+import SoftCard from '@/components/ui/SoftCard'
+import SoftEmpty from '@/components/ui/SoftEmpty'
 
 export default function DatasetsTab({
   onNewSession
@@ -22,62 +25,64 @@ export default function DatasetsTab({
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-100">Imported datasets</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-[13px] font-medium text-zinc-400">Imported CSV files</h2>
         <ImportDataDialog />
       </div>
 
       {ordered.length === 0 ? (
-        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
-          No datasets yet — import a CSV to get started.
-        </p>
+        <SoftEmpty>No datasets yet — import a CSV to get started.</SoftEmpty>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {ordered.map((meta) => {
             const spec = params[meta.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '')]
-            const contractSize = spec?.contractSize ?? meta.contractSize ?? contractSizeInfoForSymbol(meta.symbol).contractSize
+            const contractSize =
+              spec?.contractSize ??
+              meta.contractSize ??
+              contractSizeInfoForSymbol(meta.symbol).contractSize
             return (
-              <div
+              <SoftCard
                 key={meta.id}
-                className="flex items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20"
+                elevated
+                className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:border-white/10"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-semibold text-zinc-100">
+                  <div className="truncate text-[13px] font-semibold text-zinc-100">
                     {meta.symbol}
                     <span className="ml-2 font-normal text-zinc-500">{meta.originalFileName}</span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-zinc-500">
-                    {meta.candleCount.toLocaleString()} × 1m ·{' '}
-                    {formatUtcCandleTime(meta.firstTime)} → {formatUtcCandleTime(meta.lastTime)} ·{' '}
-                    contract {formatContractSize(contractSize)}
+                  <div className="mt-1 text-[12px] leading-relaxed text-zinc-500">
+                    {meta.candleCount.toLocaleString()} × 1m · {formatUtcCandleTime(meta.firstTime)}{' '}
+                    → {formatUtcCandleTime(meta.lastTime)} · contract {formatContractSize(contractSize)}
                   </div>
                 </div>
-                <button
-                  type="button"
+                <SoftButton
+                  size="sm"
+                  variant="primary"
                   aria-label={`New session from ${meta.symbol}`}
                   onClick={() => onNewSession(meta.id)}
-                  className="inline-flex h-7 shrink-0 items-center gap-1 rounded-xl border border-zinc-800 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
                 >
-                  <Plus className="h-3 w-3" aria-hidden />
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
                   New session
-                </button>
-                <button
-                  type="button"
+                </SoftButton>
+                <SoftButton
+                  size="sm"
+                  variant="ghost"
                   aria-label={`Delete dataset ${meta.symbol}`}
                   onClick={() => {
                     void window.api.deleteImport(meta.id).then(() => refreshImportedList())
                   }}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                  className="!h-7 !w-7 !px-0 hover:text-red-300"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              </div>
+                </SoftButton>
+              </SoftCard>
             )
           })}
         </div>
       )}
 
-      <p className="mt-3 text-[11px] text-zinc-600">
+      <p className="mt-4 text-[12px] text-zinc-600">
         {ordered.length} dataset{ordered.length === 1 ? '' : 's'} ·{' '}
         <button
           type="button"

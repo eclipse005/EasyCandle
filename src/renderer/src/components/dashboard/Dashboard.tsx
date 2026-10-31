@@ -26,6 +26,29 @@ const TABS: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] 
   { id: 'strategies', label: 'Strategies', icon: GitBranch }
 ]
 
+const PAGE_COPY: Record<DashboardTab, { title: string; description: string }> = {
+  dashboard: {
+    title: 'Dashboard',
+    description: 'Resume a session or start a new backtest from an imported dataset.'
+  },
+  sessions: {
+    title: 'Sessions',
+    description: 'All saved backtesting sessions — open, review, or clean up.'
+  },
+  datasets: {
+    title: 'Datasets',
+    description: 'Imported CSV candle history used to drive replay sessions.'
+  },
+  symbols: {
+    title: 'Symbols',
+    description: 'Contract size, spread, and commission defaults for paper fills.'
+  },
+  strategies: {
+    title: 'Strategies',
+    description: 'Tag sessions so you can compare results by approach.'
+  }
+}
+
 function TabButton({
   active,
   icon: Icon,
@@ -41,13 +64,13 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors ${
+      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-medium transition-colors ${
         active
-          ? 'bg-zinc-800/80 text-zinc-100 shadow-sm shadow-black/20'
-          : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+          ? 'bg-zinc-800/70 text-zinc-100 shadow-sm shadow-black/15'
+          : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
       }`}
     >
-      <Icon className="h-4 w-4" aria-hidden />
+      <Icon className="h-4 w-4 opacity-80" aria-hidden />
       {label}
     </button>
   )
@@ -75,6 +98,8 @@ export default function Dashboard(): ReactNode {
     setCreateOpen(true)
   }
 
+  const page = PAGE_COPY[dashboardTab] ?? PAGE_COPY.dashboard
+
   let content: ReactNode = null
   switch (dashboardTab) {
     case 'sessions':
@@ -95,14 +120,14 @@ export default function Dashboard(): ReactNode {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
-      <header className="flex shrink-0 items-center gap-3 border-b border-white/5 px-4 py-3.5">
-        <img src={iconUrl} alt="" className="h-7 w-7 rounded-md" aria-hidden />
-        <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
-        <span className="ml-1 text-[10px] uppercase tracking-[0.14em] text-zinc-600">
-          Backtesting console
-        </span>
+      <header className="flex shrink-0 items-center gap-3 border-b border-white/[0.05] px-5 py-4">
+        <img src={iconUrl} alt="" className="h-8 w-8 rounded-lg" aria-hidden />
+        <div className="flex min-w-0 flex-col">
+          <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
+          <span className="text-[11px] text-zinc-500">Backtesting console</span>
+        </div>
 
-        <nav className="ml-5 flex items-center gap-1" aria-label="Console sections">
+        <nav className="ml-6 flex items-center gap-1" aria-label="Console sections">
           {TABS.map((tab) => (
             <TabButton
               key={tab.id}
@@ -119,14 +144,20 @@ export default function Dashboard(): ReactNode {
           target="_blank"
           rel="noopener noreferrer"
           title="BarReplay on GitHub"
-          className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-xl text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+          className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-300"
         >
           <ExternalLink className="h-4 w-4" aria-hidden />
         </a>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
-        <div className="mx-auto w-full max-w-4xl">{content}</div>
+      <main className="min-h-0 flex-1 overflow-y-auto px-6 py-7">
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">{page.title}</h1>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">{page.description}</p>
+          </div>
+          {content}
+        </div>
       </main>
 
       <CreateSessionDialog

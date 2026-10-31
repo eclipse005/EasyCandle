@@ -442,7 +442,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                       }}
                       className={`h-7 rounded-xl border px-2.5 text-xs font-medium transition-colors ${
                         active
-                          ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
+                          ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
                           : 'border-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
                       }`}
                     >
@@ -558,7 +558,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                       aria-checked={checked}
                       onClick={() => setWidgetField(activeTool, key, !checked)}
                       className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
-                        checked ? 'bg-amber-500/80' : 'bg-zinc-700'
+                        checked ? 'bg-primary-500/80' : 'bg-zinc-700'
                       }`}
                     >
                       <span
@@ -598,7 +598,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                   <button
                     type="button"
                     onClick={() => applyPreset(preset.id)}
-                    className="inline-flex h-6 items-center rounded-xl border border-zinc-800 px-1.5 text-[10px] font-medium text-zinc-300 hover:border-amber-500/60 hover:text-amber-300"
+                    className="inline-flex h-6 items-center rounded-xl border border-zinc-800 px-1.5 text-[10px] font-medium text-zinc-300 hover:border-primary-500/50 hover:text-primary-300"
                   >
                     Apply
                   </button>
@@ -638,7 +638,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                   type="submit"
                   disabled={!trimmedName}
                   aria-label="Save preset"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-amber-500/40 text-amber-300 hover:border-amber-400/70 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-600"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-primary-500/40 text-primary-300 hover:border-primary-400/60 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-600"
                 >
                   <Check className="h-3.5 w-3.5" aria-hidden />
                 </button>

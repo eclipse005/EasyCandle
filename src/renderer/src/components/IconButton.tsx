@@ -49,7 +49,7 @@ export default memo(function IconButton({
         ? 'enabled:hover:border-red-500/60 enabled:hover:text-red-300'
         : tone === 'success'
           ? 'enabled:hover:border-emerald-500/60 enabled:hover:text-emerald-300'
-          : 'enabled:hover:border-zinc-500 enabled:hover:text-zinc-100'
+          : 'enabled:hover:border-white/15 enabled:hover:bg-zinc-800/80 enabled:hover:text-zinc-100'
 
   let activeClass: string
   if (ghost) {
@@ -73,10 +73,10 @@ export default memo(function IconButton({
       activeClass = 'border-primary-500/70 bg-primary-950/50 text-primary-300'
     }
   } else {
-    activeClass = 'border-white/10 bg-zinc-900/80 text-zinc-300'
+    activeClass = 'border-white/[0.08] bg-zinc-900/70 text-zinc-300'
   }
 
-  const chrome = ghost ? 'rounded-lg border-0' : 'rounded-lg border'
+  const chrome = ghost ? 'rounded-xl border-0' : 'rounded-xl border'
 
   const button = (
     <button

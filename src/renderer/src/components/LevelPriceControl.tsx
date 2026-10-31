@@ -68,11 +68,11 @@ export default function LevelPriceControl({
   return (
     <div
       className={`flex items-center gap-1 rounded-xl border bg-zinc-900/60 px-1.5 py-0.5 ${
-        picking ? 'border-primary-500/70' : 'border-zinc-800'
+        picking ? 'border-primary-500/70' : 'border-white/10'
       }`}
       title={title}
     >
-      <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+      <span className="px-0.5 text-[11px] font-medium text-zinc-400">
         {label}
       </span>
       <input

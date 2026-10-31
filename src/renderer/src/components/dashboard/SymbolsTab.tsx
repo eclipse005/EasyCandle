@@ -7,6 +7,8 @@ import {
 import { quoteCurrencyForSymbol } from '@shared/pnlCurrency'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
+import SoftCard from '@/components/ui/SoftCard'
+import SoftEmpty from '@/components/ui/SoftEmpty'
 
 /** Per-symbol parameter editor: contract size, spread, commission, precision. */
 export default function SymbolsTab(): ReactNode {
@@ -31,18 +33,16 @@ export default function SymbolsTab(): ReactNode {
 
   return (
     <section>
-      <h2 className="mb-1 text-sm font-semibold text-zinc-100">Symbol parameters</h2>
-      <p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
+      <h2 className="mb-1 text-[13px] font-medium text-zinc-400">Per-symbol defaults</h2>
+      <p className="mb-4 text-[12px] leading-relaxed text-zinc-500">
         Contract size is units per 1.0 lot. Spread (full bid–ask in price) and round-turn commission
         per lot apply to paper fills. Explicit values always win over name-derived defaults.
       </p>
 
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
-          Import a dataset to manage its symbol parameters.
-        </p>
+        <SoftEmpty>Import a dataset to manage its symbol parameters.</SoftEmpty>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {rows.map((row) => {
             const key = row.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '')
             const spec = params[key] ?? {}
@@ -52,13 +52,14 @@ export default function SymbolsTab(): ReactNode {
             const quote = quoteCurrencyForSymbol(row.symbol)
             const precision = spec.precision ?? resolvePricePrecision(row.symbol)
             return (
-              <div
+              <SoftCard
                 key={key}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20"
+                elevated
+                className="flex flex-wrap items-center gap-3 px-4 py-3.5"
               >
                 <div className="min-w-0 flex-1 basis-40">
-                  <div className="text-xs font-semibold text-zinc-100">{row.symbol}</div>
-                  <div className="mt-0.5 text-[11px] text-zinc-500">
+                  <div className="text-[13px] font-semibold text-zinc-100">{row.symbol}</div>
+                  <div className="mt-1 text-[12px] text-zinc-500">
                     {row.datasetCount} dataset{row.datasetCount === 1 ? '' : 's'} ·{' '}
                     {row.candleCount.toLocaleString()} candles · quote {quote} · precision{' '}
                     {precision}
@@ -77,8 +78,8 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setContractSize(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
-                      userSize != null ? 'border-primary-500/40' : 'border-zinc-800'
+                    className={`h-9 w-24 rounded-xl border bg-zinc-900/70 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/40 ${
+                      userSize != null ? 'border-primary-500/35' : 'border-white/10'
                     }`}
                   />
                 </label>
@@ -96,8 +97,8 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setSpread(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
-                      spec.spread != null ? 'border-primary-500/40' : 'border-zinc-800'
+                    className={`h-9 w-24 rounded-xl border bg-zinc-900/70 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/40 ${
+                      spec.spread != null ? 'border-primary-500/35' : 'border-white/10'
                     }`}
                   />
                 </label>
@@ -115,15 +116,15 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
-                      spec.commissionPerLot != null ? 'border-primary-500/40' : 'border-zinc-800'
+                    className={`h-9 w-24 rounded-xl border bg-zinc-900/70 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/40 ${
+                      spec.commissionPerLot != null ? 'border-primary-500/35' : 'border-white/10'
                     }`}
                   />
                 </label>
                 <span className="w-28 shrink-0 text-right text-[11px] tabular-nums text-zinc-500">
                   1 lot = {formatContractSize(effective)} {quote}
                 </span>
-              </div>
+              </SoftCard>
             )
           })}
         </div>

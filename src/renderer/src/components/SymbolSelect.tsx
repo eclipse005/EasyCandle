@@ -132,7 +132,7 @@ export default function SymbolSelect(): ReactElement {
                       }}
                       className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
                         imported && importMeta?.id === entry.id
-                          ? 'bg-amber-950/10 dark:bg-amber-950/40 text-amber-300'
+                          ? 'bg-primary-950/20 dark:bg-primary-950/40 text-primary-300'
                           : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-zinc-100'
                       }`}
                     >

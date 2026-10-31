@@ -254,3 +254,10 @@ Fullscreen: toolbar/ticket/blotter hidden; floating Replay (+ floating Trade if 
 | Session chrome | `SessionDropdown.tsx` |
 | Layout state | `store/uiLayoutStore.ts` |
 | Theme | `lib/theme.ts`, `store/themeStore.ts`, `assets/main.css`, `tailwind.config.js` |
+
+---
+
+## Soft UI modularization (2026-10-31, post soft-pass)
+
+Extracted thin dashboard/dialog primitives under `components/ui/`: `SoftCard`, `SoftButton`, `SoftInput`/`SoftSelect`, `SoftLabel`/`SoftCaption`, `SoftDialog`, `SoftEmpty`, `SoftPageHeader`, plus `cn`. Dashboard tabs + `CreateSessionDialog` consume them; session chrome (ticket/blotter/replay) shares softer caption/spacing patterns inline. `UI_TOKENS` gained `softBorder` / title / secondary / muted for hierarchy. **Deferred:** mass-migrating every toolbar dropdown and settings dialog onto Soft*, splitting `OrderTicketForm`, React Router, and a full design-system storybook.
+

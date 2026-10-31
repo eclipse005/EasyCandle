@@ -229,12 +229,12 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
   const showEst = estLoss != null || estProfit != null || estRr != null
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-3">
       {/* 1. Sell | Buy */}
       <div
         role="group"
         aria-label="Order side"
-        className="flex rounded-xl border border-white/10 bg-zinc-950/60 p-0.5"
+        className="flex rounded-xl border border-white/[0.08] bg-zinc-950/40 p-0.5"
       >
         <button
           type="button"
@@ -281,8 +281,8 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       {/* 3. Risk % chips */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between px-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
-            Set risk percentage
+          <span className="text-[11px] font-medium text-zinc-400">
+            Risk percentage
           </span>
           <span className="text-[10px] tabular-nums text-zinc-600">
             {riskPercent}% of{' '}
@@ -308,10 +308,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
                     : `Risk ${chip}% of ${riskBasis} balance and size lots from SL`
                 }
                 onClick={() => onRiskChip(chip)}
-                className={`h-7 min-w-0 flex-1 rounded-xl border text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`h-8 min-w-0 flex-1 rounded-xl border text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
-                    ? 'border-primary-500 bg-primary-950/40 text-primary-300'
-                    : 'border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    ? 'border-primary-500/50 bg-primary-500/15 text-primary-200'
+                    : 'border-white/10 text-zinc-400 hover:border-white/15 hover:bg-white/[0.03] hover:text-zinc-200'
                 }`}
               >
                 {chip}%
@@ -323,7 +323,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
 
       {/* 4. Est. loss / profit / R:R */}
       {showEst ? (
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-950/50 px-2 py-1.5 text-[10px]">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/40 px-2.5 py-2 text-[11px]">
           <div className="min-w-0">
             <div className="text-zinc-500">Est. loss</div>
             <div
@@ -354,20 +354,20 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-2 py-1.5 text-[10px] text-zinc-600">
+        <div className="rounded-xl border border-white/[0.06] bg-zinc-950/30 px-2.5 py-2 text-[11px] text-zinc-500">
           Set SL / TP to see estimated loss, profit, and R:R.
         </div>
       )}
 
       {/* 5. Market | Limit | Stop */}
       <div className="flex flex-col gap-1">
-        <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
-          Type
+        <span className="px-0.5 text-[11px] font-medium text-zinc-400">
+          Order type
         </span>
         <div
           role="group"
           aria-label="Order type"
-          className="flex rounded-xl border border-white/10 bg-zinc-950/60 p-0.5"
+          className="flex rounded-xl border border-white/[0.08] bg-zinc-950/40 p-0.5"
         >
           {ORDER_TYPES.map((item) => (
             <button
@@ -405,10 +405,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           />
         ) : (
           <div
-            className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5"
+            className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/50 px-1.5 py-0.5"
             title="Market entry uses the current close"
           >
-            <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+            <span className="px-0.5 text-[11px] font-medium text-zinc-400">
               Entry
             </span>
             <span className="min-w-0 flex-1 text-center text-xs font-semibold tabular-nums text-zinc-300">
@@ -452,14 +452,14 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           type="button"
           disabled={!canPlace}
           onClick={submit}
-          className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary-500 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary-500/95 text-sm font-semibold text-white shadow-sm shadow-primary-950/30 transition-colors enabled:hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Place order
         </button>
       </Tooltip>
 
       {mark != null && !canPlace && canSubmit ? (
-        <p className="text-[10px] leading-relaxed text-amber-400/80">
+        <p className="text-[11px] leading-relaxed text-zinc-400">
           {ticketValidationHint(orderType, mark, ticketLevels, side)}
         </p>
       ) : null}

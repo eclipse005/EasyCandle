@@ -80,7 +80,7 @@ export default function PaneChrome({
           aria-pressed={isDriver}
           className={`pointer-events-auto inline-flex h-7 items-center rounded-xl border px-2 text-[10px] font-medium uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             isDriver
-              ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
+              ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
               : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
           }`}
         >

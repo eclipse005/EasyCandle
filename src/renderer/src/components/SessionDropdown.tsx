@@ -38,7 +38,7 @@ export default function SessionDropdown(): ReactElement {
             data-tour="sessions"
             className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2 text-xs font-medium transition-colors ${
               open || active
-                ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
+                ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
                 : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
             }`}
           >
@@ -65,7 +65,7 @@ export default function SessionDropdown(): ReactElement {
               type="submit"
               aria-label="Create session"
               title="Create session from current drawings and orders"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-zinc-800 text-zinc-300 transition-colors hover:border-amber-500/70 hover:text-amber-300"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-zinc-800 text-zinc-300 transition-colors hover:border-primary-500/50 hover:text-primary-300"
             >
               <FolderPlus className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -74,7 +74,7 @@ export default function SessionDropdown(): ReactElement {
           {active && (
             <div className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-amber-300">
+                <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-primary-300">
                   <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span className="truncate">{active.name}</span>
                 </span>
@@ -83,7 +83,7 @@ export default function SessionDropdown(): ReactElement {
                     <button
                       type="button"
                       onClick={() => void saveActiveSession()}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-300 hover:bg-zinc-700/60 transition-colors hover:text-amber-300"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-300 hover:bg-zinc-700/60 transition-colors hover:text-primary-300"
                     >
                       <Save className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -110,12 +110,12 @@ export default function SessionDropdown(): ReactElement {
                   onClick={() => setSessionAutoSave(active.id, !active.autoSave)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors bg-zinc-800 ${
                     active.autoSave
-                      ? 'text-amber-300'
+                      ? 'text-primary-300'
                       : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
                   }`}
                 >
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${active.autoSave ? 'bg-amber-400' : 'bg-zinc-600'}`}
+                    className={`h-1.5 w-1.5 rounded-full ${active.autoSave ? 'bg-primary-400' : 'bg-zinc-600'}`}
                   />
                   Auto-save
                 </button>
@@ -146,7 +146,7 @@ export default function SessionDropdown(): ReactElement {
                         className="flex min-w-0 flex-1 items-center gap-2 rounded py-0.5 text-left"
                       >
                         {isActive ? (
-                          <Check className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                          <Check className="h-3.5 w-3.5 shrink-0 text-primary-300" aria-hidden />
                         ) : (
                           <FolderOpen className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
                         )}

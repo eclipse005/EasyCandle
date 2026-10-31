@@ -15,7 +15,7 @@ export default function RiskRewardControl() {
 
   return (
     <div
-      className="flex flex-col gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 px-1.5 py-1"
+      className="flex flex-col gap-1 rounded-xl border border-white/10 bg-zinc-900/60 px-1.5 py-1"
       title="R:R guide for first SL/TP placement and when you change this value. After that you can drag levels freely."
     >
       <div className="flex items-center gap-1">

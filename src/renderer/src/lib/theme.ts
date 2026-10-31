@@ -6,10 +6,15 @@ export const THEME_STORAGE_KEY = 'bar-replay:theme'
 export const UI_TOKENS = {
   page: '#030303',
   card: '#131415',
+  /** FX Replay hairline (#414347); prefer white/10 or softBorder for chrome. */
   border: '#414347',
+  softBorder: 'rgba(255,255,255,0.06)',
   primary: '#0260FD',
   up: '#06A77D',
-  down: '#ED6A5A'
+  down: '#ED6A5A',
+  title: '#f4f4f5',
+  secondary: '#a1a1aa',
+  muted: '#71717a'
 } as const
 
 export type ChartPalette = {
