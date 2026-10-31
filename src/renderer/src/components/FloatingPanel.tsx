@@ -226,10 +226,10 @@ export default memo(function FloatingPanel({
   return (
     <div
       ref={panelRef}
-      className={`pointer-events-auto absolute z-20 max-w-[min(100%,42rem)] rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-lg shadow-black/50 backdrop-blur-sm ${className}`}
+      className={`pointer-events-auto absolute z-20 max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-zinc-900/95 shadow-lg shadow-black/30 backdrop-blur-sm ${className}`}
       style={style}
     >
-      <div className="flex items-center gap-1 border-b border-zinc-800/90 px-1.5 py-1">
+      <div className="flex items-center gap-1 border-b border-white/5 px-1.5 py-1">
         <button
           type="button"
           aria-label="Drag panel"

@@ -62,7 +62,7 @@ export default function TradeSizeControl({
 
   return (
     <div
-      className="flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900/60 px-1 py-0.5"
+      className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 px-1 py-0.5"
       title={
         kind === 'lot'
           ? 'Lot size 0.01–100 (0.01 step). Type to enter.'

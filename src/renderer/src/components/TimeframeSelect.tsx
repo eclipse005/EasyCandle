@@ -72,7 +72,7 @@ export default function TimeframeSelect() {
             aria-label="Timeframe"
             aria-expanded={open}
             data-tour="timeframe"
-            className="flex h-8 items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900/80 px-2 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Clock3 className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
             <span className="sr-only">Timeframe</span>
@@ -120,7 +120,7 @@ export default function TimeframeSelect() {
       </Dropdown>
 
       {favoriteIds.length > 0 && (
-        <div className="flex h-8 items-center rounded border px-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 border-zinc-700 bg-zinc-900/80 gap-1">
+        <div className="flex h-8 items-center rounded-xl border px-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 border-zinc-800 bg-zinc-900/80 gap-1">
           {favoriteIds.map((id) => (
             <Tooltip text={TIMEFRAMES[id].label} key={id}>
               <button

@@ -29,7 +29,7 @@ const STYLE_OPTIONS = [
 ]
 
 const selectClass =
-  'h-6 w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 text-[11px] text-zinc-200 focus:border-amber-500/70 focus:outline-none'
+  'h-6 w-full min-w-0 rounded-xl border border-zinc-800 bg-zinc-900 px-1 text-[11px] text-zinc-200 focus:border-primary-500/50 focus:outline-none'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -53,7 +53,7 @@ function ColorField({
 }) {
   return (
     <Field label={label}>
-      <label className="relative block h-6 w-full cursor-pointer overflow-hidden rounded border border-zinc-700">
+      <label className="relative block h-6 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-800">
         <span className="absolute inset-0" style={{ background: value }} />
         <input
           type="color"
@@ -133,7 +133,7 @@ export default memo(function DrawingStyleWidget({
               </button>
             </Tooltip>
             {presetsOpen && (
-              <div className="absolute right-0 top-7 z-50 w-44 overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-xl shadow-black/50">
+              <div className="absolute right-0 top-7 z-50 w-44 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-xl shadow-black/50">
                 <div className="border-b border-zinc-800 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-zinc-500">
                   Presets
                 </div>
@@ -152,7 +152,7 @@ export default memo(function DrawingStyleWidget({
                           className="flex w-full items-center gap-2 px-2 py-1 text-left text-xs text-zinc-200 hover:bg-zinc-800/80 hover:text-amber-200"
                         >
                           <span
-                            className="h-3.5 w-3.5 shrink-0 rounded-sm border border-zinc-600"
+                            className="h-3.5 w-3.5 shrink-0 rounded-xl border border-zinc-600"
                             style={{ background: preset.color }}
                           />
                           <span className="min-w-0 flex-1 truncate">{preset.name}</span>

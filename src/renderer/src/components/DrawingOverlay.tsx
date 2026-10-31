@@ -387,7 +387,7 @@ function PositionLimitChip({
             }
             store.selectDrawing(null)
           }}
-          className="flex h-full w-full items-center justify-center rounded-sm border px-2 text-[10px] font-bold text-white transition-colors enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-full w-full items-center justify-center rounded-xl border px-2 text-[10px] font-bold text-white transition-colors enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           style={{
             borderColor: block != null ? '#52525b' : '#f59e0b',
             background:

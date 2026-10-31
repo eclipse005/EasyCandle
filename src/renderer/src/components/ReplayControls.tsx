@@ -136,7 +136,7 @@ export default function ReplayControls() {
               event.currentTarget.blur()
             }}
             aria-label="Toggle next candle pane"
-            className="inline-flex h-8 items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="text-zinc-500">Next</span>
             <span className="font-medium text-primary-300">
@@ -148,7 +148,7 @@ export default function ReplayControls() {
         </Tooltip>
       )}
 
-      <label className="flex h-8 items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900/80 px-2 text-xs text-zinc-400">
+      <label className="flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-400">
         <Gauge className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
         <span className="sr-only">Speed</span>
         <select
@@ -211,7 +211,7 @@ export default function ReplayControls() {
               disabled={busy}
               aria-label={`Jump date ${timezoneTitle}`}
               onChange={(e) => setJumpDate(e.target.value)}
-              className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+              className="h-8 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
             />
             <input
               type="time"
@@ -219,7 +219,7 @@ export default function ReplayControls() {
               disabled={busy}
               aria-label={`Jump time ${timezoneTitle}`}
               onChange={(e) => setJumpTime(e.target.value)}
-              className="h-8 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+              className="h-8 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
             />
             <IconButton type="submit" disabled={busy} tooltip={`Jump to ${timezoneTitle}`}>
               <SkipForward className="h-4 w-4" />

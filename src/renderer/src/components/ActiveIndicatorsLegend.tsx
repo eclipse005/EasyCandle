@@ -17,7 +17,7 @@ export default function ActiveIndicatorsLegend() {
       {rows.map((indicator) => (
         <div
           key={indicator.id}
-          className="pointer-events-auto flex items-center gap-1 rounded border border-zinc-800/80 bg-zinc-950/80 px-1.5 py-0.5 text-[11px] font-medium backdrop-blur-sm"
+          className="pointer-events-auto flex items-center gap-1 rounded-xl border border-zinc-800/80 bg-zinc-950/80 px-1.5 py-0.5 text-[11px] font-medium backdrop-blur-sm"
         >
           <span className="leading-4" style={{ color: indicator.color }}>
             {indicator.label}

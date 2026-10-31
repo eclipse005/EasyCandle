@@ -373,7 +373,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
           setStaleOffer(null)
           setOpen(true)
         }}
-        className="inline-flex h-8 items-center gap-1.5 rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Database className="h-3.5 w-3.5" aria-hidden />
         Import CSV
@@ -389,12 +389,12 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
             role="dialog"
             aria-modal="true"
             aria-labelledby="import-data-title"
-            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+            className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
               <div>
-                <h2 id="import-data-title" className="text-sm font-semibold text-amber-400">
+                <h2 id="import-data-title" className="text-sm font-semibold text-zinc-100">
                   Import data
                 </h2>
                 <p className="mt-0.5 text-[11px] text-zinc-500">
@@ -408,7 +408,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                 aria-label="Close"
                 disabled={disabled}
                 onClick={() => closeDialog()}
-                className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -423,7 +423,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                   type="button"
                   disabled={disabled}
                   onClick={() => void onImportNew()}
-                  className="mt-1.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-1.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {loadProgress ? (
                     <span>Importing…</span>
@@ -445,7 +445,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
               {message && (
                 <div
-                  className={`space-y-2 rounded border px-3 py-2.5 ${
+                  className={`space-y-2 rounded-xl border px-3 py-2.5 ${
                     message.tone === 'error'
                       ? 'border-red-900/60 bg-red-950/20'
                       : message.tone === 'success'
@@ -459,7 +459,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                       type="button"
                       disabled={disabled}
                       onClick={() => openConfirm(staleOffer)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Replace className="h-3.5 w-3.5" aria-hidden />
                       Replace existing import
@@ -469,7 +469,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
               )}
 
               {dataSource === 'imported' && importMeta && (
-                <section className="flex items-center justify-between gap-3 rounded border border-sky-900/50 bg-sky-950/30 px-3 py-2.5">
+                <section className="flex items-center justify-between gap-3 rounded-xl border border-sky-900/50 bg-sky-950/30 px-3 py-2.5">
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-sky-300">
                       {importMeta.symbol} ·{' '}
@@ -486,7 +486,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                     type="button"
                     disabled={disabled}
                     onClick={onExitImported}
-                    className="inline-flex h-8 shrink-0 items-center rounded border border-zinc-700 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+                    className="inline-flex h-8 shrink-0 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
                   >
                     Exit imported
                   </button>
@@ -504,7 +504,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                       : 'No imported datasets yet. Import a CSV to get started.'}
                   </p>
                 ) : (
-                  <ul className="mt-1.5 divide-y divide-zinc-800/80 rounded border border-zinc-800">
+                  <ul className="mt-1.5 divide-y divide-zinc-800/80 rounded-xl border border-zinc-800">
                     {importedList.map((entry) => {
                       const active = importMeta?.id === entry.id
                       const live = active && importMeta ? importMeta : entry
@@ -515,12 +515,12 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                             <p className="flex items-center gap-2 text-xs font-medium text-zinc-100">
                               {live.symbol}
                               {fromMt && (
-                                <span className="rounded-sm border border-emerald-800/70 bg-emerald-950/40 px-1 py-px text-[9px] uppercase tracking-wide text-emerald-300/90">
+                                <span className="rounded-xl border border-emerald-800/70 bg-emerald-950/40 px-1 py-px text-[9px] uppercase tracking-wide text-emerald-300/90">
                                   MetaTrader
                                 </span>
                               )}
                               {active && (
-                                <span className="rounded-sm border border-sky-700/60 bg-sky-950/50 px-1 py-px text-[9px] uppercase tracking-wide text-sky-300">
+                                <span className="rounded-xl border border-sky-700/60 bg-sky-950/50 px-1 py-px text-[9px] uppercase tracking-wide text-sky-300">
                                   Active
                                 </span>
                               )}
@@ -538,7 +538,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                               type="button"
                               disabled={disabled || active}
                               onClick={() => void onLoadDataset(entry)}
-                              className="inline-flex h-8 items-center rounded border border-zinc-700 bg-zinc-900/80 px-2.5 text-xs font-medium text-zinc-300 hover:border-amber-500/60 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 text-xs font-medium text-zinc-300 hover:border-amber-500/60 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {active ? 'Loaded' : 'Load'}
                             </button>
@@ -564,7 +564,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                 type="button"
                 disabled={disabled}
                 onClick={() => closeDialog()}
-                className="inline-flex h-8 items-center rounded border border-zinc-700 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+                className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
               >
                 Close
               </button>

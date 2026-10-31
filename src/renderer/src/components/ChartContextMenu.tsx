@@ -88,7 +88,7 @@ export default function ChartContextMenu({
       ref={rootRef}
       role="menu"
       style={{ left: point.x, top: point.y }}
-      className="absolute z-[60] min-w-[15rem] rounded border border-zinc-700 bg-zinc-950 py-1 shadow-xl shadow-black/50"
+      className="absolute z-[60] min-w-[15rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
     >
       {mode === 'replay' && point.time != null ? (
         <MenuItem

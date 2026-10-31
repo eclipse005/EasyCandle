@@ -1,26 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
   <title id="title">BarReplay Icon</title>
-  <!-- Black rounded square -->
-  <rect width="512" height="512" rx="72" fill="#000000"/>
-  <!-- Five K-line candles: 3 green / 2 red, mountain arc + white play triangle -->
-  <g stroke-linecap="round">
-    <!-- G1 leftmost (shortest) -->
-    <line x1="96" y1="220" x2="96" y2="382" stroke="#00C897" stroke-width="8"/>
-    <rect x="70" y="251" width="52" height="95" rx="4" fill="#00C897"/>
-    <!-- G2 -->
-    <line x1="173" y1="151" x2="173" y2="342" stroke="#00C897" stroke-width="8"/>
-    <rect x="147" y="183" width="52" height="124" rx="4" fill="#00C897"/>
-    <!-- G3 center (tallest) -->
-    <line x1="262" y1="100" x2="262" y2="320" stroke="#00C897" stroke-width="8"/>
-    <rect x="236" y="130" width="52" height="175" rx="4" fill="#00C897"/>
-    <!-- R1 -->
-    <line x1="339" y1="136" x2="339" y2="322" stroke="#FF2A2C" stroke-width="8"/>
-    <rect x="313" y="169" width="52" height="116" rx="4" fill="#FF2A2C"/>
-    <!-- R2 rightmost -->
-    <line x1="418" y1="205" x2="418" y2="382" stroke="#FF2A2C" stroke-width="8"/>
-    <rect x="392" y="239" width="52" height="105" rx="4" fill="#FF2A2C"/>
-  </g>
-  <!-- Play triangle (right-pointing) with black cutout border -->
-  <path d="M214 210 L318 265.5 L214 321 Z" fill="#000000"/>
-  <path d="M224 219 L308 265.5 L224 312 Z" fill="#FFFFFF"/>
+  <!-- Soft near-black rounded square (~rx 22%) -->
+  <rect width="512" height="512" rx="112" fill="#131415"/>
+  <rect x="1.5" y="1.5" width="509" height="509" rx="110.5" fill="none" stroke="#414347" stroke-width="3"/>
+  <!-- Double right-pointing chevrons (FX Replay–inspired), thick for 16–24px legibility -->
+  <!-- Leading chevron (white) -->
+  <path d="M118 156 L268 256 L118 356 L168 256 Z" fill="#F7F7F5"/>
+  <!-- Trailing chevron with soft primary blue accent -->
+  <path d="M248 156 L398 256 L248 356 L298 256 Z" fill="#0260FD"/>
 </svg>

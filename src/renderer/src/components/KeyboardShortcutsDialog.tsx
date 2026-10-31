@@ -18,7 +18,7 @@ const SHORTCUTS: Shortcut[] = [
 
 function Kbd({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-sm border border-zinc-600/50 bg-zinc-800 px-1.5 text-[10px] font-medium uppercase leading-none text-zinc-200">
+    <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-xl border border-zinc-600/50 bg-zinc-800 px-1.5 text-[10px] font-medium uppercase leading-none text-zinc-200">
       {children}
     </kbd>
   )
@@ -51,18 +51,18 @@ export default function KeyboardShortcutsDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        className="w-full max-w-md overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
-          <h2 id="shortcuts-title" className="text-sm font-semibold text-amber-400">
+          <h2 id="shortcuts-title" className="text-sm font-semibold text-zinc-100">
             Keyboard Shortcuts
           </h2>
           <button
             type="button"
             aria-label="Close"
             onClick={() => setOpen(false)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>

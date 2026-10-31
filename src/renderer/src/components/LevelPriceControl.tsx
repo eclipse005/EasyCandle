@@ -67,8 +67,8 @@ export default function LevelPriceControl({
 
   return (
     <div
-      className={`flex items-center gap-1 rounded border bg-zinc-900/60 px-1.5 py-0.5 ${
-        picking ? 'border-primary-500/70' : 'border-zinc-700'
+      className={`flex items-center gap-1 rounded-xl border bg-zinc-900/60 px-1.5 py-0.5 ${
+        picking ? 'border-primary-500/70' : 'border-zinc-800'
       }`}
       title={title}
     >

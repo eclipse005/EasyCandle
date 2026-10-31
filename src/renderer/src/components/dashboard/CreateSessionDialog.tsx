@@ -134,12 +134,12 @@ export default function CreateSessionDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-session-title"
-        className="w-full max-w-md overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
-            <h2 id="create-session-title" className="text-sm font-semibold text-amber-400">
+            <h2 id="create-session-title" className="text-sm font-semibold text-zinc-100">
               New backtesting session
             </h2>
             <p className="mt-0.5 text-[11px] text-zinc-500">
@@ -151,7 +151,7 @@ export default function CreateSessionDialog({
             aria-label="Close"
             disabled={busy}
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
             <X className="h-4 w-4" />
           </button>
@@ -167,7 +167,7 @@ export default function CreateSessionDialog({
               disabled={busy || imports.length === 0}
               aria-label="Dataset"
               onChange={(event) => setDatasetId(event.target.value)}
-              className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+              className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
             >
               {imports.length === 0 ? <option value="">No datasets</option> : null}
               {imports.map((meta) => (
@@ -188,7 +188,7 @@ export default function CreateSessionDialog({
                 disabled={busy}
                 aria-label="Timeframe"
                 onChange={(event) => setTimeframe(event.target.value)}
-                className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
               >
                 {timeframes.map((tf) => (
                   <option key={tf} value={tf}>
@@ -208,7 +208,7 @@ export default function CreateSessionDialog({
                 disabled={busy}
                 aria-label="Start date"
                 onChange={(event) => setStartDate(event.target.value)}
-                className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
               />
             </label>
           </div>
@@ -225,7 +225,7 @@ export default function CreateSessionDialog({
                 disabled={busy}
                 aria-label="Initial balance"
                 onChange={(event) => setBalance(event.target.value)}
-                className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
               />
             </label>
 
@@ -238,7 +238,7 @@ export default function CreateSessionDialog({
                 disabled={busy}
                 aria-label="Strategy"
                 onChange={(event) => setStrategyId(event.target.value)}
-                className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
               >
                 <option value="">None</option>
                 {strategies.map((strategy) => (
@@ -263,7 +263,7 @@ export default function CreateSessionDialog({
                 dataset ? `${dataset.symbol} ${startDate || 'YYYY-MM-DD'}` : 'Session name'
               }
               onChange={(event) => setName(event.target.value)}
-              className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+              className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
             />
           </label>
 
@@ -280,7 +280,7 @@ export default function CreateSessionDialog({
             type="button"
             disabled={busy}
             onClick={onClose}
-            className="inline-flex h-8 items-center rounded border border-zinc-700 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+            className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -288,7 +288,7 @@ export default function CreateSessionDialog({
             type="button"
             disabled={busy || !dataset}
             onClick={submit}
-            className="inline-flex h-8 items-center rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? 'Preparing…' : 'Start session'}
           </button>

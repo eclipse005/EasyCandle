@@ -73,10 +73,10 @@ export default memo(function IconButton({
       activeClass = 'border-primary-500/70 bg-primary-950/50 text-primary-300'
     }
   } else {
-    activeClass = 'border-zinc-700 bg-zinc-900/80 text-zinc-300'
+    activeClass = 'border-white/10 bg-zinc-900/80 text-zinc-300'
   }
 
-  const chrome = ghost ? 'rounded border-0' : 'rounded border'
+  const chrome = ghost ? 'rounded-lg border-0' : 'rounded-lg border'
 
   const button = (
     <button

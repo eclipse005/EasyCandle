@@ -41,10 +41,10 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded px-3 py-2 text-xs font-medium transition-colors ${
+      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors ${
         active
-          ? 'bg-zinc-800 text-zinc-100'
-          : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+          ? 'bg-zinc-800/80 text-zinc-100 shadow-sm shadow-black/20'
+          : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
       }`}
     >
       <Icon className="h-4 w-4" aria-hidden />
@@ -95,14 +95,14 @@ export default function Dashboard(): ReactNode {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
-      <header className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
-        <img src={iconUrl} alt="" className="h-6 w-6 rounded-sm" aria-hidden />
-        <span className="text-sm font-bold tracking-tight text-amber-400">BarReplay</span>
-        <span className="ml-2 text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+      <header className="flex shrink-0 items-center gap-3 border-b border-white/5 px-4 py-3.5">
+        <img src={iconUrl} alt="" className="h-7 w-7 rounded-md" aria-hidden />
+        <span className="text-[15px] font-semibold tracking-tight text-zinc-100">BarReplay</span>
+        <span className="ml-1 text-[10px] uppercase tracking-[0.14em] text-zinc-600">
           Backtesting console
         </span>
 
-        <nav className="ml-6 flex items-center gap-1" aria-label="Console sections">
+        <nav className="ml-5 flex items-center gap-1" aria-label="Console sections">
           {TABS.map((tab) => (
             <TabButton
               key={tab.id}
@@ -119,13 +119,13 @@ export default function Dashboard(): ReactNode {
           target="_blank"
           rel="noopener noreferrer"
           title="BarReplay on GitHub"
-          className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
+          className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-xl text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
         >
           <ExternalLink className="h-4 w-4" aria-hidden />
         </a>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
         <div className="mx-auto w-full max-w-4xl">{content}</div>
       </main>
 

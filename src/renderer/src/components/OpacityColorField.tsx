@@ -26,7 +26,7 @@ export function FillSwatch({
     <label className="flex min-w-0 flex-1 flex-col gap-0.5">
       <FieldLabel>{label}</FieldLabel>
       <label
-        className="relative block h-6 w-full cursor-pointer overflow-hidden rounded border border-zinc-700"
+        className="relative block h-6 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-800"
         style={{ background: CHECKERBOARD }}
       >
         <span className="absolute inset-0" style={{ background: toColorString(parsed) }} />
@@ -121,17 +121,17 @@ export function ColorPickerPopup({
           aria-expanded={open}
           title={label}
           onClick={() => setOpen((o) => !o)}
-          className={`relative block h-6 w-full cursor-pointer overflow-hidden rounded border transition-colors ${
-            open ? 'border-amber-500/70' : 'border-zinc-700 hover:border-zinc-500'
+          className={`relative block h-6 w-full cursor-pointer overflow-hidden rounded-xl border transition-colors ${
+            open ? 'border-amber-500/70' : 'border-zinc-800 hover:border-zinc-500'
           }`}
           style={{ background: CHECKERBOARD }}
         >
           <span className="absolute inset-0" style={{ background: toColorString(parsed) }} />
         </button>
         {open && (
-          <div className="absolute left-0 top-7 z-50 w-56 rounded border border-zinc-700 bg-zinc-950 p-2 shadow-xl shadow-black/50">
+          <div className="absolute left-0 top-7 z-50 w-56 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-xl shadow-black/50">
             <div className="flex items-center gap-2">
-              <label className="relative block h-7 w-9 shrink-0 cursor-pointer overflow-hidden rounded border border-zinc-700">
+              <label className="relative block h-7 w-9 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-zinc-800">
                 <span
                   className="absolute inset-0"
                   style={{ background: CHECKERBOARD }}

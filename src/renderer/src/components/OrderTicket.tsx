@@ -12,11 +12,11 @@ export default function OrderTicket() {
     <aside
       data-tour="paper-trade"
       inert={preview || undefined}
-      className={`flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-sm border border-zinc-700 bg-zinc-900 ${
+      className={`flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/80 shadow-lg shadow-black/20 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >
-      <div className="shrink-0 border-b border-zinc-700/80 px-3 py-2">
+      <div className="shrink-0 border-b border-white/10 px-3 py-2">
         <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Order ticket</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">

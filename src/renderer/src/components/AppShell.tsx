@@ -78,7 +78,7 @@ export default function AppShell({
             <button
               type="button"
               onClick={() => void loadCandles()}
-              className="rounded border border-red-800/80 px-2 py-0.5 text-xs text-red-200 hover:border-red-600 hover:text-red-100"
+              className="rounded-xl border border-red-800/80 px-2 py-0.5 text-xs text-red-200 hover:border-red-600 hover:text-red-100"
             >
               Retry
             </button>
@@ -103,7 +103,7 @@ export default function AppShell({
           }`}
         >
           {showDrawingToolbar && <DrawingToolbar />}
-          <div className="relative h-full min-h-0 min-w-0 flex-1 rounded-sm border border-zinc-700">
+          <div className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
             {children}
             {showPaperTrade && inReplay && !chartFullscreen && (
               <>

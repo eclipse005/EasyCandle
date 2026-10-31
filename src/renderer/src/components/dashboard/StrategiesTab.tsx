@@ -78,12 +78,12 @@ export default function StrategiesTab(): ReactNode {
           placeholder="New strategy name"
           aria-label="New strategy name"
           onChange={(event) => setNewName(event.target.value)}
-          className="h-8 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100 outline-none focus:border-amber-500/60"
+          className="h-8 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-100 outline-none focus:border-primary-500/50"
         />
         <button
           type="submit"
           disabled={!newName.trim()}
-          className="inline-flex h-8 items-center gap-1.5 rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Plus className="h-4 w-4" aria-hidden />
           Add
@@ -91,7 +91,7 @@ export default function StrategiesTab(): ReactNode {
       </form>
 
       {strategies.length === 0 ? (
-        <p className="rounded border border-zinc-800 bg-zinc-900/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
           No strategies yet — add one and tag sessions with it.
         </p>
       ) : (
@@ -99,7 +99,7 @@ export default function StrategiesTab(): ReactNode {
           {strategies.map((strategy) => (
             <div
               key={strategy.id}
-              className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20"
             >
               <div className="min-w-0 flex-1">
                 {editingId === strategy.id ? (
@@ -120,7 +120,7 @@ export default function StrategiesTab(): ReactNode {
                       }
                       if (event.key === 'Escape') setEditingId(null)
                     }}
-                    className="h-7 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100 outline-none focus:border-amber-500/60"
+                    className="h-7 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-100 outline-none focus:border-primary-500/50"
                   />
                 ) : (
                   <button

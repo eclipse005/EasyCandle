@@ -33,7 +33,7 @@ export default function PaneChrome({
           {label}
         </span>
         {timeframeEditable && onTimeframeChange ? (
-          <label className="flex h-6 items-center gap-1 rounded border border-zinc-700 bg-zinc-900/90 px-1.5 text-[11px] text-zinc-400">
+          <label className="flex h-6 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/90 px-1.5 text-[11px] text-zinc-400">
             <Clock3 className="h-3 w-3 shrink-0 text-zinc-500" aria-hidden />
             <span className="sr-only">{label} timeframe</span>
             <select
@@ -52,7 +52,7 @@ export default function PaneChrome({
             </select>
           </label>
         ) : (
-          <span className="rounded border border-zinc-800 bg-zinc-900/80 px-1.5 py-0.5 text-[11px] text-zinc-400">
+          <span className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 py-0.5 text-[11px] text-zinc-400">
             {TIMEFRAMES[timeframe]?.label ?? timeframe}
           </span>
         )}
@@ -78,10 +78,10 @@ export default function PaneChrome({
               : `Use ${TIMEFRAMES[timeframe]?.label ?? timeframe} for next candle`
           }
           aria-pressed={isDriver}
-          className={`pointer-events-auto inline-flex h-7 items-center rounded border px-2 text-[10px] font-medium uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`pointer-events-auto inline-flex h-7 items-center rounded-xl border px-2 text-[10px] font-medium uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             isDriver
               ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-              : 'border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+              : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
           }`}
         >
           {isDriver ? `Next · ${TIMEFRAMES[timeframe]?.label ?? timeframe}` : 'Use for next'}

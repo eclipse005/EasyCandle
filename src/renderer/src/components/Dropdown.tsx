@@ -49,7 +49,7 @@ export default memo(function Dropdown({
       {open && (
         <div
           role="menu"
-          className={`absolute z-50 min-w-[8rem] overflow-hidden rounded border border-zinc-700 bg-zinc-950 py-1 shadow-xl shadow-black/10 ${
+          className={`absolute z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/30 backdrop-blur-sm ${
             placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
           } ${align === 'end' ? 'right-0' : 'left-0'} ${menuClassName}`}
         >

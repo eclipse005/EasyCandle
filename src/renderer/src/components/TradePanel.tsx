@@ -280,7 +280,7 @@ function ClosedPositionRow({
         aria-label="Trade note"
         maxLength={500}
         onBlur={(event) => onNoteChange(event.currentTarget.value)}
-        className="h-6 w-full rounded border border-transparent bg-transparent px-1 text-[10px] text-zinc-400 outline-none placeholder:text-zinc-700 hover:border-zinc-800 focus:border-zinc-700 focus:bg-zinc-900/60"
+        className="h-6 w-full rounded-xl border border-transparent bg-transparent px-1 text-[10px] text-zinc-400 outline-none placeholder:text-zinc-700 hover:border-zinc-800 focus:border-zinc-800 focus:bg-zinc-900/60"
       />
     </li>
   )
@@ -452,7 +452,7 @@ export default function TradePanel() {
   return (
     <div
       inert={preview || undefined}
-      className={`mt-1.5 shrink-0 rounded-sm border border-zinc-700 bg-zinc-900 pb-12 ${
+      className={`mt-1.5 shrink-0 rounded-2xl border border-white/10 bg-zinc-900/80 pb-12 shadow-lg shadow-black/20 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >

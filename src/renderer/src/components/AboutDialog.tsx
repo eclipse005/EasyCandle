@@ -46,11 +46,11 @@ export default function AboutDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="about-title"
-        className="relative w-full max-w-[22rem] overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="relative w-full max-w-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-amber-500/[0.08] to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary-500/[0.08] to-transparent"
           aria-hidden
         />
 
@@ -58,7 +58,7 @@ export default function AboutDialog() {
           type="button"
           aria-label="Close"
           onClick={() => setOpen(false)}
-          className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"
+          className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/5 hover:text-zinc-100"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -70,7 +70,7 @@ export default function AboutDialog() {
               alt=""
               width={48}
               height={48}
-              className="h-12 w-12 rounded-xl border border-amber-500/20 shadow-sm shadow-amber-950/40"
+              className="h-12 w-12 rounded-xl border border-white/10 shadow-lg shadow-black/30"
               aria-hidden
             />
             <div className="min-w-0">
@@ -79,7 +79,7 @@ export default function AboutDialog() {
               </h2>
               {version ? (
                 <p className="mt-1">
-                  <span className="inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400">
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400">
                     Version {version}
                   </span>
                 </p>

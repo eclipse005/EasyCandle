@@ -162,11 +162,11 @@ function ColorField({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={`flex w-full items-center gap-2 rounded px-1 py-1 transition-colors ${
-          open ? 'bg-zinc-900 ring-1 ring-amber-500/50' : 'hover:bg-zinc-900'
+          open ? 'bg-zinc-900 ring-1 ring-primary-500/40' : 'hover:bg-zinc-900'
         }`}
       >
         <span
-          className="relative h-5 w-7 shrink-0 overflow-hidden rounded border border-zinc-700"
+          className="relative h-5 w-7 shrink-0 overflow-hidden rounded-xl border border-zinc-800"
           style={{ background: CHECKERBOARD }}
         >
           <span
@@ -185,7 +185,7 @@ function ColorField({
             ref={popupRef}
             role="dialog"
             aria-label={`${label} color`}
-            className="fixed z-[70] w-60 rounded border border-zinc-700 bg-zinc-950 p-3 shadow-2xl shadow-black/60"
+            className="fixed z-[70] w-60 rounded-xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl shadow-black/60"
             style={{ top: pos.top, left: pos.left }}
           >
             <div className="flex items-center justify-between gap-2">
@@ -203,7 +203,7 @@ function ColorField({
             </div>
 
             <label
-              className="relative mt-2 block h-20 w-full cursor-pointer overflow-hidden rounded border border-zinc-700"
+              className="relative mt-2 block h-20 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-800"
               style={{ background: CHECKERBOARD }}
             >
               <span
@@ -269,7 +269,7 @@ function SelectField<T extends string | number>({
           const match = options.find((option) => String(option.value) === event.target.value)
           if (match) onChange(match.value)
         }}
-        className="h-7 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+        className="h-7 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
       >
         {options.map((option) => (
           <option key={String(option.value)} value={String(option.value)}>
@@ -359,7 +359,7 @@ function SaveTemplateAsDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="save-template-title"
-        className="w-full max-w-sm overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
@@ -370,7 +370,7 @@ function SaveTemplateAsDialog({
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -393,20 +393,20 @@ function SaveTemplateAsDialog({
             value={name}
             maxLength={PRESET_NAME_MAX_LENGTH}
             onChange={(event) => setName(event.target.value)}
-            className="mt-1.5 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+            className="mt-1.5 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
           />
           <div className="mt-4 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 items-center rounded border border-zinc-700 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+              className="inline-flex h-8 items-center rounded-xl border border-zinc-800 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!trimmed}
-              className="inline-flex h-8 items-center rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-600"
+              className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-600"
             >
               Save
             </button>
@@ -504,18 +504,18 @@ export default function ChartSettingsDialog(): ReactElement | null {
         role="dialog"
         aria-modal="true"
         aria-labelledby="chart-settings-title"
-        className="flex max-h-[calc(100vh-3rem)] w-full max-w-lg flex-col overflow-visible rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="flex max-h-[calc(100vh-3rem)] w-full max-w-lg flex-col overflow-visible rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
-          <h2 id="chart-settings-title" className="text-sm font-semibold text-amber-400">
+          <h2 id="chart-settings-title" className="text-sm font-semibold text-zinc-100">
             Chart Settings
           </h2>
           <button
             type="button"
             aria-label="Close"
             onClick={closeDialog}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -632,10 +632,10 @@ export default function ChartSettingsDialog(): ReactElement | null {
               aria-haspopup="menu"
               aria-expanded={templateMenuOpen}
               onClick={() => setTemplateMenuOpen((value) => !value)}
-              className={`inline-flex h-8 items-center gap-1.5 rounded border px-2.5 text-xs font-medium transition-colors ${
+              className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium transition-colors ${
                 templateMenuOpen
                   ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-                  : 'border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+                  : 'border-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
               }`}
             >
               Template
@@ -644,7 +644,7 @@ export default function ChartSettingsDialog(): ReactElement | null {
             {templateMenuOpen && (
               <div
                 role="menu"
-                className="absolute bottom-full left-0 z-50 mb-1 min-w-[11rem] overflow-hidden rounded border border-zinc-700 bg-zinc-950 py-1 shadow-xl shadow-black/40"
+                className="absolute bottom-full left-0 z-50 mb-1 min-w-[11rem] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 py-1 shadow-xl shadow-black/40"
               >
                 {presets.length > 0 && (
                   <>

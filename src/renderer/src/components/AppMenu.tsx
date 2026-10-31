@@ -51,7 +51,7 @@ function MenuEntryView({ entry, onClose }: { entry: MenuEntry; onClose: () => vo
         rel="noopener noreferrer"
         onClick={onClose}
         title={entry.title}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-100"
       >
         <span className="flex w-4 shrink-0 items-center justify-center">
           {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -72,7 +72,7 @@ function MenuEntryView({ entry, onClose }: { entry: MenuEntry; onClose: () => vo
         entry.onSelect()
         onClose()
       }}
-      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
     >
       <span className="flex w-4 shrink-0 items-center justify-center">
         {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -229,19 +229,19 @@ export default function AppMenu() {
         aria-expanded={open}
         data-tour="app-menu"
         onClick={() => setOpen((value) => !value)}
-        className={`flex items-center gap-1.5 rounded px-2 py-1 transition-colors ${
-          open ? 'bg-zinc-800' : 'hover:bg-zinc-800/60'
+        className={`flex items-center gap-2 rounded-xl px-2 py-1 transition-colors ${
+          open ? 'bg-zinc-800/80' : 'hover:bg-white/5'
         }`}
       >
-        <img src={iconUrl} alt="" width={18} height={18} className="h-[18px] w-[18px] rounded-sm" aria-hidden />
-        <span className="text-xs font-bold tracking-tight text-amber-400">BarReplay</span>
+        <img src={iconUrl} alt="" width={20} height={20} className="h-5 w-5 rounded-md" aria-hidden />
+        <span className="text-xs font-semibold tracking-tight text-zinc-100">BarReplay</span>
         <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
       {open && !chartFullscreen && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-1 min-w-[13rem] rounded border border-zinc-700 bg-zinc-950 py-1 shadow-xl shadow-black/50"
+          className="absolute left-0 top-full z-50 mt-1.5 min-w-[13rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
         >
           {entries.map((entry, index) => (
             <MenuEntryView key={index} entry={entry} onClose={() => setOpen(false)} />

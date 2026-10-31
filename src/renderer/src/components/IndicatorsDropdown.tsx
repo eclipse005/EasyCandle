@@ -19,10 +19,10 @@ export default function IndicatorsDropdown() {
               onClick={toggle}
               aria-label="Indicators"
               aria-expanded={open}
-              className={`inline-flex h-8 items-center gap-0.5 rounded border px-1.5 transition-colors ${
+              className={`inline-flex h-8 items-center gap-0.5 rounded-xl border px-1.5 transition-colors ${
                 open
                   ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-                  : 'border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+                  : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
               }`}
             >
               <LineChart className="h-3.5 w-3.5 shrink-0" aria-hidden />

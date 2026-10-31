@@ -28,7 +28,7 @@ export default function DatasetsTab({
       </div>
 
       {ordered.length === 0 ? (
-        <p className="rounded border border-zinc-800 bg-zinc-900/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
           No datasets yet — import a CSV to get started.
         </p>
       ) : (
@@ -39,7 +39,7 @@ export default function DatasetsTab({
             return (
               <div
                 key={meta.id}
-                className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2.5"
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20"
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-semibold text-zinc-100">
@@ -56,7 +56,7 @@ export default function DatasetsTab({
                   type="button"
                   aria-label={`New session from ${meta.symbol}`}
                   onClick={() => onNewSession(meta.id)}
-                  className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-zinc-700 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  className="inline-flex h-7 shrink-0 items-center gap-1 rounded-xl border border-zinc-800 px-2 text-[10px] font-semibold uppercase text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
                 >
                   <Plus className="h-3 w-3" aria-hidden />
                   New session

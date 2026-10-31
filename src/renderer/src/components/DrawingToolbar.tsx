@@ -53,7 +53,7 @@ export default memo(function DrawingToolbar() {
     return (
       <div
         role="menu"
-        className="absolute left-full top-0 z-[70] ml-0.5 min-w-[11rem] rounded border border-zinc-700 bg-zinc-950 py-1 shadow-xl shadow-black/50"
+        className="absolute left-full top-0 z-[70] ml-1 min-w-[11rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
       >
         {group.tools.map((tool) => (
           <button
@@ -80,7 +80,7 @@ export default memo(function DrawingToolbar() {
       role="toolbar"
       aria-label="Drawing tools"
       data-tour="drawing-toolbar"
-      className="flex h-full w-[49px] shrink-0 flex-col items-center gap-0.5 rounded-sm border border-zinc-800 bg-zinc-900/60 px-1.5 py-2"
+      className="flex h-full w-[49px] shrink-0 flex-col items-center gap-0.5 rounded-2xl border border-white/5 bg-zinc-900/50 px-1.5 py-2 shadow-lg shadow-black/20"
     >
       {/* Select / pan */}
       <IconButton

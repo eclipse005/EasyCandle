@@ -234,7 +234,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       <div
         role="group"
         aria-label="Order side"
-        className="flex rounded-md border border-zinc-700 bg-zinc-950/60 p-0.5"
+        className="flex rounded-xl border border-white/10 bg-zinc-950/60 p-0.5"
       >
         <button
           type="button"
@@ -308,10 +308,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
                     : `Risk ${chip}% of ${riskBasis} balance and size lots from SL`
                 }
                 onClick={() => onRiskChip(chip)}
-                className={`h-7 min-w-0 flex-1 rounded border text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`h-7 min-w-0 flex-1 rounded-xl border text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
                     ? 'border-primary-500 bg-primary-950/40 text-primary-300'
-                    : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    : 'border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
                 }`}
               >
                 {chip}%
@@ -323,7 +323,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
 
       {/* 4. Est. loss / profit / R:R */}
       {showEst ? (
-        <div className="grid grid-cols-3 gap-1 rounded-md border border-zinc-700 bg-zinc-950/50 px-2 py-1.5 text-[10px]">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-zinc-800 bg-zinc-950/50 px-2 py-1.5 text-[10px]">
           <div className="min-w-0">
             <div className="text-zinc-500">Est. loss</div>
             <div
@@ -354,7 +354,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           </div>
         </div>
       ) : (
-        <div className="rounded-md border border-zinc-800 bg-zinc-950/40 px-2 py-1.5 text-[10px] text-zinc-600">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-2 py-1.5 text-[10px] text-zinc-600">
           Set SL / TP to see estimated loss, profit, and R:R.
         </div>
       )}
@@ -367,7 +367,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         <div
           role="group"
           aria-label="Order type"
-          className="flex rounded-md border border-zinc-700 bg-zinc-950/60 p-0.5"
+          className="flex rounded-xl border border-white/10 bg-zinc-950/60 p-0.5"
         >
           {ORDER_TYPES.map((item) => (
             <button
@@ -405,7 +405,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           />
         ) : (
           <div
-            className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5"
+            className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5"
             title="Market entry uses the current close"
           >
             <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">

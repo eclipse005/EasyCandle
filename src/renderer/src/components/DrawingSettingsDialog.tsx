@@ -63,7 +63,7 @@ function ColorSwatch({
       <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
         {label}
       </span>
-      <label className="relative block h-6 w-full cursor-pointer overflow-hidden rounded border border-zinc-700">
+      <label className="relative block h-6 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-800">
         <span className="absolute inset-0" style={{ background: toColorString(parsed) }} />
         <input
           type="color"
@@ -110,7 +110,7 @@ function StyleControls({
           <select
             value={String(style.lineWidth)}
             onChange={(event) => onChange({ lineWidth: Number(event.target.value) })}
-            className="h-6 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+            className="h-6 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
           >
             {WIDTH_OPTIONS.map((option) => (
               <option key={option.value} value={String(option.value)}>
@@ -126,7 +126,7 @@ function StyleControls({
           <select
             value={String(style.lineStyle)}
             onChange={(event) => onChange({ lineStyle: Number(event.target.value) as DrawingLineStyle })}
-            className="h-6 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+            className="h-6 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
           >
             {LINE_STYLE_OPTIONS.map((option) => (
               <option key={option.value} value={String(option.value)}>
@@ -220,10 +220,10 @@ function FibLevelsEditor({
                 if (!Number.isFinite(ratio)) return
                 commitLevel(index, { ratio })
               }}
-              className="h-6 w-16 shrink-0 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+              className="h-6 w-16 shrink-0 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
             />
             <label
-              className="relative block h-6 w-9 shrink-0 cursor-pointer overflow-hidden rounded border border-zinc-700"
+              className="relative block h-6 w-9 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-zinc-800"
               style={{
                 background: level.color ?? accentColor,
                 opacity: hasColor ? 1 : 0.35
@@ -249,7 +249,7 @@ function FibLevelsEditor({
               title="Inherit the drawing color"
               disabled={!hasColor}
               onClick={() => commitLevel(index, { color: undefined })}
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Undo2 className="h-3 w-3" aria-hidden />
             </button>
@@ -262,7 +262,7 @@ function FibLevelsEditor({
                   lineStyle: value < 0 ? undefined : (value as DrawingLineStyle)
                 })
               }}
-              className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+              className="h-6 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-1 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
             >
               <option value={-1}>Auto</option>
               {LINE_STYLE_OPTIONS.map((option) => (
@@ -408,18 +408,18 @@ export default function DrawingSettingsDialog(): ReactElement | null {
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawing-settings-title"
-        className="flex max-h-[calc(100vh-3rem)] w-full max-w-lg flex-col overflow-visible rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="flex max-h-[calc(100vh-3rem)] w-full max-w-lg flex-col overflow-visible rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-2.5">
-          <h2 id="drawing-settings-title" className="text-sm font-semibold text-amber-400">
+          <h2 id="drawing-settings-title" className="text-sm font-semibold text-zinc-100">
             Drawing Settings
           </h2>
           <button
             type="button"
             aria-label="Close"
             onClick={() => setOpen(false)}
-            className="inline-flex h-7 w-7 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -440,10 +440,10 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                         setActiveTool(tool)
                         setSaveAsOpen(false)
                       }}
-                      className={`h-7 rounded border px-2.5 text-xs font-medium transition-colors ${
+                      className={`h-7 rounded-xl border px-2.5 text-xs font-medium transition-colors ${
                         active
                           ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-                          : 'border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+                          : 'border-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
                       }`}
                     >
                       {TOOL_LABELS[tool]}
@@ -583,10 +583,10 @@ export default function DrawingSettingsDialog(): ReactElement | null {
               {toolPresets.map((preset) => (
                 <div
                   key={preset.id}
-                  className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-0.5"
+                  className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-2 py-0.5"
                 >
                   <span
-                    className="h-4 w-4 shrink-0 rounded border border-zinc-700"
+                    className="h-4 w-4 shrink-0 rounded-xl border border-zinc-800"
                     style={{ background: preset.color }}
                   />
                   <span className="min-w-0 flex-1 truncate text-xs text-zinc-200">
@@ -598,7 +598,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                   <button
                     type="button"
                     onClick={() => applyPreset(preset.id)}
-                    className="inline-flex h-6 items-center rounded border border-zinc-700 px-1.5 text-[10px] font-medium text-zinc-300 hover:border-amber-500/60 hover:text-amber-300"
+                    className="inline-flex h-6 items-center rounded-xl border border-zinc-800 px-1.5 text-[10px] font-medium text-zinc-300 hover:border-amber-500/60 hover:text-amber-300"
                   >
                     Apply
                   </button>
@@ -632,13 +632,13 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                   maxLength={PRESET_NAME_MAX_LENGTH}
                   placeholder="Preset name…"
                   onChange={(event) => setPresetName(event.target.value)}
-                  className="h-7 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-amber-500/70 focus:outline-none"
+                  className="h-7 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
                 />
                 <button
                   type="submit"
                   disabled={!trimmedName}
                   aria-label="Save preset"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-amber-500/40 text-amber-300 hover:border-amber-400/70 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-600"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-amber-500/40 text-amber-300 hover:border-amber-400/70 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-600"
                 >
                   <Check className="h-3.5 w-3.5" aria-hidden />
                 </button>
@@ -646,7 +646,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
                   type="button"
                   aria-label="Cancel saving preset"
                   onClick={() => setSaveAsOpen(false)}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden />
                 </button>
@@ -670,7 +670,7 @@ export default function DrawingSettingsDialog(): ReactElement | null {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="inline-flex h-7 items-center rounded border border-zinc-700 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-7 items-center rounded-xl border border-zinc-800 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
           >
             Done
           </button>

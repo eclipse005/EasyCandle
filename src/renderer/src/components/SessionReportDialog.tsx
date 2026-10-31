@@ -80,7 +80,7 @@ function EquityCurveChart({
   const last = points[points.length - 1]
   const up = last.equity >= points[0].equity
   return (
-    <div className="mb-4 rounded border border-zinc-800/80 bg-zinc-900/40 p-3">
+    <div className="mb-4 rounded-xl border border-white/5 bg-zinc-900/50 p-3 shadow-lg shadow-black/10">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Equity curve</h3>
         <span className={`text-[11px] tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -191,12 +191,12 @@ export default function SessionReportDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-report-title"
-        className="flex max-h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="flex max-h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
-            <h2 id="session-report-title" className="text-sm font-semibold text-amber-400">
+            <h2 id="session-report-title" className="text-sm font-semibold text-zinc-100">
               Session performance
             </h2>
             <p className="mt-0.5 text-[11px] text-zinc-500">
@@ -213,7 +213,7 @@ export default function SessionReportDialog() {
             type="button"
             aria-label="Close report"
             onClick={dismiss}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
             <X className="h-4 w-4" />
           </button>
@@ -278,7 +278,7 @@ export default function SessionReportDialog() {
           <button
             type="button"
             onClick={exportCsv}
-            className="inline-flex h-8 items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
             Export CSV
@@ -286,7 +286,7 @@ export default function SessionReportDialog() {
           <button
             type="button"
             onClick={dismiss}
-            className="inline-flex h-8 items-center rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200"
+            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200"
           >
             Done
           </button>

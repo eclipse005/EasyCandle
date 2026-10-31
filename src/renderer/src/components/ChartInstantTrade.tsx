@@ -63,14 +63,14 @@ export default function ChartInstantTrade() {
 
   return (
     <div
-      className="pointer-events-auto absolute bottom-7 left-2 z-20 flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-900/95 p-1 shadow-lg shadow-black/40 backdrop-blur-sm"
+      className="pointer-events-auto absolute bottom-7 left-2 z-20 flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/95 p-1 shadow-lg shadow-black/30 backdrop-blur-sm"
       data-tour="chart-instant-trade"
     >
       <button
         type="button"
         disabled={busy}
         onClick={() => paperBuy()}
-        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded px-2.5 text-xs font-semibold text-white transition-colors bg-primary-500 hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded-lg px-2.5 text-xs font-semibold text-white transition-colors bg-primary-500 hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Buy
       </button>
@@ -78,11 +78,11 @@ export default function ChartInstantTrade() {
         type="button"
         disabled={busy}
         onClick={() => paperSell()}
-        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded px-2.5 text-xs font-semibold text-white transition-colors bg-red-400 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded-lg px-2.5 text-xs font-semibold text-white transition-colors bg-red-400 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Sell
       </button>
-      <label className="flex h-7 items-center rounded border border-zinc-700 bg-zinc-950 px-1.5">
+      <label className="flex h-7 items-center rounded-xl border border-zinc-800 bg-zinc-950 px-1.5">
         <span className="sr-only">Order size</span>
         <input
           type="text"

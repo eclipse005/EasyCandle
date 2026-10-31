@@ -122,7 +122,7 @@ export default memo(function OhlcLegend({
   const time = typeof bar.time === 'number' ? bar.time : Number(bar.time)
 
   return (
-    <div className="flex select-none items-center gap-2.5 rounded border border-zinc-800/80 bg-zinc-950/80 px-2.5 py-1 text-[11px] font-medium tabular-nums backdrop-blur-sm">
+    <div className="flex select-none items-center gap-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/80 px-2.5 py-1 text-[11px] font-medium tabular-nums backdrop-blur-sm">
       <span className="text-zinc-500">{formatSessionCandleTime(time, timezone)}</span>
       {line ? (
         <span className="flex items-center gap-1">

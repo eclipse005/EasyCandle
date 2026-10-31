@@ -38,7 +38,7 @@ export default function SymbolsTab(): ReactNode {
       </p>
 
       {rows.length === 0 ? (
-        <p className="rounded border border-zinc-800 bg-zinc-900/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <p className="rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-8 text-center text-xs text-zinc-500">
           Import a dataset to manage its symbol parameters.
         </p>
       ) : (
@@ -54,7 +54,7 @@ export default function SymbolsTab(): ReactNode {
             return (
               <div
                 key={key}
-                className="flex flex-wrap items-center gap-3 rounded border border-zinc-800 bg-zinc-900/60 px-3 py-2.5"
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-white/5 bg-zinc-900/50 px-3.5 py-3 shadow-lg shadow-black/20"
               >
                 <div className="min-w-0 flex-1 basis-40">
                   <div className="text-xs font-semibold text-zinc-100">{row.symbol}</div>
@@ -77,8 +77,8 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setContractSize(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
-                      userSize != null ? 'border-amber-500/40' : 'border-zinc-700'
+                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
+                      userSize != null ? 'border-primary-500/40' : 'border-zinc-800'
                     }`}
                   />
                 </label>
@@ -96,8 +96,8 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setSpread(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
-                      spec.spread != null ? 'border-amber-500/40' : 'border-zinc-700'
+                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
+                      spec.spread != null ? 'border-primary-500/40' : 'border-zinc-800'
                     }`}
                   />
                 </label>
@@ -115,8 +115,8 @@ export default function SymbolsTab(): ReactNode {
                       const text = event.target.value.trim()
                       setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                     }}
-                    className={`h-8 w-24 rounded border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 ${
-                      spec.commissionPerLot != null ? 'border-amber-500/40' : 'border-zinc-700'
+                    className={`h-8 w-24 rounded-xl border bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 ${
+                      spec.commissionPerLot != null ? 'border-primary-500/40' : 'border-zinc-800'
                     }`}
                   />
                 </label>

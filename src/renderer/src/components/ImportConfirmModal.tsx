@@ -130,12 +130,12 @@ export default function ImportConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="import-confirm-title"
-        className="w-full max-w-md overflow-hidden rounded border border-zinc-700 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
-            <h2 id="import-confirm-title" className="text-sm font-semibold text-amber-400">
+            <h2 id="import-confirm-title" className="text-sm font-semibold text-zinc-100">
               {isReplace ? 'Replace import' : isUpdate ? 'Update import' : 'Confirm import'}
             </h2>
             <p className="mt-0.5 truncate text-[11px] text-zinc-500" title={details.fileName}>
@@ -147,7 +147,7 @@ export default function ImportConfirmModal({
             aria-label="Cancel import"
             disabled={busy}
             onClick={onCancel}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
             <X className="h-4 w-4" />
           </button>
@@ -168,7 +168,7 @@ export default function ImportConfirmModal({
                   placeholder="e.g. XAUUSD"
                   aria-label="Symbol"
                   onChange={(event) => setSymbol(event.target.value.toUpperCase())}
-                  className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                  className="mt-1 h-8 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                 />
               ) : (
                 <span className="mt-1 block font-medium text-zinc-100">{details.symbol}</span>
@@ -199,7 +199,7 @@ export default function ImportConfirmModal({
                     placeholder={defaultContractSize != null ? String(defaultContractSize) : ''}
                     aria-label="Contract size"
                     onChange={(event) => setContractSizeText(event.target.value)}
-                    className="h-8 w-28 rounded border border-zinc-700 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-amber-500/60 disabled:opacity-40"
+                    className="h-8 w-28 rounded-xl border border-zinc-800 bg-zinc-900 px-2 font-medium tabular-nums text-zinc-100 outline-none focus:border-primary-500/50 disabled:opacity-40"
                   />
                   <span className="text-[11px] text-zinc-500">
                     units per lot · default{' '}
@@ -300,7 +300,7 @@ export default function ImportConfirmModal({
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="inline-flex h-8 items-center rounded border border-zinc-700 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+            className="inline-flex h-8 items-center rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -308,7 +308,7 @@ export default function ImportConfirmModal({
             type="button"
             disabled={busy}
             onClick={submit}
-            className="inline-flex h-8 items-center rounded border border-amber-500/40 bg-amber-950/40 px-3 text-xs font-medium text-amber-300 hover:border-amber-400/70 hover:text-amber-200 disabled:opacity-40"
+            className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:opacity-40"
           >
             {busy
               ? 'Saving…'

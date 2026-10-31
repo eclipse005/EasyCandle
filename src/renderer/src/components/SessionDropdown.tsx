@@ -36,10 +36,10 @@ export default function SessionDropdown(): ReactElement {
             aria-label="Sessions"
             aria-expanded={open}
             data-tour="sessions"
-            className={`inline-flex h-8 items-center gap-1.5 rounded border px-2 text-xs font-medium transition-colors ${
+            className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-2 text-xs font-medium transition-colors ${
               open || active
                 ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-                : 'border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+                : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
             }`}
           >
             <FolderOpen className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -59,13 +59,13 @@ export default function SessionDropdown(): ReactElement {
               onChange={(event) => setName(event.target.value)}
               placeholder="New session name…"
               aria-label="New session name"
-              className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder-zinc-600 outline-none focus:border-amber-500/70"
+              className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder-zinc-600 outline-none focus:border-primary-500/50"
             />
             <button
               type="submit"
               aria-label="Create session"
               title="Create session from current drawings and orders"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-zinc-700 text-zinc-300 transition-colors hover:border-amber-500/70 hover:text-amber-300"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-zinc-800 text-zinc-300 transition-colors hover:border-amber-500/70 hover:text-amber-300"
             >
               <FolderPlus className="h-3.5 w-3.5" aria-hidden />
             </button>

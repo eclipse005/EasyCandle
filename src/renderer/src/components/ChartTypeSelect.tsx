@@ -65,10 +65,10 @@ export default function ChartTypeSelect() {
               onClick={toggle}
               aria-label="Chart type"
               aria-expanded={open}
-              className={`inline-flex h-8 items-center gap-0.5 rounded border px-1.5 transition-colors ${
+              className={`inline-flex h-8 items-center gap-0.5 rounded-xl border px-1.5 transition-colors ${
                 open
                   ? 'border-amber-500/70 bg-amber-950/40 text-amber-300'
-                  : 'border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+                  : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
               }`}
             >
               {(() => {
@@ -127,7 +127,7 @@ export default function ChartTypeSelect() {
       </Dropdown>
 
       {favoriteIds.length > 0 && (
-        <div className="flex h-8 items-center rounded border px-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 border-zinc-700 bg-zinc-900/80 gap-1">
+        <div className="flex h-8 items-center rounded-xl border px-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 border-zinc-800 bg-zinc-900/80 gap-1">
           {favoriteIds.map((id) => {
             const label = CHART_TYPES.find((entry) => entry.id === id)?.label ?? id
             const Icon = ICONS[id]

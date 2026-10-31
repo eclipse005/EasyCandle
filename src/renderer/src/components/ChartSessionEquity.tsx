@@ -43,7 +43,7 @@ export default function ChartSessionEquity({
 
   return (
     <div
-      className="pointer-events-none absolute bottom-7 z-20 flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900/95 px-2.5 py-1.5 text-[11px] tabular-nums shadow-lg shadow-black/40 backdrop-blur-sm"
+      className="pointer-events-none absolute bottom-7 z-20 flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/95 px-2.5 py-1.5 text-[11px] tabular-nums shadow-lg shadow-black/40 backdrop-blur-sm"
       style={{ right: Math.max(priceScaleWidth, 0) + 8 }}
       data-tour="chart-session-equity"
     >

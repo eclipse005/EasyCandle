@@ -81,7 +81,7 @@ export default function ChartTimezoneSelect() {
               aria-label="Search timezone"
               autoFocus
               onChange={(event) => setQuery(event.target.value)}
-              className="h-7 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-[11px] text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-amber-500/60"
+              className="h-7 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-[11px] text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-primary-500/50"
             />
           </div>
           <div className="max-h-80 overflow-y-auto py-1">

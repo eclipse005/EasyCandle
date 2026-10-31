@@ -80,6 +80,12 @@
   --primary-800: 2 48 132;
   --primary-900: 1 36 98;
   --primary-950: 0 18 52;
+
+  /* Soft-UI radii (FX Replay–like) */
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
 }
 
 :root[data-theme='light'] {
@@ -235,13 +241,13 @@ select option {
 }
 
 .release-notes-html a {
-  color: rgb(var(--amber-400));
+  color: rgb(var(--primary-400));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .release-notes-html a:hover {
-  color: rgb(var(--amber-300));
+  color: rgb(var(--primary-300));
 }
 
 .release-notes-html code {
