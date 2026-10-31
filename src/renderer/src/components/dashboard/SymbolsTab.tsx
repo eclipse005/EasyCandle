@@ -261,9 +261,9 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_max-content_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
+                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(calc(8ch+1.25rem),1fr)_max-content_max-content_max-content]"
                 >
-                  {/* Fixed ticker + meta nowrap; Contract 8ch + hidden steppers so 100000 fits; Spread/Comm stay compact. */}
+                  {/* Fixed ticker + meta; spacer ≥1 Contract width takes freed Spread/Comm width; all 3 inputs share 8ch. */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
@@ -278,6 +278,7 @@ export default function SymbolsTab(): ReactNode {
                       {metaText}
                     </span>
                   </div>
+                  <div className="min-w-0" aria-hidden="true" />
                   <label
                     className="flex shrink-0 items-center justify-start gap-1"
                     title={lotLabel}
@@ -298,13 +299,13 @@ export default function SymbolsTab(): ReactNode {
                         setContractSize(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        // 8ch + SoftInput px-2.5*2; steppers hidden via SoftInput number styles.
+                        // Shared fixed width with Spread/Comm: 8ch + SoftInput px-2.5*2.
                         'h-8 w-[calc(8ch+1.25rem)] !min-w-[calc(8ch+1.25rem)] shrink-0 text-caption tabular-nums',
                         userSize != null ? filledField : emptyField
                       )}
                     />
                   </label>
-                  <label className="flex min-w-0 items-center justify-start gap-1">
+                  <label className="flex shrink-0 items-center justify-start gap-1">
                     <span className={cn('shrink-0', softType.micro)}>{t('symbols.spread')}</span>
                     <SoftInput
                       type="number"
@@ -323,12 +324,12 @@ export default function SymbolsTab(): ReactNode {
                         setSpread(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        'h-8 w-[calc(8ch+1.25rem)] !min-w-[calc(8ch+1.25rem)] shrink-0 text-caption tabular-nums',
                         spec.spread != null ? filledField : emptyField
                       )}
                     />
                   </label>
-                  <label className="flex min-w-0 items-center justify-start gap-1">
+                  <label className="flex shrink-0 items-center justify-start gap-1">
                     <span className={cn('shrink-0', softType.micro)}>{t('symbols.comm')}</span>
                     <SoftInput
                       type="number"
@@ -347,7 +348,7 @@ export default function SymbolsTab(): ReactNode {
                         setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 w-full min-w-0 text-caption tabular-nums',
+                        'h-8 w-[calc(8ch+1.25rem)] !min-w-[calc(8ch+1.25rem)] shrink-0 text-caption tabular-nums',
                         spec.commissionPerLot != null ? filledField : emptyField
                       )}
                     />
