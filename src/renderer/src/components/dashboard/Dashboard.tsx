@@ -38,30 +38,32 @@ import AboutDialog from '@/components/AboutDialog'
 import iconUrl from '@/assets/barreplay-icon.svg'
 import { cn } from '@/components/ui/cn'
 import { softMotion, softNav, softType } from '@/components/ui/softTokens'
+import { useT } from '@/i18n/useT'
+import type { MessageKey } from '@/i18n/messages'
 
-const SIDEBAR_PRIMARY: { id: SidebarNav; label: string; icon: typeof FlaskConical }[] = [
-  { id: 'testing', label: 'Testing', icon: FlaskConical },
-  { id: 'strategies', label: 'Strategies', icon: GitBranch }
+const SIDEBAR_PRIMARY: { id: SidebarNav; labelKey: MessageKey; icon: typeof FlaskConical }[] = [
+  { id: 'testing', labelKey: 'nav.testing', icon: FlaskConical },
+  { id: 'strategies', labelKey: 'nav.strategies', icon: GitBranch }
 ]
 
-const SIDEBAR_SECONDARY: { id: SidebarNav; label: string; icon: typeof Database }[] = [
-  { id: 'datasets', label: 'Datasets', icon: Database },
-  { id: 'symbols', label: 'Symbols', icon: CircleDollarSign }
+const SIDEBAR_SECONDARY: { id: SidebarNav; labelKey: MessageKey; icon: typeof Database }[] = [
+  { id: 'datasets', labelKey: 'nav.datasets', icon: Database },
+  { id: 'symbols', labelKey: 'nav.symbols', icon: CircleDollarSign }
 ]
 
-const TESTING_TABS: { id: TestingTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'sessions', label: 'Sessions', icon: ListVideo },
-  { id: 'trades', label: 'Trades', icon: Table2 },
-  { id: 'analytics', label: 'Analytics', icon: LineChart }
+const TESTING_TABS: { id: TestingTab; labelKey: MessageKey; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', labelKey: 'testing.dashboard', icon: LayoutDashboard },
+  { id: 'sessions', labelKey: 'testing.sessions', icon: ListVideo },
+  { id: 'trades', labelKey: 'testing.trades', icon: Table2 },
+  { id: 'analytics', labelKey: 'testing.analytics', icon: LineChart }
 ]
 
-const PAGE_TITLES: Record<SidebarNav, string> = {
-  testing: 'Testing',
-  strategies: 'Strategies',
-  datasets: 'Datasets',
-  symbols: 'Symbols',
-  settings: 'Settings'
+const PAGE_TITLE_KEYS: Record<SidebarNav, MessageKey> = {
+  testing: 'nav.testing',
+  strategies: 'nav.strategies',
+  datasets: 'nav.datasets',
+  symbols: 'nav.symbols',
+  settings: 'nav.settings'
 }
 
 function SidebarNavButton({
@@ -113,6 +115,7 @@ function TestingTabList({
   testingTab: TestingTab
   setTestingTab: (t: TestingTab) => void
 }): ReactNode {
+  const { t } = useT()
   const listRef = useRef<HTMLDivElement>(null)
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [underline, setUnderline] = useState({ left: 0, width: 0, ready: false })
@@ -178,7 +181,7 @@ function TestingTabList({
             )}
           >
             <Icon className="h-5 w-5 opacity-80" aria-hidden />
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         )
       })}
@@ -200,6 +203,7 @@ function TestingTabList({
  * Entering a backtesting session switches to the chart (AppShell).
  */
 export default function Dashboard(): ReactNode {
+  const { t } = useT()
   const sidebarNav = useUiLayoutStore((s) => s.sidebarNav)
   const setSidebarNav = useUiLayoutStore((s) => s.setSidebarNav)
   const testingTab = useUiLayoutStore((s) => s.testingTab)
@@ -276,7 +280,7 @@ export default function Dashboard(): ReactNode {
               key={item.id}
               active={sidebarNav === item.id}
               icon={item.icon}
-              label={item.label}
+              label={t(item.labelKey)}
               onClick={() => setSidebarNav(item.id)}
             />
           ))}
@@ -288,7 +292,7 @@ export default function Dashboard(): ReactNode {
               key={item.id}
               active={sidebarNav === item.id}
               icon={item.icon}
-              label={item.label}
+              label={t(item.labelKey)}
               onClick={() => setSidebarNav(item.id)}
             />
           ))}
@@ -300,7 +304,7 @@ export default function Dashboard(): ReactNode {
             <SidebarNavButton
               active={sidebarNav === 'settings'}
               icon={Settings}
-              label="Settings"
+              label={t('nav.settings')}
               onClick={() => setSidebarNav('settings')}
               trailingPad={Boolean(version)}
               className="flex-1 min-w-0"
@@ -322,7 +326,7 @@ export default function Dashboard(): ReactNode {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 lg:px-6 lg:py-7">
           <div className="mx-auto w-full max-w-none">
-            <h1 className={softType.pageTitle}>{PAGE_TITLES[sidebarNav]}</h1>
+            <h1 className={softType.pageTitle}>{t(PAGE_TITLE_KEYS[sidebarNav])}</h1>
 
             {sidebarNav === 'testing' ? (
               <TestingTabList testingTab={testingTab} setTestingTab={setTestingTab} />

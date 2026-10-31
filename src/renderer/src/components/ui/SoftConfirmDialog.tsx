@@ -45,11 +45,6 @@ export default function SoftConfirmDialog({
             size="sm"
             disabled={busy}
             onClick={onConfirm}
-            className={
-              danger
-                ? 'border-transparent bg-red-600/90 text-white hover:bg-red-500 hover:text-white'
-                : undefined
-            }
           >
             {confirmLabel}
           </SoftButton>
@@ -57,7 +52,7 @@ export default function SoftConfirmDialog({
       }
     >
       {description != null ? (
-        <p className="text-caption leading-relaxed text-zinc-400">{description}</p>
+        <p className="text-caption leading-relaxed text-zinc-300">{description}</p>
       ) : (
         <p className="sr-only">Confirm this action.</p>
       )}

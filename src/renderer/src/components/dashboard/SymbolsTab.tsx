@@ -234,21 +234,21 @@ export default function SymbolsTab(): ReactNode {
               >
                 <div className="flex shrink-0 items-center gap-2">
                   <span
-                    className="w-[6.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
-                    title={row.label}
+                    className="w-[5.5rem] shrink-0 truncate text-body font-semibold text-zinc-50"
+                    title={row.label !== row.symbol ? row.label : undefined}
                   >
-                    {row.label}
+                    {row.symbol}
                   </span>
                   <span
-                    className="min-w-[11rem] w-[12.5rem] shrink-0 truncate text-left text-micro text-zinc-400"
+                    className="min-w-[10rem] w-[11rem] shrink-0 truncate text-left text-micro text-zinc-400"
                     title={metaText}
                   >
                     {metaText}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1" aria-hidden />
-                <div className="flex shrink-0 items-center gap-3.5">
-                  <label className="flex w-[9rem] shrink-0 items-center justify-start gap-2">
+                <div className="flex shrink-0 items-center gap-4">
+                  <label className="flex shrink-0 items-center justify-start gap-2">
                     <span className={cn('shrink-0', softType.micro)}>Contract</span>
                     <SoftInput
                       type="number"
@@ -262,12 +262,12 @@ export default function SymbolsTab(): ReactNode {
                         setContractSize(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 min-w-0 w-[5.5rem] text-caption tabular-nums',
+                        'h-8 w-[8.5rem] text-caption tabular-nums',
                         userSize != null ? 'border-primary-500/35' : undefined
                       )}
                     />
                   </label>
-                  <label className="flex w-[7rem] shrink-0 items-center justify-start gap-2">
+                  <label className="flex shrink-0 items-center justify-start gap-2">
                     <span className={cn('shrink-0', softType.micro)}>Spread</span>
                     <SoftInput
                       type="number"
@@ -282,12 +282,12 @@ export default function SymbolsTab(): ReactNode {
                         setSpread(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 min-w-0 w-16 text-caption tabular-nums',
+                        'h-8 w-[5.5rem] text-caption tabular-nums',
                         spec.spread != null ? 'border-primary-500/35' : undefined
                       )}
                     />
                   </label>
-                  <label className="flex w-[7rem] shrink-0 items-center justify-start gap-2">
+                  <label className="flex shrink-0 items-center justify-start gap-2">
                     <span className={cn('shrink-0', softType.micro)}>Comm</span>
                     <SoftInput
                       type="number"
@@ -302,14 +302,14 @@ export default function SymbolsTab(): ReactNode {
                         setCommissionPerLot(row.symbol, text === '' ? null : Number(text))
                       }}
                       className={cn(
-                        'h-8 min-w-0 w-16 text-caption tabular-nums',
+                        'h-8 w-[5.5rem] text-caption tabular-nums',
                         spec.commissionPerLot != null ? 'border-primary-500/35' : undefined
                       )}
                     />
                   </label>
                   <span
                     className={cn(
-                      'w-[9rem] shrink-0 truncate text-right tabular-nums',
+                      'w-[10rem] shrink-0 truncate text-right tabular-nums',
                       softType.micro
                     )}
                     title={`1 lot = ${formatContractSize(effective)} ${quote}`}

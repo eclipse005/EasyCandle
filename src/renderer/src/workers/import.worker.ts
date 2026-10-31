@@ -134,15 +134,16 @@ async function handle(
         content: stored.content,
         candlesByTimeframe
       })
-      stored = null
-      if (!wrote) {
+      if (!wrote.ok) {
+        // Keep parse token so the user can retry without re-selecting the CSV.
         post({
           type: 'saveResult',
           requestId,
-          result: { ok: false, error: 'Failed to save import to IndexedDB.' }
+          result: { ok: false, error: wrote.error }
         })
         return
       }
+      stored = null
       post({ type: 'saveResult', requestId, result: { ok: true, meta, updated } })
       return
     }

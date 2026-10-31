@@ -244,6 +244,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
     })
 
     const failures: ImportBatchSaveRequest[] = []
+    let lastSaveError: string | null = null
     let lastMetaId: string | null = null
     let lastTimeframe: string | null = null
     let savedCount = 0
@@ -275,6 +276,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
         })
 
         if (!savedResult.ok) {
+          lastSaveError = savedResult.error || lastSaveError
           failures.push(save)
           continue
         }
@@ -289,8 +291,8 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
       if (failures.length && savedCount === 0) {
         setModalError(
           failures.length === 1
-            ? `Failed to save ${failures[0].item.fileName}.`
-            : `Failed to save all ${failures.length} files.`
+            ? `Failed to save ${failures[0].item.fileName}${lastSaveError ? `: ${lastSaveError}` : '.'}`
+            : `Failed to save all ${failures.length} files${lastSaveError ? `: ${lastSaveError}` : '.'}`
         )
         return
       }

@@ -125,8 +125,8 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
     const content = params.content ?? ''
     rememberDataset(meta, content, candlesByTimeframe)
     const wrote = await idbWriteImportDataset({ meta, content, candlesByTimeframe })
-    if (!wrote) {
-      return { ok: false, error: 'Failed to save import to IndexedDB.' }
+    if (!wrote.ok) {
+      return { ok: false, error: wrote.error }
     }
 
     return { ok: true, meta, updated }

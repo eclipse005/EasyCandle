@@ -246,6 +246,7 @@ export default function SymbolDatasetsDialog({
     })
 
     const failures: ImportBatchSaveRequest[] = []
+    let lastSaveError: string | null = null
     let lastMetaId: string | null = null
     let lastTimeframe: string | null = null
     let savedCount = 0
@@ -278,6 +279,7 @@ export default function SymbolDatasetsDialog({
         })
 
         if (!savedResult.ok) {
+          lastSaveError = savedResult.error || lastSaveError
           failures.push(save)
           continue
         }
@@ -291,8 +293,8 @@ export default function SymbolDatasetsDialog({
       if (failures.length && savedCount === 0) {
         setModalError(
           failures.length === 1
-            ? `Failed to save ${failures[0].item.fileName}.`
-            : `Failed to save all ${failures.length} files.`
+            ? `Failed to save ${failures[0].item.fileName}${lastSaveError ? `: ${lastSaveError}` : '.'}`
+            : `Failed to save all ${failures.length} files${lastSaveError ? `: ${lastSaveError}` : '.'}`
         )
         return
       }

@@ -5,6 +5,20 @@ import type { ImportedDatasetMeta } from '@shared/importTypes'
 const DB_NAME = 'barreplay_db'
 const DB_VERSION = 1
 
+export type IdbWriteResult = { ok: true } | { ok: false; error: string }
+
+function formatIdbError(err: unknown, fallback: string): string {
+  if (err instanceof DOMException) {
+    const detail = err.message?.trim()
+    return detail ? `${err.name}: ${detail}` : err.name || fallback
+  }
+  if (err instanceof Error) {
+    const detail = err.message?.trim()
+    return detail ? detail : err.name || fallback
+  }
+  return fallback
+}
+
 export function openImportDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
@@ -30,10 +44,11 @@ export function openImportDb(): Promise<IDBDatabase> {
 }
 
 export async function idbGet<T>(storeName: string, key: string): Promise<T | null> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(storeName, 'readonly')
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(storeName, 'readonly')
       const store = tx.objectStore(storeName)
       const req = store.get(key)
       req.onsuccess = () => resolve((req.result as T | undefined) ?? null)
@@ -41,14 +56,17 @@ export async function idbGet<T>(storeName: string, key: string): Promise<T | nul
     })
   } catch {
     return null
+  } finally {
+    db?.close()
   }
 }
 
 export async function idbPut(storeName: string, value: unknown): Promise<boolean> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(storeName, 'readwrite')
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(storeName, 'readwrite')
       const store = tx.objectStore(storeName)
       const req = store.put(value)
       req.onsuccess = () => resolve(true)
@@ -56,14 +74,17 @@ export async function idbPut(storeName: string, value: unknown): Promise<boolean
     })
   } catch {
     return false
+  } finally {
+    db?.close()
   }
 }
 
 export async function idbGetAll<T>(storeName: string): Promise<T[]> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(storeName, 'readonly')
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(storeName, 'readonly')
       const store = tx.objectStore(storeName)
       const req = store.getAll()
       req.onsuccess = () => resolve((req.result as T[]) || [])
@@ -71,14 +92,17 @@ export async function idbGetAll<T>(storeName: string): Promise<T[]> {
     })
   } catch {
     return []
+  } finally {
+    db?.close()
   }
 }
 
 export async function idbDelete(storeName: string, key: string): Promise<boolean> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(storeName, 'readwrite')
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(storeName, 'readwrite')
       const store = tx.objectStore(storeName)
       const req = store.delete(key)
       req.onsuccess = () => resolve(true)
@@ -86,41 +110,75 @@ export async function idbDelete(storeName: string, key: string): Promise<boolean
     })
   } catch {
     return false
+  } finally {
+    db?.close()
   }
 }
 
-/** One transaction: meta + source CSV + every stored timeframe series. */
+/** One transaction: meta + optional source CSV + every stored timeframe series. */
 export async function idbWriteImportDataset(params: {
   meta: ImportedDatasetMeta
   content: string
   candlesByTimeframe: Record<string, Candle[]>
-}): Promise<boolean> {
+}): Promise<IdbWriteResult> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(['metas', 'sources', 'candles'], 'readwrite')
-      tx.objectStore('metas').put(params.meta)
-      tx.objectStore('sources').put({ id: params.meta.id, content: params.content })
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      let requestError: DOMException | null = null
+      const tx = db!.transaction(['metas', 'sources', 'candles'], 'readwrite')
+      const track = (req: IDBRequest): void => {
+        req.onerror = () => {
+          requestError = req.error
+        }
+      }
+      track(tx.objectStore('metas').put(params.meta))
+      // Persist CSV only when small enough — large MT4 dumps blow quota / abort the tx.
+      // Candles are the source of truth for replay; raw CSV is optional provenance.
+      const MAX_SOURCE_CHARS = 1_500_000
+      const sourceContent =
+        params.content && params.content.length <= MAX_SOURCE_CHARS ? params.content : ''
+      track(tx.objectStore('sources').put({ id: params.meta.id, content: sourceContent }))
       const candleStore = tx.objectStore('candles')
       for (const tf of IMPORT_STORED_TIMEFRAMES) {
         const series = params.candlesByTimeframe[tf]
         if (!series) continue
-        candleStore.put({ key: `${params.meta.id}:${tf}`, candles: series })
+        track(candleStore.put({ key: `${params.meta.id}:${tf}`, candles: series }))
       }
-      tx.oncomplete = () => resolve(true)
-      tx.onerror = () => resolve(false)
-      tx.onabort = () => resolve(false)
+      tx.oncomplete = () => resolve({ ok: true })
+      tx.onerror = () =>
+        resolve({
+          ok: false,
+          error: formatIdbError(
+            requestError ?? tx.error,
+            'Failed to save import to IndexedDB.'
+          )
+        })
+      tx.onabort = () =>
+        resolve({
+          ok: false,
+          error: formatIdbError(
+            requestError ?? tx.error,
+            'IndexedDB write aborted (often quota or private mode).'
+          )
+        })
     })
-  } catch {
-    return false
+  } catch (err) {
+    return {
+      ok: false,
+      error: formatIdbError(err, 'Failed to save import to IndexedDB.')
+    }
+  } finally {
+    db?.close()
   }
 }
 
 export async function idbDeleteImportDataset(id: string): Promise<boolean> {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openImportDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(['metas', 'sources', 'candles'], 'readwrite')
+    db = await openImportDb()
+    return await new Promise((resolve) => {
+      const tx = db!.transaction(['metas', 'sources', 'candles'], 'readwrite')
       tx.objectStore('metas').delete(id)
       tx.objectStore('sources').delete(id)
       const candleStore = tx.objectStore('candles')
@@ -133,5 +191,7 @@ export async function idbDeleteImportDataset(id: string): Promise<boolean> {
     })
   } catch {
     return false
+  } finally {
+    db?.close()
   }
 }

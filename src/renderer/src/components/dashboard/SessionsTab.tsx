@@ -395,7 +395,13 @@ function SessionCard({
             >
               <Copy className="h-4 w-4" aria-hidden />
             </SoftButton>
-            <SoftButton size="sm" variant="danger" onClick={onDelete} aria-label="Delete session">
+            <SoftButton
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              aria-label="Delete session"
+              className="text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
+            >
               <Trash2 className="h-4 w-4" aria-hidden />
             </SoftButton>
             <SoftButton
