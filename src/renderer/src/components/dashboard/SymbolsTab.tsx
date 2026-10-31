@@ -261,9 +261,9 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(3.5rem,1.25fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)]"
+                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(3.25rem,1.1fr)_minmax(3.25rem,0.9fr)_minmax(3.25rem,0.9fr)]"
                 >
-                  {/* Fixed ticker slot (fits AUDJPY/EURUSD) so meta lines align; inputs unchanged. */}
+                  {/* Fixed ticker for meta align; meta nowrap (no ellipsis); inputs share leftover slightly tighter. */}
                   <div className="flex items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
@@ -272,7 +272,7 @@ export default function SymbolsTab(): ReactNode {
                       {row.symbol}
                     </span>
                     <span
-                      className="w-[5.5rem] truncate text-left text-micro text-zinc-400"
+                      className="shrink-0 whitespace-nowrap text-left text-micro text-zinc-400"
                       title={metaTip}
                     >
                       {metaText}
