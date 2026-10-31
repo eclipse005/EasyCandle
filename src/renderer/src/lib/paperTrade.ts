@@ -55,6 +55,10 @@ export type ClosedTrade = {
   stopLoss: number | null
   pendingPlacedTime?: number | null
   pendingKind?: PendingOrderKind | null
+  /** Round-turn commission deducted from pnl (quote currency). */
+  commission?: number
+  /** Optional trader note / light journal entry. */
+  note?: string
 }
 
 export type HistoricOrderType = 'market' | PendingOrderKind
@@ -114,6 +118,126 @@ export const TRADE_SIZE_STEP = LOT_SIZE_STEP
 export type PnlScale = {
   lots?: number
   contractSize?: number
+}
+
+/** Optional trading frictions applied on paper fills. */
+export type TradeCosts = {
+  /** Full bid–ask width in price units (e.g. 0.00020 for EURUSD). */
+  spread?: number
+  /** Round-turn commission in quote currency per 1.0 lot. */
+  commissionPerLot?: number
+}
+
+export type EquityPoint = {
+  /** Exit time (unix seconds) of the trade that produced this equity. */
+  time: number
+  /** Balance after the trade (startingBalance + cumulative realized). */
+  equity: number
+  tradeId: string
+}
+
+/** Half the configured spread, or 0 when unset / invalid. */
+export function halfSpread(costs?: TradeCosts | null): number {
+  const spread = costs?.spread
+  if (spread == null || !Number.isFinite(spread) || !(spread > 0)) return 0
+  return spread / 2
+}
+
+/**
+ * Apply half-spread to a mid price for entry or exit.
+ * Long pays ask on entry and sells bid on exit; short is the mirror.
+ */
+export function fillPriceWithSpread(
+  side: PositionSide,
+  midPrice: number,
+  costs: TradeCosts | null | undefined,
+  role: 'entry' | 'exit'
+): number {
+  if (!Number.isFinite(midPrice)) return midPrice
+  const half = halfSpread(costs)
+  if (half === 0) return midPrice
+  if (role === 'entry') {
+    return side === 'long' ? midPrice + half : midPrice - half
+  }
+  return side === 'long' ? midPrice - half : midPrice + half
+}
+
+/** Round-turn commission for a size, or 0 when unset. */
+export function commissionCost(lots: number, costs?: TradeCosts | null): number {
+  const rate = costs?.commissionPerLot
+  if (rate == null || !Number.isFinite(rate) || !(rate > 0)) return 0
+  return resolvedLots(lots) * rate
+}
+
+/**
+ * Lot (or coin) size so that a stop at `stopLoss` risks `riskPercent` of
+ * `balance`. Returns null when inputs cannot produce a positive size.
+ */
+export function lotsFromRiskPercent(args: {
+  balance: number
+  riskPercent: number
+  entryPrice: number
+  stopLoss: number
+  contractSize: number
+  kind?: TradeSizeKind
+}): number | null {
+  const { balance, riskPercent, entryPrice, stopLoss, contractSize } = args
+  const kind = args.kind ?? 'lot'
+  if (
+    !Number.isFinite(balance) ||
+    !Number.isFinite(riskPercent) ||
+    !Number.isFinite(entryPrice) ||
+    !Number.isFinite(stopLoss) ||
+    !Number.isFinite(contractSize)
+  ) {
+    return null
+  }
+  if (!(balance > 0) || !(riskPercent > 0) || !(contractSize > 0)) return null
+  const distance = Math.abs(entryPrice - stopLoss)
+  if (!(distance > 0)) return null
+  const riskMoney = balance * (riskPercent / 100)
+  if (!(riskMoney > 0)) return null
+  const raw = riskMoney / (distance * contractSize)
+  if (!(raw > 0) || !Number.isFinite(raw)) return null
+  return clampTradeSize(raw, kind)
+}
+
+/** Default risk percent for the risk-sizing control. */
+export const DEFAULT_RISK_PERCENT = 1
+
+/** Clamp a typed risk percent into a sane UI range. */
+export function clampRiskPercent(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_RISK_PERCENT
+  return Math.min(100, Math.max(0.01, Math.round(value * 100) / 100))
+}
+
+/**
+ * Running equity after each closed trade, sorted by exit time.
+ * Starts with a synthetic point at the first trade's entry (starting balance).
+ */
+export function equityCurve(
+  startingBalance: number,
+  closedTrades: ClosedTrade[]
+): EquityPoint[] {
+  const start =
+    Number.isFinite(startingBalance) && startingBalance > 0 ? startingBalance : 0
+  const trades = Array.isArray(closedTrades)
+    ? [...closedTrades].sort((a, b) => a.exitTime - b.exitTime || a.entryTime - b.entryTime)
+    : []
+  if (trades.length === 0) return []
+  const points: EquityPoint[] = []
+  let equity = start
+  // Seed so the curve shows the flat balance before the first close.
+  points.push({
+    time: trades[0].entryTime,
+    equity: start,
+    tradeId: '__start__'
+  })
+  for (const trade of trades) {
+    equity += trade.pnl
+    points.push({ time: trade.exitTime, equity, tradeId: trade.id })
+  }
+  return points
 }
 
 export function clampTradeSize(value: number, kind: TradeSizeKind = 'lot'): number {
@@ -723,7 +847,8 @@ export function closePosition(
   exitPrice: number,
   exitTime: number,
   exitReason: ExitReason = 'manual',
-  scale?: PnlScale
+  scale?: PnlScale,
+  costs?: TradeCosts | null
 ): ClosedTrade {
   if (!position) {
     throw new Error('No open position')
@@ -731,6 +856,12 @@ export function closePosition(
   if (!Number.isFinite(exitPrice) || !Number.isFinite(exitTime)) {
     throw new Error('Invalid exit fill')
   }
+  const lots = resolvedLots(position.lots)
+  const commission = commissionCost(lots, costs)
+  const gross = pnlForSide(position.side, position.entryPrice, exitPrice, {
+    lots: scale?.lots ?? position.lots,
+    contractSize: scale?.contractSize
+  })
   return {
     id: position.id,
     side: position.side,
@@ -738,18 +869,16 @@ export function closePosition(
     entryTime: position.entryTime,
     exitPrice,
     exitTime,
-    lots: resolvedLots(position.lots),
-    pnl: pnlForSide(position.side, position.entryPrice, exitPrice, {
-      lots: scale?.lots ?? position.lots,
-      contractSize: scale?.contractSize
-    }),
+    lots,
+    pnl: gross - commission,
     exitReason,
     takeProfit: position.takeProfit,
     stopLoss: position.stopLoss,
     pendingPlacedTime: position.pendingPlacedTime ?? null,
     ...(position.pendingKind === 'limit' || position.pendingKind === 'stopLimit'
       ? { pendingKind: position.pendingKind }
-      : {})
+      : {}),
+    ...(commission > 0 ? { commission } : {})
   }
 }
 
@@ -1050,9 +1179,11 @@ export function tradesToCsv(closedTrades: ClosedTrade[]): string {
     'exitPrice',
     'exitTimeUtc',
     'pnl',
+    'commission',
     'exitReason',
     'takeProfit',
-    'stopLoss'
+    'stopLoss',
+    'note'
   ].join(',')
 
   const rows = (Array.isArray(closedTrades) ? closedTrades : []).map((trade) =>
@@ -1065,9 +1196,11 @@ export function tradesToCsv(closedTrades: ClosedTrade[]): string {
       trade.exitPrice,
       toIsoUtc(trade.exitTime),
       trade.pnl,
+      trade.commission ?? 0,
       trade.exitReason,
       trade.takeProfit ?? '',
-      trade.stopLoss ?? ''
+      trade.stopLoss ?? '',
+      csvEscape(trade.note ?? '')
     ].join(',')
   )
 

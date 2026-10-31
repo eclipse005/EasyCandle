@@ -69,4 +69,15 @@ describe('symbolParamsStore', () => {
     useSymbolParamsStore.getState().setPrecision('EURUSD', 4)
     expect(JSON.parse(backing[STORAGE_KEY]).EURUSD.precision).toBe(4)
   })
+
+  it('stores spread and commission overrides', () => {
+    const store = useSymbolParamsStore.getState()
+    store.setSpread('EURUSD', 0.0002)
+    store.setCommissionPerLot('EURUSD', 7)
+    expect(store.paramsFor('EURUSD').spread).toBe(0.0002)
+    expect(store.paramsFor('EURUSD').commissionPerLot).toBe(7)
+    store.setSpread('EURUSD', null)
+    expect(store.paramsFor('EURUSD').spread).toBeUndefined()
+    expect(store.paramsFor('EURUSD').commissionPerLot).toBe(7)
+  })
 })

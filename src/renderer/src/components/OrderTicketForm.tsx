@@ -1,12 +1,23 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 import LevelPriceControl, { parseLevelPrice } from '@/components/LevelPriceControl'
 import RiskRewardControl from '@/components/RiskRewardControl'
 import Tooltip from '@/components/Tooltip'
 import TradeSizeControl from '@/components/TradeSizeControl'
-import { canPlaceTicketSide, isPendingTicketType, type TicketOrderType } from '@/lib/paperTrade'
+import {
+  canPlaceTicketSide,
+  clampRiskPercent,
+  DEFAULT_RISK_PERCENT,
+  isPendingTicketType,
+  lotsFromRiskPercent,
+  ticketEntryPrice,
+  type TicketOrderType
+} from '@/lib/paperTrade'
 import { usePricePrecision } from '@/hooks/usePricePrecision'
+import { contractSizeForSymbol, tradeSizeKindForSymbol } from '@shared/pricePrecision'
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
+import { useSessionStore } from '@/store/sessionStore'
+import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 
 export type { TicketOrderType }
 
@@ -38,7 +49,13 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
   const tradeSize = useReplayStore((s) => s.tradeSize)
   const setTradeSize = useReplayStore((s) => s.setTradeSize)
   const symbol = useReplayStore((s) => s.symbol)
+  const importMeta = useReplayStore((s) => s.importMeta)
+  const closedTrades = useReplayStore((s) => s.closedTrades)
   const pricePrecision = usePricePrecision()
+  const activeSession = useSessionStore((s) =>
+    s.activeSessionId ? (s.sessions.find((x) => x.id === s.activeSessionId) ?? null) : null
+  )
+  const [riskPercent, setRiskPercent] = useState(DEFAULT_RISK_PERCENT)
 
   const busy = replayLoading || replayStatus === 'ended' || !currentCandle
   const mark = currentCandle?.close
@@ -135,6 +152,64 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         disabled={busy}
         onChange={setTradeSize}
       />
+
+      <div
+        className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/60 px-1 py-0.5"
+        title="Size from risk % of session balance and current SL distance"
+      >
+        <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+          Risk %
+        </span>
+        <input
+          type="text"
+          inputMode="decimal"
+          aria-label="Risk percent of balance"
+          disabled={busy}
+          value={String(riskPercent)}
+          onChange={(event) => {
+            const parsed = Number(String(event.target.value).trim().replace(',', '.'))
+            if (Number.isFinite(parsed)) setRiskPercent(clampRiskPercent(parsed))
+            else setRiskPercent(DEFAULT_RISK_PERCENT)
+          }}
+          className="h-6 w-12 bg-transparent text-center text-xs font-semibold tabular-nums text-zinc-200 outline-none disabled:opacity-40"
+        />
+        <button
+          type="button"
+          disabled={busy || slValue == null}
+          title={
+            slValue == null
+              ? 'Set a stop loss first'
+              : 'Set lot size so SL risks this % of session balance'
+          }
+          onClick={() => {
+            const entry = ticketEntryPrice({
+              orderType,
+              markPrice: mark,
+              limitPrice,
+              takeProfit: tpValue,
+              stopLoss: slValue
+            })
+            if (entry == null || slValue == null) return
+            const params = useSymbolParamsStore.getState().paramsFor(symbol)
+            const contract =
+              params.contractSize ?? importMeta?.contractSize ?? contractSizeForSymbol(symbol)
+            const realized = closedTrades.reduce((sum, t) => sum + t.pnl, 0)
+            const balance = (activeSession?.startingBalance ?? 100000) + realized
+            const sized = lotsFromRiskPercent({
+              balance,
+              riskPercent,
+              entryPrice: entry,
+              stopLoss: slValue,
+              contractSize: contract,
+              kind: tradeSizeKindForSymbol(symbol)
+            })
+            if (sized != null) setTradeSize(sized)
+          }}
+          className="ml-auto h-6 rounded border border-zinc-700 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Size
+        </button>
+      </div>
 
       {isPendingTicketType(orderType) && (
         <LevelPriceControl

@@ -5,7 +5,9 @@ import {
   closePosition,
   cumulativeRealizedPnl,
   evaluatePendingFill,
+  equityCurve,
   evaluateStopTakeProfit,
+  fillPriceWithSpread,
   formatPnl,
   formatPnlUsd,
   formatPositionSize,
@@ -37,6 +39,7 @@ import {
   canPlaceTicketSide,
   inferTicketSide,
   linkedTicketOpposite,
+  lotsFromRiskPercent,
   tradesToCsv,
   unrealizedPnl,
   withPendingPrice,
@@ -1166,10 +1169,78 @@ describe('summarizeSession / export', () => {
     const csv = tradesToCsv([sample[0]])
     const lines = csv.split('\n')
     expect(lines[0]).toBe(
-      'id,side,lots,entryPrice,entryTimeUtc,exitPrice,exitTimeUtc,pnl,exitReason,takeProfit,stopLoss'
+      'id,side,lots,entryPrice,entryTimeUtc,exitPrice,exitTimeUtc,pnl,commission,exitReason,takeProfit,stopLoss,note'
     )
     expect(lines[1]).toContain('a,long,1,100,')
     expect(lines[1]).toContain('1970-01-01T00:00:01.000Z')
-    expect(lines[1]).toContain(',10,tp,110,90')
+    expect(lines[1]).toContain(',10,0,tp,110,90,')
+  })
+})
+
+describe('trading costs (spread / commission)', () => {
+  it('applies half-spread on entry and exit', () => {
+    const costs = { spread: 0.0002 }
+    expect(fillPriceWithSpread('long', 1.1, costs, 'entry')).toBeCloseTo(1.1001)
+    expect(fillPriceWithSpread('long', 1.1, costs, 'exit')).toBeCloseTo(1.0999)
+    expect(fillPriceWithSpread('short', 1.1, costs, 'entry')).toBeCloseTo(1.0999)
+    expect(fillPriceWithSpread('short', 1.1, costs, 'exit')).toBeCloseTo(1.1001)
+  })
+
+  it('deducts round-turn commission from closed pnl', () => {
+    const open = openPosition('long', 1.1, 10, 't1', 1)
+    expect(open.ok).toBe(true)
+    if (!open.ok) return
+    const closed = closePosition(
+      open.position,
+      1.2,
+      20,
+      'manual',
+      { lots: 1, contractSize: 100_000 },
+      { commissionPerLot: 7 }
+    )
+    // Gross = 0.1 * 100000 = 10000; net = 9993
+    expect(closed.pnl).toBeCloseTo(9993)
+    expect(closed.commission).toBe(7)
+  })
+})
+
+describe('lotsFromRiskPercent', () => {
+  it('sizes lots from balance, risk %, and SL distance', () => {
+    // $100k, 1% risk = $1000; SL 0.0010 on EURUSD @ 100k contract → 10 lots
+    const lots = lotsFromRiskPercent({
+      balance: 100_000,
+      riskPercent: 1,
+      entryPrice: 1.1,
+      stopLoss: 1.099,
+      contractSize: 100_000
+    })
+    expect(lots).toBe(10)
+  })
+
+  it('returns null when SL equals entry', () => {
+    expect(
+      lotsFromRiskPercent({
+        balance: 100_000,
+        riskPercent: 1,
+        entryPrice: 1.1,
+        stopLoss: 1.1,
+        contractSize: 100_000
+      })
+    ).toBeNull()
+  })
+})
+
+describe('equityCurve', () => {
+  it('builds a running balance series', () => {
+    const open1 = openPosition('long', 100, 1, 'a', 1)
+    const open2 = openPosition('short', 100, 2, 'b', 1)
+    expect(open1.ok && open2.ok).toBe(true)
+    if (!open1.ok || !open2.ok) return
+    const t1 = closePosition(open1.position, 110, 3, 'manual', { lots: 1, contractSize: 1 })
+    const t2 = closePosition(open2.position, 90, 4, 'manual', { lots: 1, contractSize: 1 })
+    const curve = equityCurve(1000, [t2, t1])
+    expect(curve[0]?.equity).toBe(1000)
+    expect(curve[1]?.equity).toBe(1010)
+    expect(curve[2]?.equity).toBe(1020)
   })
 })
