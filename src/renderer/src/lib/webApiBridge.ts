@@ -214,6 +214,7 @@ function promptCsvFileInput(): Promise<ImportDialogResult> {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.csv,.txt'
+    input.multiple = true
     input.style.display = 'none'
 
     let handled = false
@@ -239,16 +240,33 @@ function promptCsvFileInput(): Promise<ImportDialogResult> {
       handled = true
       cleanup()
 
-      const file = input.files?.[0]
-      if (!file) {
+      const list = input.files
+      if (!list || list.length === 0) {
         resolve({ ok: false, canceled: true })
         return
       }
 
       try {
-        const tempId = 'file-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)
-        pendingFileCache.set(tempId, { file, fileName: file.name })
-        resolve({ ok: true, path: tempId, fileName: file.name })
+        const stamp = Date.now()
+        const files: { path: string; fileName: string }[] = []
+        for (let i = 0; i < list.length; i += 1) {
+          const file = list.item(i)
+          if (!file) continue
+          const tempId =
+            'file-' + stamp + '-' + i + '-' + Math.random().toString(36).slice(2, 7)
+          pendingFileCache.set(tempId, { file, fileName: file.name })
+          files.push({ path: tempId, fileName: file.name })
+        }
+        if (!files.length) {
+          resolve({ ok: false, canceled: true })
+          return
+        }
+        resolve({
+          ok: true,
+          files,
+          path: files[0].path,
+          fileName: files[0].fileName
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to read selected file'
         resolve({ ok: false, error: message })

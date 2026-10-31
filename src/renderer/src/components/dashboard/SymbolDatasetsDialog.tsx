@@ -8,7 +8,10 @@ import { toUtcParts } from '@/lib/utcDateTime'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
-import ImportConfirmModal, { type ImportConfirmDetails } from '@/components/ImportConfirmModal'
+import ImportBatchConfirmModal, {
+  type ImportBatchItem,
+  type ImportBatchSaveRequest
+} from '@/components/ImportBatchConfirmModal'
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
 import SoftButton from '@/components/ui/SoftButton'
 import SoftDialog from '@/components/ui/SoftDialog'
@@ -21,11 +24,6 @@ export type SymbolDatasetsDialogProps = {
   symbol: string
   files: ImportedDatasetMeta[]
   onClose: () => void
-}
-
-type PendingImport = ImportConfirmDetails & {
-  content: string
-  origin: ImportOrigin
 }
 
 type InlineMessage = { tone: 'error' | 'info' | 'success'; message: string } | null
@@ -52,8 +50,14 @@ function parseProgressLabel(progress: ImportJobProgress): string {
   return progress.phase
 }
 
+function discardBatchTokens(items: ImportBatchItem[]): void {
+  for (const item of items) {
+    if (item.parseToken) void window.api.discardImportParse(item.parseToken)
+  }
+}
+
 /**
- * Manage drawer for one symbol: list CSV files, delete one, import more (inline),
+ * Manage drawer for one symbol: list CSV files, delete one, import more (multi),
  * and a read-only date-coverage popover (union of file spans).
  */
 export default function SymbolDatasetsDialog({
@@ -73,7 +77,7 @@ export default function SymbolDatasetsDialog({
   const [loadProgress, setLoadProgress] = useState<ImportProgress | null>(null)
   const [confirmProgress, setConfirmProgress] = useState<ImportProgress | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
-  const [pending, setPending] = useState<PendingImport | null>(null)
+  const [pending, setPending] = useState<ImportBatchItem[] | null>(null)
   const [message, setMessage] = useState<InlineMessage>(null)
 
   const coverage = useMemo(() => coverageDaysFromMetas(files), [files])
@@ -94,48 +98,96 @@ export default function SymbolDatasetsDialog({
     await refreshImportedList()
   }
 
-  async function prepareFromPath(path: string, fileName: string): Promise<void> {
+  async function prepareFromFiles(
+    fileList: { path: string; fileName: string }[]
+  ): Promise<void> {
     setBusy(true)
     setMessage(null)
     setModalError(null)
-    setLoadProgress({ label: 'Reading file…', percent: 2 })
+    const total = fileList.length
+    setLoadProgress({
+      label: total > 1 ? `Parsing 1/${total}…` : 'Reading file…',
+      percent: 2
+    })
     await yieldToEventLoop()
 
     const unsub = window.api.onImportJobProgress((progress) => {
       if (progress.job !== 'parse') return
-      setLoadProgress({ label: parseProgressLabel(progress), percent: progress.percent })
+      setLoadProgress((prev) => ({
+        label: parseProgressLabel(progress),
+        percent: prev?.percent ?? progress.percent
+      }))
     })
 
+    const batch: ImportBatchItem[] = []
+
     try {
-      const parsed = await window.api.parseImportFile(path)
-      if (!parsed.ok) {
-        showInline('error', parsed.error)
+      for (let i = 0; i < fileList.length; i += 1) {
+        const file = fileList[i]
+        const idx = i + 1
+        setLoadProgress({
+          label: total > 1 ? `Parsing ${idx}/${total}…` : 'Reading file…',
+          percent: Math.round((i / total) * 90) + 2
+        })
+        await yieldToEventLoop()
+
+        const parsed = await window.api.parseImportFile(file.path)
+        if (!parsed.ok) {
+          batch.push({
+            id: file.path,
+            path: file.path,
+            fileName: file.fileName || file.path,
+            status: 'error',
+            error: parsed.error,
+            symbol: panelSymbol,
+            symbolFromFilename: true,
+            candles: [],
+            candleCount: 0,
+            firstTime: 0,
+            lastTime: 0,
+            warnings: [],
+            content: '',
+            origin: 'csv' as ImportOrigin
+          })
+          continue
+        }
+
+        // Lock confirm to this panel's symbol when parse is empty or differs.
+        const parsedSym = parsed.symbol ? normalizeSymbol(parsed.symbol) : ''
+        const forceLock = !parsedSym || parsedSym !== panelSymbol
+
+        batch.push({
+          id: file.path,
+          path: file.path,
+          fileName: file.fileName || file.path,
+          status: 'ok',
+          symbol: forceLock ? panelSymbol : parsed.symbol,
+          symbolFromFilename: forceLock ? true : parsed.symbolFromFilename,
+          candles: parsed.candles,
+          firstCandle: parsed.firstCandle ?? parsed.candles[0],
+          candleCount: parsed.candleCount,
+          firstTime: parsed.firstTime,
+          lastTime: parsed.lastTime,
+          parseToken: parsed.parseToken,
+          warnings: parsed.warnings,
+          content: '',
+          origin: 'csv'
+        })
+      }
+
+      setLoadProgress({ label: 'Ready…', percent: 98 })
+      if (batch.every((b) => b.status === 'error')) {
+        showInline(
+          'error',
+          batch.length === 1
+            ? batch[0].error || 'Import failed.'
+            : `All ${batch.length} files failed to parse.`
+        )
+        discardBatchTokens(batch)
         return
       }
 
-      setLoadProgress({ label: 'Checking existing imports…', percent: 98 })
-
-      // Lock confirm to this panel's symbol when parse is empty or differs.
-      const parsedSym = parsed.symbol ? normalizeSymbol(parsed.symbol) : ''
-      const lockedSymbol = panelSymbol
-      const forceLock = !parsedSym || parsedSym !== lockedSymbol
-
-      const next: PendingImport = {
-        content: '',
-        fileName: fileName || path,
-        candles: parsed.candles,
-        firstCandle: parsed.firstCandle ?? parsed.candles[0],
-        candleCount: parsed.candleCount,
-        firstTime: parsed.firstTime,
-        lastTime: parsed.lastTime,
-        parseToken: parsed.parseToken,
-        symbol: forceLock ? lockedSymbol : parsed.symbol,
-        symbolFromFilename: forceLock ? true : parsed.symbolFromFilename,
-        warnings: parsed.warnings,
-        origin: 'csv'
-      }
-
-      setPending(next)
+      setPending(batch)
       setMessage(null)
       setModalError(null)
     } finally {
@@ -156,59 +208,118 @@ export default function SymbolDatasetsDialog({
     }
     setMessage(null)
     setModalError(null)
-    await prepareFromPath(dialog.path, dialog.fileName)
+    const fileList = dialog.files?.length
+      ? dialog.files
+      : [{ path: dialog.path, fileName: dialog.fileName }]
+    await prepareFromFiles(fileList)
   }
 
-  async function onConfirmImport(values: { symbol: string; contractSize?: number }): Promise<void> {
-    if (!pending) return
+  async function saveBatch(saves: ImportBatchSaveRequest[]): Promise<void> {
+    if (!saves.length) return
     setConfirmBusy(true)
     setModalError(null)
     setMessage(null)
-    setConfirmProgress({ label: 'Building timeframes…', percent: 4 })
+    const total = saves.length
+    setConfirmProgress({
+      label: total > 1 ? `Saving 1/${total}…` : 'Building timeframes…',
+      percent: 4
+    })
     await yieldToEventLoop()
 
     const unsub = window.api.onImportJobProgress((progress) => {
       if (progress.job === 'parse') return
-      setConfirmProgress({ label: parseProgressLabel(progress), percent: progress.percent })
+      setConfirmProgress((prev) => ({
+        label: parseProgressLabel(progress),
+        percent: prev?.percent ?? progress.percent
+      }))
     })
 
+    const failures: ImportBatchSaveRequest[] = []
+    let lastMetaId: string | null = null
+    let lastTimeframe: string | null = null
+    let savedCount = 0
+
     try {
-      // Prefer panel symbol so the file lands under this manage dialog.
-      const nextSymbol = panelSymbol || normalizeSymbol(values.symbol)
-      const replaceId = pending.replaceId
+      for (let i = 0; i < saves.length; i += 1) {
+        const save = saves[i]
+        const idx = i + 1
+        setConfirmProgress({
+          label: total > 1 ? `Saving ${idx}/${total}…` : 'Building timeframes…',
+          percent: Math.round((i / total) * 85) + 4
+        })
+        await yieldToEventLoop()
 
-      ensureSymbol(
-        nextSymbol,
-        values.contractSize != null ? { contractSize: values.contractSize } : undefined
-      )
+        // Prefer panel symbol so the file lands under this manage dialog.
+        const nextSymbol = panelSymbol || normalizeSymbol(save.symbol)
+        ensureSymbol(
+          nextSymbol,
+          save.contractSize != null ? { contractSize: save.contractSize } : undefined
+        )
 
-      const savedResult = await window.api.saveImport({
-        content: pending.content,
-        originalFileName: pending.fileName,
-        symbol: nextSymbol,
-        parseToken: pending.parseToken,
-        candles1m: pending.parseToken ? undefined : pending.candles,
-        replaceId,
-        origin: pending.origin,
-        contractSize: values.contractSize
-      })
+        const savedResult = await window.api.saveImport({
+          content: save.item.content,
+          originalFileName: save.item.fileName,
+          symbol: nextSymbol,
+          parseToken: save.item.parseToken,
+          candles1m: save.item.parseToken ? undefined : save.item.candles,
+          origin: save.item.origin,
+          contractSize: save.contractSize
+        })
 
-      if (!savedResult.ok) {
-        setModalError(savedResult.error)
+        if (!savedResult.ok) {
+          failures.push(save)
+          continue
+        }
+
+        savedCount += 1
+        lastMetaId = savedResult.meta.id
+        lastTimeframe = savedResult.meta.timeframe
+        save.item.parseToken = undefined
+      }
+
+      if (failures.length && savedCount === 0) {
+        setModalError(
+          failures.length === 1
+            ? `Failed to save ${failures[0].item.fileName}.`
+            : `Failed to save all ${failures.length} files.`
+        )
         return
       }
 
-      setConfirmProgress({
-        label: 'Loading chart…',
-        percent: IMPORT_BUILD_UI_PERCENT.loadingChart
-      })
-      await selectImportedDataset(savedResult.meta.id, savedResult.meta.timeframe)
+      if (lastMetaId) {
+        setConfirmProgress({
+          label: 'Loading chart…',
+          percent: IMPORT_BUILD_UI_PERCENT.loadingChart
+        })
+        await selectImportedDataset(lastMetaId, lastTimeframe || undefined)
+      }
+
+      await refreshImportedList()
+
+      if (failures.length) {
+        setModalError(
+          `Saved ${savedCount}/${total}. ${failures.length} failed — confirm again to retry.`
+        )
+        setPending(
+          failures.map((f) => ({
+            ...f.item,
+            status: 'ok' as const
+          }))
+        )
+        showInline(
+          'info',
+          `Imported ${savedCount} file${savedCount === 1 ? '' : 's'}; ${failures.length} failed.`
+        )
+        return
+      }
+
       setPending(null)
       setModalError(null)
-      await refreshImportedList()
       showInline(
         'success',
-        `Imported ${savedResult.meta.originalFileName} (${savedResult.meta.candleCount.toLocaleString()} × 1m).`
+        savedCount === 1
+          ? `Imported ${saves[0].item.fileName} (${saves[0].item.candleCount.toLocaleString()} × 1m).`
+          : `Imported ${savedCount} files under ${panelSymbol}.`
       )
     } finally {
       unsub()
@@ -218,7 +329,7 @@ export default function SymbolDatasetsDialog({
   }
 
   function handleClose(): void {
-    // SoftDialog close is disabled while busy/pending; ImportConfirmModal owns cancel.
+    // SoftDialog close is disabled while busy/pending; batch modal owns cancel.
     if (busy || confirmBusy || pending != null) return
     setMessage(null)
     onClose()
@@ -238,7 +349,7 @@ export default function SymbolDatasetsDialog({
         onClose={handleClose}
         labelledBy="symbol-datasets-title"
         title={`${symbol} datasets`}
-        description="Each CSV is a dataset under this symbol. Overlapping bars: newer import wins."
+        description="Each CSV is a dataset under this symbol. Overlapping bars: newer import wins. Multi-select supported."
         className="max-h-[min(90vh,48rem)] max-w-3xl"
         closeDisabled={importDisabled}
         footer={
@@ -324,22 +435,21 @@ export default function SymbolDatasetsDialog({
         </div>
       </SoftDialog>
 
-      <ImportConfirmModal
-        details={pending}
+      <ImportBatchConfirmModal
+        items={pending}
+        lockedSymbol={panelSymbol}
         busy={confirmBusy}
         progress={confirmProgress}
         serverError={modalError}
+        onItemsChange={(next) => setPending(next.length ? next : null)}
         onCancel={() => {
           if (!confirmBusy) {
-            const cancelled = pending
+            if (pending) discardBatchTokens(pending)
             setPending(null)
             setModalError(null)
-            if (cancelled?.parseToken) {
-              void window.api.discardImportParse(cancelled.parseToken)
-            }
           }
         }}
-        onConfirm={(values) => void onConfirmImport(values)}
+        onConfirm={(saves) => void saveBatch(saves)}
       />
     </>
   )

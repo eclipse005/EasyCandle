@@ -71,8 +71,26 @@ export type ImportParseFailure = {
 
 export type ImportParseResult = ImportParseSuccess | ImportParseFailure
 
+/** One file chosen in the import picker (temp path is a cache key). */
+export type ImportDialogFile = {
+  path: string
+  fileName: string
+}
+
+/**
+ * File picker result. Always multi-capable: `files` is the source of truth.
+ * `path` / `fileName` mirror the first entry for older single-file callers.
+ */
 export type ImportDialogResult =
-  | { ok: true; canceled?: false; path: string; fileName: string }
+  | {
+      ok: true
+      canceled?: false
+      files: ImportDialogFile[]
+      /** @deprecated Prefer `files[0]` — kept for single-file callers. */
+      path: string
+      /** @deprecated Prefer `files[0]` — kept for single-file callers. */
+      fileName: string
+    }
   | { ok: false; canceled: true }
   | { ok: false; canceled?: false; error: string }
 
