@@ -12,7 +12,7 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ['-', '_'], description: 'Slower playback' },
   { keys: ['Tab'], description: 'Toggle next-candle pane (split view)' },
   { keys: ['Alt+I'], description: 'Invert price scale' },
-  { keys: ['Escape'], description: 'Cancel drawing / return to select tool' },
+  { keys: ['Escape'], description: 'Disarm tool / close dialog (never leaves session)' },
   { keys: ['Delete', 'Backspace'], description: 'Delete selected drawing' },
   { keys: ['Ctrl+Drag'], description: 'Duplicate drawing' },
   { keys: ['F'], description: 'Toggle chart fullscreen' }

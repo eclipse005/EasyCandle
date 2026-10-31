@@ -24,12 +24,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * UI keyboard shortcuts (live + replay):
  * - F → toggle chart fullscreen
  * - Alt+I → toggle invert price scale
- * - Escape → cancel TP/SL chart pick, pending trend line, or return to select tool
+ * - Escape → disarm tool / close object dialog / exit chart fullscreen ONLY.
+ *   NEVER leaves or closes the trading session (no closeActiveSession / exitReplay).
  * - Delete / Backspace → delete the selected LCD (or legacy) drawing
  * - Ctrl/Cmd+C / D / V → copy / clone / paste drawing
  */
 export function useUiHotkeys(): void {
   const toggleChartFullscreen = useUiLayoutStore((s) => s.toggleChartFullscreen)
+  const setChartFullscreen = useUiLayoutStore((s) => s.setChartFullscreen)
   const toggleInvertScale = useChartSettingsStore((s) => s.toggleInvertScale)
   const setDrawTool = useReplayStore((s) => s.setDrawTool)
   const deleteDrawing = useReplayStore((s) => s.deleteDrawing)
@@ -71,24 +73,45 @@ export function useUiHotkeys(): void {
       if (event.ctrlKey || event.metaKey || event.altKey) return
 
       if (event.key === 'Escape') {
+        // Hard rule: Esc never closes the session. Only disarm / dismiss chrome.
+        event.preventDefault()
+        event.stopPropagation()
+
         const state = useReplayStore.getState()
         if (state.pricePick) {
-          event.preventDefault()
           state.setPricePick(null)
           return
         }
-        if (state.pendingTrend || state.pendingTrendEnd || state.drawTool !== 'select') {
-          event.preventDefault()
-          setDrawTool('select')
-        }
+
         const ui = useDrawingUiStore.getState()
-        if (ui.armedTool != null) {
-          event.preventDefault()
-          ui.setArmedTool(null)
-        }
         if (ui.objectDialogId) {
-          event.preventDefault()
           ui.openObjectDialog(null)
+          return
+        }
+        if (ui.objectTreeOpen) {
+          ui.setObjectTreeOpen(false)
+          return
+        }
+        if (ui.armedTool != null) {
+          ui.setArmedTool(null)
+          return
+        }
+        if (state.pendingTrend || state.pendingTrendEnd || state.drawTool !== 'select') {
+          setDrawTool('select')
+          return
+        }
+        if (state.selectedDrawingId != null) {
+          state.selectDrawing(null)
+          return
+        }
+        if (ui.selectedIds.length > 0) {
+          ui.setSelectedIds([])
+          return
+        }
+
+        // Last: leave chart-only fullscreen chrome (still inside the session).
+        if (useUiLayoutStore.getState().chartFullscreen) {
+          setChartFullscreen(false)
         }
         return
       }
@@ -118,5 +141,5 @@ export function useUiHotkeys(): void {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [toggleChartFullscreen, toggleInvertScale, setDrawTool, deleteDrawing])
+  }, [toggleChartFullscreen, setChartFullscreen, toggleInvertScale, setDrawTool, deleteDrawing])
 }

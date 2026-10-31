@@ -88,6 +88,7 @@ export default function ChartContextMenu({
   const paperBuy = useReplayStore((s) => s.paperBuy)
   const paperSell = useReplayStore((s) => s.paperSell)
   const setChartSettingsDialogOpen = useUiLayoutStore((s) => s.setChartSettingsDialogOpen)
+  const requestJumpMenu = useUiLayoutStore((s) => s.requestJumpMenu)
   const openObjectDialog = useDrawingUiStore((s) => s.openObjectDialog)
   const setDrawingsVisible = useDrawingUiStore((s) => s.setDrawingsVisible)
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
@@ -275,7 +276,16 @@ export default function ChartContextMenu({
         <MenuItem
           label="Replay to this candle"
           onSelect={() => {
-            void jumpToTime(point.time ?? 0)
+            void jumpToTime(point.time ?? 0, { source: 'replay-to' })
+            onClose()
+          }}
+        />
+      ) : null}
+      {mode === 'replay' ? (
+        <MenuItem
+          label="Replay to this date…"
+          onSelect={() => {
+            requestJumpMenu()
             onClose()
           }}
         />

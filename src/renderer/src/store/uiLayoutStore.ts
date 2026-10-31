@@ -60,6 +60,8 @@ type UiLayoutState = {
   hasCompletedTour: boolean
   /** Session-only counter; bumping it asks AppTour to (re)start. */
   tourRequestId: number
+  /** Session-only; bump to open the Jump / Replay-to-date menu in ReplayControls. */
+  jumpMenuRequestId: number
   /** Session-only: show the paper-trade chrome during the tour without entering replay. */
   tourPaperTradePreview: boolean
   /** Session-only: `showPaperTrade` to restore after the tour preview. */
@@ -87,6 +89,7 @@ type UiLayoutState = {
   setSidebarNav: (nav: SidebarNav) => void
   setTestingTab: (tab: TestingTab) => void
   setDashboardTab: (tab: DashboardTab) => void
+  requestJumpMenu: () => void
   startTour: () => void
   completeTour: () => void
   skipTour: () => void
@@ -153,6 +156,7 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   dashboardTab: 'dashboard',
   hasCompletedTour: initial.hasCompletedTour === true,
   tourRequestId: 0,
+  jumpMenuRequestId: 0,
   tourPaperTradePreview: false,
   tourPaperTradeRestore: null,
   primaryChart: null,
@@ -263,6 +267,10 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
       return
     }
     set({ sidebarNav: 'testing', testingTab: tab, dashboardTab: tab })
+  },
+
+  requestJumpMenu: () => {
+    set({ jumpMenuRequestId: get().jumpMenuRequestId + 1 })
   },
 
   startTour: () => {

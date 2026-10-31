@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/components/ui/cn'
 import SoftButton from '@/components/ui/SoftButton'
@@ -28,6 +28,20 @@ export default function SoftDialog({
   className,
   labelledBy = 'soft-dialog-title'
 }: SoftDialogProps) {
+  useEffect(() => {
+    if (!open) return undefined
+    function onKey(event: KeyboardEvent): void {
+      if (event.key !== 'Escape') return
+      if (closeDisabled) return
+      event.preventDefault()
+      event.stopPropagation()
+      onClose()
+    }
+    // Capture so Esc never falls through to session-level handlers.
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, [open, closeDisabled, onClose])
+
   if (!open) return null
 
   // cn() is plain join (no tailwind-merge); skip defaults when caller already sets max-w/max-h.

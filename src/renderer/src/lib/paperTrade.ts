@@ -842,6 +842,58 @@ export function openPosition(
 }
 
 /** Close the open position at mark price; returns realized trade. */
+
+/**
+ * Close `fraction` of an open position (0 < fraction ≤ 1). Returns the closed
+ * trade slice and the remaining open position (null when fully closed).
+ * Fractions below 0.5 are rejected so the UI can offer ≥50% / 100% only.
+ */
+export function closePositionPartial(
+  position: Position,
+  exitPrice: number,
+  exitTime: number,
+  fraction: number,
+  exitReason: ExitReason = 'manual',
+  scale?: PnlScale,
+  costs?: TradeCosts | null,
+  closedId?: string
+): { closed: ClosedTrade; remaining: Position | null } {
+  if (!position) throw new Error('No open position')
+  if (!Number.isFinite(fraction) || fraction < 0.5 || fraction > 1) {
+    throw new Error('Partial close requires at least 50%')
+  }
+  const lots = resolvedLots(position.lots)
+  const closeLots =
+    fraction >= 1 ? lots : clampTradeSize(lots * fraction)
+  let remainLots = fraction >= 1 ? 0 : clampTradeSize(lots - closeLots)
+  // Avoid leaving a dust remainder smaller than the minimum lot.
+  if (remainLots > 0 && remainLots < MIN_LOT_SIZE) {
+    remainLots = 0
+  }
+  if (remainLots <= 0) {
+    return {
+      closed: closePosition(position, exitPrice, exitTime, exitReason, scale, costs),
+      remaining: null
+    }
+  }
+  const closedScale: PnlScale = {
+    lots: closeLots,
+    contractSize: scale?.contractSize
+  }
+  const closed = closePosition(
+    { ...position, id: closedId ?? `${position.id}-p${Math.round(fraction * 100)}`, lots: closeLots },
+    exitPrice,
+    exitTime,
+    exitReason,
+    closedScale,
+    costs
+  )
+  return {
+    closed,
+    remaining: { ...position, lots: remainLots }
+  }
+}
+
 export function closePosition(
   position: Position,
   exitPrice: number,

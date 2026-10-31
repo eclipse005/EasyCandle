@@ -31,6 +31,7 @@ import {
   clampRiskReward,
   clampTradeSizeForSymbol,
   closePosition,
+  closePositionPartial,
   DEFAULT_LOTS,
   DEFAULT_RISK_REWARD,
   evaluatePendingFill,
@@ -484,9 +485,11 @@ function secondarySnapshot(): {
   }
 }
 
+export type SeekConfirmSource = 'jump' | 'replay-to' | 'scrub'
+
 export type PendingSeekConfirm =
-  | { kind: 'index'; index: number; resumeIndex: number }
-  | { kind: 'time'; time: number; resumeIndex: number }
+  | { kind: 'index'; index: number; resumeIndex: number; source?: SeekConfirmSource }
+  | { kind: 'time'; time: number; resumeIndex: number; source?: SeekConfirmSource }
 
 export type SeekApplyResult = 'applied' | 'needs-confirm' | 'noop'
 
@@ -593,6 +596,8 @@ type ReplayStore = {
   paperBuy: () => void
   paperSell: () => void
   paperClose: (id?: string) => void
+  /** Close ≥50% (or 100%) of an open position. */
+  paperClosePartial: (fraction: number, id?: string) => void
   placeLimit: (side: 'long' | 'short', price: number, kind?: PendingOrderKind) => void
   cancelPending: (id?: string) => void
   selectWorking: (id: string | null) => void
@@ -639,7 +644,7 @@ type ReplayStore = {
     startTimeSeconds: number,
     opts?: { forwardBars?: number; message?: string | null }
   ) => Promise<void>
-  jumpToTime: (timeSeconds: number, opts?: { force?: boolean }) => Promise<SeekApplyResult>
+  jumpToTime: (timeSeconds: number, opts?: { force?: boolean; source?: SeekConfirmSource }) => Promise<SeekApplyResult>
   finalizeSessionTrades: () => SessionReport | null
   exitReplay: () => void
   resetReplayState: (opts?: { keepImport?: boolean; keepDrawings?: boolean }) => void
@@ -656,7 +661,7 @@ type ReplayStore = {
    * SoftConfirm when later trades would be discarded unless `force`.
    */
   setChartScrubbing: (active: boolean) => void
-  seekToIndex: (index: number, opts?: { force?: boolean; preview?: boolean }) => SeekApplyResult
+  seekToIndex: (index: number, opts?: { force?: boolean; preview?: boolean; source?: SeekConfirmSource }) => SeekApplyResult
   seekToTime: (timeSeconds: number, opts?: { force?: boolean }) => SeekApplyResult
   confirmPendingSeek: () => void
   cancelPendingSeek: () => void
@@ -911,7 +916,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
   function requestSeekToIndex(
     index: number,
-    opts: { force?: boolean; preview?: boolean; fitContent?: boolean } = {}
+    opts: { force?: boolean; preview?: boolean; fitContent?: boolean; source?: SeekConfirmSource } = {}
   ): SeekApplyResult {
     if (get().mode !== 'replay') return 'noop'
     if (get().replayLoading || get().secondaryLoading) return 'noop'
@@ -934,7 +939,12 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     if (clamped < before && !opts.force && tradeActivityAfterIndex(clamped)) {
       set({
-        pendingSeekConfirm: { kind: 'index', index: clamped, resumeIndex: before }
+        pendingSeekConfirm: {
+          kind: 'index',
+          index: clamped,
+          resumeIndex: before,
+          source: opts.source ?? 'scrub'
+        }
       })
       // Preview the destination playhead so the user sees where Jump/scrub lands.
       seekPlayheadOnly(clamped, opts.fitContent ?? false, { syncSecondary: false })
@@ -1995,9 +2005,17 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
   }
 
   function tryClose(id?: string): void {
+    tryClosePartial(1, id)
+  }
+
+  function tryClosePartial(fraction: number, id?: string): void {
     if (get().mode !== 'replay') return
     if (get().replayLoading) return
     if (get().replayStatus === 'ended') return
+    if (!Number.isFinite(fraction) || fraction < 0.5 || fraction > 1) {
+      set({ replayMessage: 'Partial close must be at least 50%.' })
+      return
+    }
 
     const open = findPositionById(resolveWorkingId(id))
     if (!open) return
@@ -2007,20 +2025,25 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     const costs = currentTradeCosts()
     const exitFill = fillPriceWithSpread(open.side, candle.close, costs, 'exit')
-    const closed = closePosition(
+    const { closed, remaining } = closePositionPartial(
       open,
       exitFill,
       candle.time,
+      fraction,
       'manual',
       currentPnlScale(open.lots),
-      costs
+      costs,
+      nextTradeId()
     )
 
     const exitMarker = tradeMarkerForExit(open.side, candle.time)
 
     set((s) => ({
-      positions: s.positions.filter((p) => p.id !== open.id),
-      selectedWorkingId: s.selectedWorkingId === open.id ? null : s.selectedWorkingId,
+      positions: remaining
+        ? s.positions.map((p) => (p.id === open.id ? remaining : p))
+        : s.positions.filter((p) => p.id !== open.id),
+      selectedWorkingId:
+        remaining == null && s.selectedWorkingId === open.id ? null : s.selectedWorkingId,
       closedTrades: [...s.closedTrades, closed],
       tradeMarkers: [...s.tradeMarkers, exitMarker],
       replayMessage: null
@@ -3030,6 +3053,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       tryClose(id)
     },
 
+    paperClosePartial(fraction, id) {
+      tryClosePartial(fraction, id)
+    },
+
     placeLimit(side, price, kind) {
       tryPlaceLimit(side, price, kind)
     },
@@ -3743,7 +3770,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         if (target >= first && target <= last) {
           const found = findIndexAtOrBefore(buffer, target)
           const idx = found < 0 ? 0 : found
-          const result = requestSeekToIndex(idx, { force: opts.force, fitContent: true })
+          const result = requestSeekToIndex(idx, {
+            force: opts.force,
+            fitContent: true,
+            source: opts.source ?? 'jump'
+          })
           if (result === 'applied') {
             set({ replayMessage: null })
             void maybePrefetch()
@@ -3772,7 +3803,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           pendingSeekConfirm: {
             kind: 'time',
             time: target,
-            resumeIndex: engine.getState().index
+            resumeIndex: engine.getState().index,
+            source: opts.source ?? 'jump'
           }
         })
         return 'needs-confirm'

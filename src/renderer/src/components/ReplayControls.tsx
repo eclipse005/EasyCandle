@@ -28,6 +28,7 @@ import { TIMEFRAMES } from '@shared/timeframes'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
 
 function indexFromClientX(
@@ -84,6 +85,7 @@ export default function ReplayControls() {
   const pendingSeekConfirm = useReplayStore((s) => s.pendingSeekConfirm)
   const bufferLength = useReplayStore((s) => s.bufferLength)
   const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
+  const jumpMenuRequestId = useUiLayoutStore((s) => s.jumpMenuRequestId)
   const pauseOnTpSl = useReplayStore((s) => s.pauseOnTpSl)
   const setPauseOnTpSl = useReplayStore((s) => s.setPauseOnTpSl)
   const timezone = useChartSettingsStore((s) => s.timezone)
@@ -211,7 +213,7 @@ export default function ReplayControls() {
       return
     }
 
-    await jumpToTime(seconds)
+    await jumpToTime(seconds, { source: 'jump' })
   }
 
   async function goToDayOpen(day: string): Promise<void> {
@@ -227,7 +229,7 @@ export default function ReplayControls() {
     }
     setJumpDate(day)
     setJumpTime('00:00')
-    await jumpToTime(seconds)
+    await jumpToTime(seconds, { source: 'jump' })
   }
 
   async function goToNextDayOpen(): Promise<void> {
@@ -396,6 +398,7 @@ export default function ReplayControls() {
         align="end"
         placement="top"
         menuClassName="!overflow-visible"
+        openSignal={jumpMenuRequestId}
         trigger={({ open, toggle }) => (
           <IconButton
             tooltip={`Jump to ${offsetLabel} time`}
@@ -578,7 +581,13 @@ export default function ReplayControls() {
       <SoftConfirmDialog
         open={pendingSeekConfirm != null}
         title={t('replay.seekDiscardTitle')}
-        description={t('replay.seekDiscardBody')}
+        description={
+          pendingSeekConfirm?.source === 'replay-to'
+            ? t('replay.seekDiscardBodyReplayTo')
+            : pendingSeekConfirm?.source === 'scrub'
+              ? t('replay.seekDiscardBodyScrub')
+              : t('replay.seekDiscardBodyJump')
+        }
         confirmLabel={t('replay.seekDiscardConfirm')}
         cancelLabel={t('common.cancel')}
         danger

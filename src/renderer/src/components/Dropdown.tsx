@@ -6,6 +6,8 @@ type DropdownProps = {
   align?: 'start' | 'end'
   placement?: 'bottom' | 'top'
   menuClassName?: string
+  /** When this number changes to a positive value, force the menu open. */
+  openSignal?: number
 }
 
 export default memo(function Dropdown({
@@ -13,10 +15,19 @@ export default memo(function Dropdown({
   children,
   align = 'start',
   placement = 'bottom',
-  menuClassName = ''
+  menuClassName = '',
+  openSignal = 0
 }: DropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const lastSignalRef = useRef(openSignal)
+
+  useEffect(() => {
+    if (openSignal > 0 && openSignal !== lastSignalRef.current) {
+      lastSignalRef.current = openSignal
+      setOpen(true)
+    }
+  }, [openSignal])
 
   useEffect(() => {
     if (!open) return

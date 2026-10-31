@@ -2107,8 +2107,24 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
             draggingKey === `tp:move:${workingId}` ||
             draggingKey === `sl:place:${workingId}` ||
             draggingKey === `sl:move:${workingId}`
-          const itemTpPrice = previewHere ? tpPrice : working.takeProfit
-          const itemSlPrice = previewHere ? slPrice : working.stopLoss
+          const ghostLevels =
+            !isPending &&
+            canEditTrade &&
+            (working.takeProfit == null || working.stopLoss == null)
+              ? defaultPositionLevels(
+                  working.side,
+                  working.entryPrice,
+                  readVisiblePriceRange()
+                )
+              : null
+          const itemTpPrice = previewHere
+            ? tpPrice
+            : (working.takeProfit ?? ghostLevels?.target ?? null)
+          const itemSlPrice = previewHere
+            ? slPrice
+            : (working.stopLoss ?? ghostLevels?.stop ?? null)
+          const tpIsGhost = working.takeProfit == null && !previewHere && itemTpPrice != null
+          const slIsGhost = working.stopLoss == null && !previewHere && itemSlPrice != null
           const liveEntryPrice =
             pendingPreview?.id === workingId ? pendingPreview.price : working.entryPrice
           const itemEntryY = series?.priceToCoordinate(liveEntryPrice)
@@ -2142,8 +2158,8 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
             key={`open-pos-${workingId}`}
             onMouseDown={() => selectWorking(workingId)}
           >
-            {/* Risk / reward zones between entry and armed levels. */}
-            {showSlLine && slY != null && (
+            {/* Risk / reward zones between entry and armed levels (not ghosts). */}
+            {showSlLine && !slIsGhost && slY != null && (
               <rect
                 x={0}
                 y={Math.min(entryY, slY)}
@@ -2153,7 +2169,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
                 className="pointer-events-none"
               />
             )}
-            {showTpLine && tpY != null && (
+            {showTpLine && !tpIsGhost && tpY != null && (
               <rect
                 x={0}
                 y={Math.min(entryY, tpY)}
@@ -2187,29 +2203,65 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
             )}
 
             {showTpLine && tpY != null && (
-              <line
-                x1={0}
-                x2={plotRight}
-                y1={tpY}
-                y2={tpY}
-                stroke={TRADE_OVERLAY.tpLine}
-                strokeWidth={TRADE_OVERLAY.levelWidth}
-                strokeDasharray={TRADE_OVERLAY.levelDash}
-                className="pointer-events-none"
-              />
+              <g>
+                <line
+                  x1={0}
+                  x2={plotRight}
+                  y1={tpY}
+                  y2={tpY}
+                  stroke={TRADE_OVERLAY.tpLine}
+                  strokeWidth={TRADE_OVERLAY.levelWidth}
+                  strokeDasharray={TRADE_OVERLAY.levelDash}
+                  strokeOpacity={tpIsGhost ? 0.35 : 1}
+                  className="pointer-events-none"
+                />
+                {tpIsGhost ? (
+                  <rect
+                    x={0}
+                    y={tpY - 5}
+                    width={plotRight}
+                    height={10}
+                    fill="transparent"
+                    className="pointer-events-auto cursor-ns-resize"
+                    onMouseDown={(e) =>
+                      startDrag(e, { kind: 'tp', mode: 'place', moved: false, workingId })
+                    }
+                  >
+                    <title>Drag to set take profit</title>
+                  </rect>
+                ) : null}
+              </g>
             )}
 
             {showSlLine && slY != null && (
-              <line
-                x1={0}
-                x2={plotRight}
-                y1={slY}
-                y2={slY}
-                stroke={TRADE_OVERLAY.slLine}
-                strokeWidth={TRADE_OVERLAY.levelWidth}
-                strokeDasharray={TRADE_OVERLAY.levelDash}
-                className="pointer-events-none"
-              />
+              <g>
+                <line
+                  x1={0}
+                  x2={plotRight}
+                  y1={slY}
+                  y2={slY}
+                  stroke={TRADE_OVERLAY.slLine}
+                  strokeWidth={TRADE_OVERLAY.levelWidth}
+                  strokeDasharray={TRADE_OVERLAY.levelDash}
+                  strokeOpacity={slIsGhost ? 0.35 : 1}
+                  className="pointer-events-none"
+                />
+                {slIsGhost ? (
+                  <rect
+                    x={0}
+                    y={slY - 5}
+                    width={plotRight}
+                    height={10}
+                    fill="transparent"
+                    className="pointer-events-auto cursor-ns-resize"
+                    onMouseDown={(e) =>
+                      startDrag(e, { kind: 'sl', mode: 'place', moved: false, workingId })
+                    }
+                  >
+                    <title>Drag to set stop loss</title>
+                  </rect>
+                ) : null}
+              </g>
             )}
 
             {/* Vertical connector tying entry ↔ TP ↔ SL. */}

@@ -121,7 +121,8 @@ function OpenPositionRow({
   rrLabel,
   selected,
   onSelect,
-  onClose
+  onClose,
+  onCloseHalf
 }: {
   position: Position
   symbol: string
@@ -132,6 +133,7 @@ function OpenPositionRow({
   selected: boolean
   onSelect: () => void
   onClose: () => void
+  onCloseHalf: () => void
 }) {
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   return (
@@ -173,13 +175,24 @@ function OpenPositionRow({
           {formatPnlCcy(openPnl, quoteCurrencyForSymbol(symbol))}
         </span>
       </button>
-      <button
-        type="button"
-        className="shrink-0 rounded px-1.5 py-0.5 text-micro font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-        onClick={onClose}
-      >
-        Close
-      </button>
+      <div className="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          className="rounded px-1.5 py-0.5 text-micro font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          title="Close 50%"
+          onClick={onCloseHalf}
+        >
+          50%
+        </button>
+        <button
+          type="button"
+          className="rounded px-1.5 py-0.5 text-micro font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          title="Close 100%"
+          onClick={onClose}
+        >
+          100%
+        </button>
+      </div>
     </li>
   )
 }
@@ -334,6 +347,7 @@ export default function TradePanel() {
   const selectedWorkingId = useReplayStore((s) => s.selectedWorkingId)
   const selectWorking = useReplayStore((s) => s.selectWorking)
   const paperClose = useReplayStore((s) => s.paperClose)
+  const paperClosePartial = useReplayStore((s) => s.paperClosePartial)
   const cancelPending = useReplayStore((s) => s.cancelPending)
   const closedTrades = useReplayStore((s) => s.closedTrades)
   const focusChartTime = useReplayStore((s) => s.focusChartTime)
@@ -424,6 +438,7 @@ export default function TradePanel() {
               selected={selectedWorkingId === open.id}
               onSelect={() => selectWorking(selectedWorkingId === open.id ? null : open.id)}
               onClose={() => paperClose(open.id)}
+              onCloseHalf={() => paperClosePartial(0.5, open.id)}
             />
           ))}
         </HistoryList>

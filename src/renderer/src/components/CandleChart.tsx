@@ -815,17 +815,37 @@ export default function CandleChart({
         if (!chart || !series) return
         const rect = containerRef.current?.getBoundingClientRect()
         if (!rect) return
-        const price = series.coordinateToPrice(event.clientY - rect.top)
-        const time = chart.timeScale().coordinateToTime(event.clientX - rect.left)
+        const localX = event.clientX - rect.left
+        const localY = event.clientY - rect.top
+        const price = series.coordinateToPrice(localY)
         if (price == null) return
+        const rawTime = chart.timeScale().coordinateToTime(localX)
+        let resolvedTime: number | null = null
+        if (typeof rawTime === 'number' && Number.isFinite(rawTime)) {
+          resolvedTime = rawTime
+        } else if (rawTime && typeof rawTime === 'object' && 'year' in rawTime) {
+          const bd = rawTime as { year: number; month: number; day: number }
+          resolvedTime = Math.floor(Date.UTC(bd.year, bd.month - 1, bd.day) / 1000)
+        } else {
+          // Empty margin / future whitespace: snap to nearest loaded candle by logical index.
+          const logical = chart.timeScale().coordinateToLogical(localX)
+          if (logical != null && seriesCandles.length > 0) {
+            const idx = Math.min(
+              seriesCandles.length - 1,
+              Math.max(0, Math.round(Number(logical)))
+            )
+            const t = seriesCandles[idx]?.time
+            if (typeof t === 'number' && Number.isFinite(t)) resolvedTime = t
+          }
+        }
         const hovered = drawingManagerRef.current?.hoveredId() ?? null
         const selected = useDrawingUiStore.getState().selectedIds
         const drawingId = hovered ?? (selected.length === 1 ? selected[0] : null)
         setContextMenu({
-          x: event.clientX - rect.left,
-          y: event.clientY - rect.top,
+          x: localX,
+          y: localY,
           price: Number(price),
-          time: typeof time === 'number' ? time : null,
+          time: resolvedTime,
           drawingId
         })
       }}

@@ -363,6 +363,11 @@ const en = {
   'replay.seekDiscardTitle': 'Rewind past trades?',
   'replay.seekDiscardBody': 'Jumping backward will discard trades and orders after this candle. This cannot be undone.',
   'replay.seekDiscardConfirm': 'Rewind',
+  'replay.seekDiscardBodyJump': 'Jumping backward will discard trades and orders after this candle. This cannot be undone.',
+  'replay.seekDiscardBodyReplayTo': 'Replaying to this candle will discard trades and orders after it. This cannot be undone.',
+  'replay.seekDiscardBodyScrub': 'Scrubbing backward will discard trades and orders after this candle. This cannot be undone.',
+  'context.replayToCandle': 'Replay to this candle',
+  'context.replayToDate': 'Replay to this date…',
 
 
   'cal.month.0': 'Jan',
@@ -939,6 +944,11 @@ const zh: Record<MessageKey, string> = {
   'replay.seekDiscardTitle': '回退并撤销后续成交？',
   'replay.seekDiscardBody': '向回跳转会丢弃该 K 线之后的成交与挂单，且无法恢复。',
   'replay.seekDiscardConfirm': '确认回退',
+  'replay.seekDiscardBodyJump': '向回跳转会丢弃该 K 线之后的成交与挂单，且无法恢复。',
+  'replay.seekDiscardBodyReplayTo': '回放到此 K 线会丢弃其后的成交与挂单，且无法恢复。',
+  'replay.seekDiscardBodyScrub': '向回拖动进度会丢弃该 K 线之后的成交与挂单，且无法恢复。',
+  'context.replayToCandle': '回放到此 K 线',
+  'context.replayToDate': '回放到此日期…',
 
   'cal.month.0': '1月',
   'cal.month.1': '2月',
