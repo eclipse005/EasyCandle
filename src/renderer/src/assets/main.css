@@ -89,22 +89,22 @@
 
   /*
    * Typography — large soft SaaS scale (Inter).
-   * Page title ≈40px; metric values ≈44px bold; tabs/body 16px;
-   * card titles 18px; captions/labels ≈15px.
+   * Page title ≈44px; metric values ≈48px bold; tabs/body 17px;
+   * card titles 20px; captions/labels ≈16px.
    */
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --text-page-title: 2.5rem; /* 40px — Testing */
-  --leading-page-title: 1.15;
-  --tracking-page-title: -0.035em;
-  --text-metric: 2.75rem; /* 44px — big numbers */
+  --text-page-title: 2.75rem; /* 44px — Testing */
+  --leading-page-title: 1.12;
+  --tracking-page-title: -0.04em;
+  --text-metric: 3rem; /* 48px — big numbers */
   --leading-metric: 1.05;
-  --tracking-metric: -0.03em;
-  --text-section: 1.25rem; /* 20px — Performance header */
-  --text-card-title: 1.125rem; /* 18px */
-  --text-body: 1rem; /* 16px — nav, tabs, body */
-  --text-caption: 0.9375rem; /* 15px — muted captions / metric labels */
-  --text-micro: 0.8125rem; /* 13px — badges / version */
+  --tracking-metric: -0.035em;
+  --text-section: 1.375rem; /* 22px — Performance header */
+  --text-card-title: 1.25rem; /* 20px */
+  --text-body: 1.0625rem; /* 17px — nav, tabs, body */
+  --text-caption: 1rem; /* 16px — muted captions / metric labels */
+  --text-micro: 0.875rem; /* 14px — badges / version */
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;

@@ -37,14 +37,14 @@ module.exports = {
         ]
       },
       fontSize: {
-        'page-title': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.035em', fontWeight: '600' }],
-        metric: ['2.75rem', { lineHeight: '1.05', letterSpacing: '-0.03em', fontWeight: '700' }],
-        section: ['1.25rem', { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '600' }],
-        'card-title': ['1.125rem', { lineHeight: '1.35', fontWeight: '600' }],
-        tab: ['1rem', { lineHeight: '1.4', fontWeight: '500' }],
-        body: ['1rem', { lineHeight: '1.5', fontWeight: '400' }],
-        caption: ['0.9375rem', { lineHeight: '1.4', fontWeight: '400' }],
-        micro: ['0.8125rem', { lineHeight: '1.35', fontWeight: '500' }]
+        'page-title': ['2.75rem', { lineHeight: '1.12', letterSpacing: '-0.04em', fontWeight: '600' }],
+        metric: ['3rem', { lineHeight: '1.05', letterSpacing: '-0.035em', fontWeight: '700' }],
+        section: ['1.375rem', { lineHeight: '1.3', letterSpacing: '-0.02em', fontWeight: '600' }],
+        'card-title': ['1.25rem', { lineHeight: '1.35', fontWeight: '600' }],
+        tab: ['1.0625rem', { lineHeight: '1.4', fontWeight: '500' }],
+        body: ['1.0625rem', { lineHeight: '1.5', fontWeight: '400' }],
+        caption: ['1rem', { lineHeight: '1.4', fontWeight: '400' }],
+        micro: ['0.875rem', { lineHeight: '1.35', fontWeight: '500' }]
       },
       colors: {
         zinc: scale('zinc'),

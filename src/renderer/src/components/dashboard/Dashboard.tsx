@@ -185,8 +185,8 @@ export default function Dashboard(): ReactNode {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 lg:px-6 lg:py-7 xl:px-8">
-          <div className="mx-auto w-full max-w-none xl:max-w-[1600px]">
+        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 lg:px-6 lg:py-7">
+          <div className="mx-auto w-full max-w-none">
             <h1 className={softType.pageTitle}>{PAGE_TITLES[sidebarNav]}</h1>
 
             {sidebarNav === 'testing' ? (

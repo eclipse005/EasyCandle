@@ -31,11 +31,11 @@ export const softType = {
 export const softSpace = {
   pageX: 'px-5',
   pageY: 'py-6',
-  cardPad: 'px-7 py-7',
-  cardPadSm: 'px-6 py-6',
-  sectionGap: 'space-y-8',
-  stackGap: 'space-y-6',
-  rowGap: 'gap-5'
+  cardPad: 'px-8 py-8',
+  cardPadSm: 'px-7 py-7',
+  sectionGap: 'space-y-10',
+  stackGap: 'space-y-7',
+  rowGap: 'gap-6'
 } as const
 
 /** Nav / pill active states (FXR soft SaaS). */
