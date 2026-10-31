@@ -263,10 +263,10 @@ export default function SymbolsTab(): ReactNode {
                   elevated
                   className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(3.5rem,1.25fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)]"
                 >
-                  {/* Name first: ticker never truncates; meta may (fixed w so max-content stays bounded). */}
+                  {/* Fixed ticker slot (fits AUDJPY/EURUSD) so meta lines align; inputs unchanged. */}
                   <div className="flex items-center gap-1.5">
                     <span
-                      className="shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
+                      className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
                       title={row.label !== row.symbol ? row.label : undefined}
                     >
                       {row.symbol}
