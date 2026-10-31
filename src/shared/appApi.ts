@@ -19,7 +19,7 @@ export type AppRuntime = 'web' | 'desktop'
  * it over browser primitives — IndexedDB storage, a Web Worker for CSV
  * parsing, and a hidden file input for selection.
  */
-export type CandleLabApi = {
+export type BarReplayApi = {
   runtime: AppRuntime
   getAppVersion: () => Promise<string>
   openImportDialog: () => Promise<ImportDialogResult>

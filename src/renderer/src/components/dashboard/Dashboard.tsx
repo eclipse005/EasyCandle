@@ -16,7 +16,7 @@ import SymbolsTab from '@/components/dashboard/SymbolsTab'
 import StrategiesTab from '@/components/dashboard/StrategiesTab'
 import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog'
 import SessionReportDialog from '@/components/SessionReportDialog'
-import iconUrl from '@/assets/candlelab-icon.svg'
+import iconUrl from '@/assets/barreplay-icon.svg'
 
 const TABS: { id: DashboardTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -97,7 +97,7 @@ export default function Dashboard(): ReactNode {
     <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-200">
       <header className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
         <img src={iconUrl} alt="" className="h-6 w-6 rounded-sm" aria-hidden />
-        <span className="text-sm font-bold tracking-tight text-amber-400">CandleLab</span>
+        <span className="text-sm font-bold tracking-tight text-amber-400">BarReplay</span>
         <span className="ml-2 text-[10px] uppercase tracking-[0.14em] text-zinc-600">
           Backtesting console
         </span>
@@ -118,7 +118,7 @@ export default function Dashboard(): ReactNode {
           href="https://github.com/eclipse005/EasyCandle"
           target="_blank"
           rel="noopener noreferrer"
-          title="CandleLab on GitHub"
+          title="BarReplay on GitHub"
           className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
         >
           <ExternalLink className="h-4 w-4" aria-hidden />

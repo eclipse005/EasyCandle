@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-const STORAGE_KEY = 'candle-lab:strategies'
+const STORAGE_KEY = 'bar-replay:strategies'
 
 export const STRATEGY_NAME_MAX_LENGTH = 48
 

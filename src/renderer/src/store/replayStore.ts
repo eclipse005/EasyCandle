@@ -140,7 +140,7 @@ import {
   TIMEFRAMES
 } from '@shared/timeframes'
 
-const PAUSE_ON_TP_SL_KEY = 'candle-lab:pause-on-tp-sl'
+const PAUSE_ON_TP_SL_KEY = 'bar-replay:pause-on-tp-sl'
 
 function loadPauseOnTpSl(): boolean {
   try {

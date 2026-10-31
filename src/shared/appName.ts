@@ -1,1 +1,1 @@
-export const APP_NAME = 'CandleLab'
+export const APP_NAME = 'BarReplay'

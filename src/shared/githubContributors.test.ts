@@ -4,14 +4,14 @@ import { contributorAvatarFilename, isBotOrAgent } from './githubContributors'
 describe('isBotOrAgent', () => {
   it('keeps human users', () => {
     expect(isBotOrAgent({ login: 'octocat', type: 'User' })).toBe(false)
-    expect(isBotOrAgent({ login: 'candle-lab' })).toBe(false)
+    expect(isBotOrAgent({ login: 'bar-replay' })).toBe(false)
   })
 
   it('drops missing logins and non-user types', () => {
     expect(isBotOrAgent({ login: '', type: 'User' })).toBe(true)
     expect(isBotOrAgent({ type: 'User' })).toBe(true)
-    expect(isBotOrAgent({ login: 'candle-lab', type: 'Bot' })).toBe(true)
-    expect(isBotOrAgent({ login: 'candle-lab', type: 'Organization' })).toBe(true)
+    expect(isBotOrAgent({ login: 'bar-replay', type: 'Bot' })).toBe(true)
+    expect(isBotOrAgent({ login: 'bar-replay', type: 'Organization' })).toBe(true)
   })
 
   it('drops GitHub Apps, bots, and known agents', () => {

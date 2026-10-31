@@ -1,7 +1,7 @@
-import wordmarkSvg from '@/assets/candlelab-wordmark.svg?raw'
+import wordmarkSvg from '@/assets/barreplay-wordmark.svg?raw'
 import type { Theme } from '@/lib/theme'
 
-/** Dark-theme Candle fill baked into candlelab-wordmark.svg. */
+/** Dark-theme Candle fill baked into barreplay-wordmark.svg. */
 const DARK_CANDLE_FILL = '#F7F7F5'
 const LIGHT_CANDLE_FILL = '#18181B'
 const CANDLE_TSPAN = /(<tspan fill=")#[A-Fa-f0-9]{6}(">Candle<\/tspan>)/

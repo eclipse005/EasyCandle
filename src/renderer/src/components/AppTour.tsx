@@ -85,7 +85,7 @@ export default function AppTour(): null {
         stagePadding: 6,
         stageRadius: 4,
         popoverOffset: 10,
-        popoverClass: 'candle-lab-tour',
+        popoverClass: 'bar-replay-tour',
         animate: true,
         allowClose: true,
         overlayClickBehavior: 'close',

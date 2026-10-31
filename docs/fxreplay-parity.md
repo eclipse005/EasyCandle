@@ -1,4 +1,4 @@
-# CandleLab vs FX Replay — pure-frontend parity
+# BarReplay vs FX Replay — pure-frontend parity
 
 Scope: what a **local / static SPA** (IndexedDB + CSV import, no backend) can
 realistically match of FX Replay–style trading replay. Updated for the
@@ -6,7 +6,7 @@ realistically match of FX Replay–style trading replay. Updated for the
 
 Legend:
 
-- **Have** — already in CandleLab (verified in code)
+- **Have** — already in BarReplay (verified in code)
 - **Next** — high ROI, feasible in pure frontend (this branch targets several)
 - **Later** — feasible client-side but larger UX/perf investment
 - **Impossible without backend** — needs live feeds, accounts, or paid APIs

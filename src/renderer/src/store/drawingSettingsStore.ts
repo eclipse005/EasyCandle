@@ -10,7 +10,7 @@ import {
 } from '@/lib/chart/drawingGeometry'
 import { DEFAULT_FILL_OPACITY, sanitizeCssColor, withAlpha } from '@/lib/cssColor'
 
-const STORAGE_KEY = 'candle-lab:drawing-settings'
+const STORAGE_KEY = 'bar-replay:drawing-settings'
 
 export const DRAWING_TOOL_TYPES: readonly DrawingToolType[] = [
   'hline',

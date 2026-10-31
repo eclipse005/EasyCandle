@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { normalizeSymbolKey } from '@shared/pricePrecision'
 
-const STORAGE_KEY = 'candle-lab:symbol-params'
+const STORAGE_KEY = 'bar-replay:symbol-params'
 
 /**
  * User-managed per-symbol parameters (managed from the Dashboard "Symbols"

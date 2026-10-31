@@ -272,7 +272,7 @@ describe('fib levels', () => {
     vi.resetModules()
     const mod = await import('@/store/drawingSettingsStore')
     mod.useDrawingSettingsStore.getState().setFibLevels([{ ratio: 0.786, color: '#123456' }])
-    const raw = store['candle-lab:drawing-settings']
+    const raw = store['bar-replay:drawing-settings']
     expect(raw).toBeTruthy()
     const parsed = JSON.parse(raw ?? '{}') as { fibLevels: FibLevelConfig[] }
     expect(parsed.fibLevels).toEqual([{ ratio: 0.786, color: '#123456' }])
@@ -292,7 +292,7 @@ describe('dialog state', () => {
 describe('persistence', () => {
   it('sanitizes a stored payload before it is used', async () => {
     const store = {
-      'candle-lab:drawing-settings': JSON.stringify({
+      'bar-replay:drawing-settings': JSON.stringify({
         toolDefaults: {
           hline: { color: 'garbage', lineWidth: 99, lineStyle: 7 },
           long: { color: '#123456', lineWidth: 1, lineStyle: 4 }
@@ -313,7 +313,7 @@ describe('persistence', () => {
       getItem: (key: string) =>
         Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
       setItem: (_key: string, value: string) => {
-        store['candle-lab:drawing-settings'] = value
+        store['bar-replay:drawing-settings'] = value
       },
       removeItem: (key: string) => {
         delete store[key]
@@ -360,7 +360,7 @@ describe('persistence', () => {
     vi.resetModules()
     const mod = await import('@/store/drawingSettingsStore')
     mod.useDrawingSettingsStore.getState().setToolDefault('long', { color: '#00AA00' })
-    const raw = store['candle-lab:drawing-settings']
+    const raw = store['bar-replay:drawing-settings']
     expect(raw).toBeTruthy()
     const parsed = JSON.parse(raw ?? '{}') as { toolDefaults: Record<string, unknown> }
     expect(parsed.toolDefaults.long).toMatchObject({ color: '#00AA00' })

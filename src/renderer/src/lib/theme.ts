@@ -1,6 +1,6 @@
 export type Theme = 'dark' | 'light'
 
-export const THEME_STORAGE_KEY = 'candle-lab:theme'
+export const THEME_STORAGE_KEY = 'bar-replay:theme'
 
 /** FX Replay–aligned UI tokens (dark canvas). Interactive chrome uses primary blue; wordmark may stay amber. */
 export const UI_TOKENS = {

@@ -1,5 +1,5 @@
 """Fetch free USDJPY M1 CSV zips from histdata.com and convert them into the
-MT5-style CSV format CandleLab's importer accepts.
+MT5-style CSV format BarReplay's importer accepts.
 
 Link chain (discovered):
   /download-free-forex-historical-data/?/ascii/1-minute-bar-quotes/usdjpy
@@ -149,7 +149,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--years", required=True, help="comma list, e.g. 2023,2024")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--zipdir", default=r"D:\CandleLab\test-data\_histdata-zips")
+    ap.add_argument("--zipdir", default=r"D:\BarReplay\test-data\_histdata-zips")
     args = ap.parse_args()
 
     os.makedirs(args.zipdir, exist_ok=True)

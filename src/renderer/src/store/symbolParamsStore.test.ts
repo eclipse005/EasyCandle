@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 
-const STORAGE_KEY = 'candle-lab:symbol-params'
+const STORAGE_KEY = 'bar-replay:symbol-params'
 
 function stubLocalStorage(store: Record<string, string>): void {
   vi.stubGlobal('localStorage', {

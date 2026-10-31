@@ -1,6 +1,6 @@
-# CandleLab
+# BarReplay
 
-CandleLab is a pure-frontend candle replay and paper-trading web app. Replay historical K-line charts one bar at a time, practice entries without live-market pressure, and review sessions from a management console.
+BarReplay is a pure-frontend candle replay and paper-trading web app. Replay historical K-line charts one bar at a time, practice entries without live-market pressure, and review sessions from a management console.
 
 ## Stack
 
@@ -23,6 +23,6 @@ npm run build
 
 ## Acknowledgments
 
-本项目由 EasyCandle 演进而来（产品现名为 CandleLab）。感谢原开源项目 [Easy Candle](https://github.com/easy-candle/easy-candle)（[Saeed Poureshghi](https://github.com/SaeedPoureshghi) 等贡献者）提供的灵感与基础。
+本项目由 EasyCandle 演进而来（产品现名为 BarReplay）。感谢原开源项目 [Easy Candle](https://github.com/easy-candle/easy-candle)（[Saeed Poureshghi](https://github.com/SaeedPoureshghi) 等贡献者）提供的灵感与基础。
 
-This project evolved from EasyCandle and is now branded CandleLab. Thanks to the original [Easy Candle](https://github.com/easy-candle/easy-candle) project and its contributors (including [Saeed Poureshghi](https://github.com/SaeedPoureshghi)) for the foundation we built on.
+This project evolved from EasyCandle and is now branded BarReplay. Thanks to the original [Easy Candle](https://github.com/easy-candle/easy-candle) project and its contributors (including [Saeed Poureshghi](https://github.com/SaeedPoureshghi)) for the foundation we built on.

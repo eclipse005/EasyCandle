@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import iconUrl from '@/assets/candlelab-icon.svg'
+import iconUrl from '@/assets/barreplay-icon.svg'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { APP_NAME } from '@shared/appName'
 import { getReleaseCodename, parseSemverMajor } from '@shared/releaseCodenames'

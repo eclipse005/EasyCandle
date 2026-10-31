@@ -1,9 +1,9 @@
 {
-  "name": "candle-lab",
+  "name": "bar-replay",
   "version": "2.13.1",
-  "description": "CandleLab — candle replay web app (pure frontend port)",
+  "description": "BarReplay — candle replay web app (pure frontend port)",
   "private": true,
-  "author": "CandleLab",
+  "author": "BarReplay",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "vite",

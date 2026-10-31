@@ -5,7 +5,7 @@ import { CHART_TYPES, type ChartType } from '@/lib/chart/chartTypes'
 import { useReplayStore } from '@/store/replayStore'
 import Tooltip from '@/components/Tooltip'
 
-const FAVORITES_STORAGE_KEY = 'candle-lab:charttype-favorites'
+const FAVORITES_STORAGE_KEY = 'bar-replay:charttype-favorites'
 
 const ICONS: Record<ChartType, typeof ChartCandlestick> = {
   candlestick: ChartCandlestick,

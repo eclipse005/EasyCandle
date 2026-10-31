@@ -2,7 +2,7 @@ import type { Candle } from '@shared/candleUtils'
 import { IMPORT_STORED_TIMEFRAMES } from '@shared/candleAggregate'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
 
-const DB_NAME = 'candlelab_db'
+const DB_NAME = 'barreplay_db'
 const DB_VERSION = 1
 
 export function openImportDb(): Promise<IDBDatabase> {

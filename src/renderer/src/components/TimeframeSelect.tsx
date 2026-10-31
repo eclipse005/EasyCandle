@@ -5,7 +5,7 @@ import Dropdown from '@/components/Dropdown'
 import { useReplayStore } from '@/store/replayStore'
 import Tooltip from '@/components/Tooltip'
 
-const FAVORITES_STORAGE_KEY = 'candle-lab:timeframe-favorites'
+const FAVORITES_STORAGE_KEY = 'bar-replay:timeframe-favorites'
 
 function loadFavorites(): string[] {
   try {

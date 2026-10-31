@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStrategiesStore } from '@/store/strategiesStore'
 
-const STORAGE_KEY = 'candle-lab:strategies'
+const STORAGE_KEY = 'bar-replay:strategies'
 
 function stubLocalStorage(store: Record<string, string>): void {
   vi.stubGlobal('localStorage', {
