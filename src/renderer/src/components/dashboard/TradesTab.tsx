@@ -28,6 +28,19 @@ type SortKey = 'time' | 'entry' | 'pnl' | 'symbol'
 
 const PAGE_SIZES = [10, 25, 50] as const
 
+/** Trade table times — UTC wall without the noisy "UTC" suffix. */
+function formatTradeTime(unixSeconds: number | null | undefined): string {
+  const raw = formatUtcCandleTime(unixSeconds)
+  return raw === '—' ? raw : raw.replace(/\s*UTC$/, '')
+}
+
+/** Keep sign + amount + ccy on one line (nbsp around sign and before currency). */
+function formatReturnCcy(pnl: number | null | undefined, currency: string): string {
+  return formatPnlCcy(pnl, currency)
+    .replace(/^([+-]) /, '$1\u00A0')
+    .replace(/ ([A-Za-z]{3})$/, '\u00A0$1')
+}
+
 function entryTypeLabel(row: AggregatedTradeRow): string {
   if (row.status === 'pending') {
     if (row.pendingKind === 'stopLimit') return 'stop-limit'
@@ -371,22 +384,22 @@ export default function TradesTab(): ReactNode {
 
       <SoftCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] border-collapse text-left">
+          <table className="w-full min-w-[1280px] border-collapse text-left">
             <thead>
               <tr className="border-b border-white/[0.06] text-caption text-zinc-500">
-                <th className="px-4 py-3.5 font-medium">Session</th>
-                <th className="px-4 py-3.5 font-medium">Type</th>
-                <th className="px-4 py-3.5 font-medium">Entry (chart)</th>
-                <th className="px-4 py-3.5 font-medium">Exit (chart)</th>
-                <th className="px-4 py-3.5 font-medium">Asset</th>
-                <th className="px-4 py-3.5 font-medium">Side</th>
-                <th className="px-4 py-3.5 font-medium">Entry type</th>
-                <th className="px-4 py-3.5 font-medium text-right">Entry</th>
-                <th className="px-4 py-3.5 font-medium text-right">Exit</th>
-                <th className="px-4 py-3.5 font-medium text-right">Return ($)</th>
-                <th className="px-4 py-3.5 font-medium text-right">Return (%)</th>
-                <th className="px-4 py-3.5 font-medium text-right">Return (R)</th>
-                <th className="px-4 py-3.5 font-medium">Reason</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Session</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Type</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Entry</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Exit</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Asset</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Side</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Entry type</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Entry px</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Exit px</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return ($)</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return (%)</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return (R)</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -401,7 +414,10 @@ export default function TradesTab(): ReactNode {
                     key={`${row.sessionId}:${row.status}:${row.id}`}
                     className="border-b border-white/[0.04] text-body text-zinc-300 last:border-0"
                   >
-                    <td className="max-w-[10rem] truncate px-4 py-3 text-zinc-200">
+                    <td
+                      className="max-w-[12rem] truncate px-4 py-3 text-zinc-200"
+                      title={row.sessionName}
+                    >
                       {row.sessionName}
                     </td>
                     <td className="px-4 py-3">
@@ -415,10 +431,10 @@ export default function TradesTab(): ReactNode {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
-                      {formatUtcCandleTime(row.entryTime)}
+                      {formatTradeTime(row.entryTime)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-caption text-zinc-500">
-                      {row.exitTime != null ? formatUtcCandleTime(row.exitTime) : '—'}
+                      {row.exitTime != null ? formatTradeTime(row.exitTime) : '—'}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-zinc-200">{row.symbol}</td>
                     <td className="px-4 py-3">
@@ -446,7 +462,7 @@ export default function TradesTab(): ReactNode {
                     </td>
                     <td
                       className={cn(
-                        'px-4 py-3 text-right tabular-nums font-medium',
+                        'min-w-[9.5rem] whitespace-nowrap px-4 py-3 text-right tabular-nums font-medium',
                         row.pnl == null
                           ? 'text-zinc-600'
                           : row.pnl >= 0
@@ -454,7 +470,7 @@ export default function TradesTab(): ReactNode {
                             : 'text-red-400'
                       )}
                     >
-                      {row.pnl == null ? 'N/A' : formatPnlCcy(row.pnl, quote)}
+                      {row.pnl == null ? 'N/A' : formatReturnCcy(row.pnl, quote)}
                     </td>
                     <td
                       className={cn(
