@@ -82,17 +82,17 @@ export default function TestingDashboardTab({
         <div className={cn('grid sm:grid-cols-2', softSpace.rowGap)}>
           <MetricCard
             icon={<Clock className="h-6 w-6" aria-hidden />}
-            label="Time invested"
+            label={t('dashboard.timeInvested')}
             value={formatDurationMs(stats.timeInvestedMs)}
           />
           <MetricCard
             icon={<Clock className="h-6 w-6" aria-hidden />}
-            label="Historical time replayed"
+            label={t('dashboard.historicalReplayed')}
             value={formatDurationSec(stats.historicalReplayedSec)}
           />
           <MetricCard
             icon={<Target className="h-6 w-6" aria-hidden />}
-            label="Trades taken"
+            label={t('dashboard.tradesTaken')}
             value={String(stats.tradesTaken)}
             footer={
               stats.tradesTaken > 0 ? (
@@ -108,27 +108,27 @@ export default function TestingDashboardTab({
                     />
                   </div>
                   <p className={softType.caption}>
-                    <span className="text-emerald-400/90">{formatPct(stats.buyPct)} buys</span>
+                    <span className="text-emerald-400/90">{formatPct(stats.buyPct)} {t('dashboard.buys')}</span>
                     {' / '}
-                    <span className="text-red-400/90">{formatPct(stats.sellPct)} sells</span>
+                    <span className="text-red-400/90">{formatPct(stats.sellPct)} {t('dashboard.sells')}</span>
                   </p>
                 </div>
               ) : (
-                <p className={cn('mt-2', softType.micro)}>No closed trades yet</p>
+                <p className={cn('mt-2', softType.micro)}>{t('dashboard.noClosedTrades')}</p>
               )
             }
           />
           <MetricCard
             icon={<Percent className="h-6 w-6" aria-hidden />}
-            label="Overall win rate"
+            label={t('dashboard.overallWinRate')}
             value={formatWinRatePct(stats.winRate)}
           />
         </div>
 
         <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[360px] flex-col')}>
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className={softType.cardTitle}>Time invested</h3>
-            <span className={softType.micro}>by month</span>
+            <h3 className={softType.cardTitle}>{t('dashboard.timeInvested')}</h3>
+            <span className={softType.micro}>{t('dashboard.byMonth')}</span>
           </div>
           {hasMonthData ? (
             <div className="flex min-h-0 flex-1 items-end gap-3 px-1 pb-1 pt-4">
@@ -151,7 +151,7 @@ export default function TestingDashboardTab({
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <p className={cn('text-center', softType.caption)}>
-                Month bars fill as you open and update local sessions.
+                {t('dashboard.monthBarsHint')}
               </p>
             </div>
           )}
@@ -160,10 +160,10 @@ export default function TestingDashboardTab({
 
       {stats.sessionCount === 0 ? (
         <SoftEmpty>
-          <p className="mb-3">Import a CSV dataset, then start a backtesting session to fill these cards.</p>
+          <p className="mb-3">{t('dashboard.emptyHint')}</p>
           <SoftButton variant="primary" size="md" onClick={onStartSession}>
             <Plus className="h-5 w-5" aria-hidden />
-            Start a session
+            {t('dashboard.startSessionBtn')}
           </SoftButton>
         </SoftEmpty>
       ) : null}

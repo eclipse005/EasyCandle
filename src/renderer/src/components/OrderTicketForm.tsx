@@ -22,6 +22,7 @@ import { contractSizeForSymbol, formatAssetPrice, tradeSizeKindForSymbol } from 
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
+import { useT } from '@/i18n/useT'
 
 export type { TicketOrderType }
 
@@ -34,13 +35,13 @@ type RiskBasis = 'initial' | 'current'
 
 const RISK_CHIPS = [0.5, 1, 2, 3, 5] as const
 
-const ORDER_TYPES: { id: TicketOrderType; label: string }[] = [
-  { id: 'market', label: 'Market' },
-  { id: 'limit', label: 'Limit' },
-  { id: 'stopLimit', label: 'Stop' }
-]
-
 export default function OrderTicketForm({ compact: _compact = false }: OrderTicketFormProps) {
+  const { t } = useT()
+  const orderTypes: { id: TicketOrderType; label: string }[] = [
+    { id: 'market', label: t('ticket.market') },
+    { id: 'limit', label: t('ticket.limit') },
+    { id: 'stopLimit', label: t('ticket.stop') }
+  ]
   const limitInputRef = useRef<HTMLInputElement>(null)
   const tpInputRef = useRef<HTMLInputElement>(null)
   const slInputRef = useRef<HTMLInputElement>(null)
@@ -233,7 +234,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       {/* 1. Sell | Buy */}
       <div
         role="group"
-        aria-label="Order side"
+        aria-label={t('ticket.sideAria')}
         className="flex rounded-xl border border-white/[0.08] bg-zinc-950/40 p-0.5"
       >
         <button
@@ -242,7 +243,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           className={segmentClass(side === 'short', 'sell')}
           onClick={() => setSide('short')}
         >
-          Sell
+          {t('ticket.sell')}
         </button>
         <button
           type="button"
@@ -250,7 +251,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           className={segmentClass(side === 'long', 'buy')}
           onClick={() => setSide('long')}
         >
-          Buy
+          {t('ticket.buy')}
         </button>
       </div>
 
@@ -325,7 +326,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       {showEst ? (
         <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/40 px-2.5 py-2 text-[11px]">
           <div className="min-w-0">
-            <div className="text-zinc-500">Est. loss</div>
+            <div className="text-zinc-500">{t('ticket.estLoss')}</div>
             <div
               className={`truncate font-semibold tabular-nums ${
                 estLoss == null ? 'text-zinc-600' : 'text-red-400'
@@ -337,7 +338,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-zinc-500">Est. profit</div>
+            <div className="text-zinc-500">{t('ticket.estProfit')}</div>
             <div
               className={`truncate font-semibold tabular-nums ${
                 estProfit == null ? 'text-zinc-600' : 'text-primary-300'
@@ -347,7 +348,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             </div>
           </div>
           <div className="min-w-0">
-            <div className="text-zinc-500">R:R</div>
+            <div className="text-zinc-500">{t('ticket.rr')}</div>
             <div className="truncate font-semibold tabular-nums text-zinc-200">
               {estRr != null ? formatRiskReward(estRr) : '—'}
             </div>
@@ -366,10 +367,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         </span>
         <div
           role="group"
-          aria-label="Order type"
+          aria-label={t('ticket.typeAria')}
           className="flex rounded-xl border border-white/[0.08] bg-zinc-950/40 p-0.5"
         >
-          {ORDER_TYPES.map((item) => (
+          {orderTypes.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -388,7 +389,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         <TradeSizeControl value={sizeValue} symbol={symbol} disabled={busy} onChange={setTradeSize} />
         {isPendingTicketType(orderType) ? (
           <LevelPriceControl
-            label="Entry"
+            label={t('ticket.entry')}
             ariaLabel={orderType === 'stopLimit' ? 'Stop price' : 'Limit price'}
             title={
               orderType === 'stopLimit'
@@ -421,7 +422,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       {/* 7. SL / TP */}
       <LevelPriceControl
         label="SL"
-        ariaLabel="Stop loss"
+        ariaLabel={t('ticket.stopLoss')}
         title="Stop loss price. Type to set, or use the crosshair to pick from the chart. Long SL is below entry, short SL is above. First fill seeds the other level at the R:R guide."
         value={slValue}
         precision={pricePrecision}
@@ -433,7 +434,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       />
       <LevelPriceControl
         label="TP"
-        ariaLabel="Take profit"
+        ariaLabel={t('ticket.takeProfit')}
         title="Take profit price. Type to set, or use the crosshair to pick from the chart. Long TP is above entry, short TP is below. First fill seeds the other level at the R:R guide."
         value={tpValue}
         precision={pricePrecision}

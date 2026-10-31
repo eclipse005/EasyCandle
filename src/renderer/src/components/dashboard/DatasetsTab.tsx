@@ -74,8 +74,8 @@ export default function DatasetsTab(): ReactNode {
             const span = coverageSpanLabel(group.coverageDays)
             const dayCount = group.coverageDays.size
             const daysLabel = `${dayCount.toLocaleString()} day${dayCount === 1 ? '' : 's'}`
-            const filesLabel = `${group.fileCount} file${group.fileCount === 1 ? '' : 's'}`
-            const metaLine = `${filesLabel} · ${daysLabel} · ${span}`
+            // Product rule: omit file-count labels in Datasets chrome (detail via Edit).
+            const metaLine = `${daysLabel} · ${span}`
             return (
               <SoftCard
                 key={group.key}

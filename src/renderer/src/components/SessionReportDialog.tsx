@@ -16,22 +16,24 @@ import { useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { softType } from '@/components/ui/softTokens'
 import { cn } from '@/components/ui/cn'
+import { useT } from '@/i18n/useT'
 
 function ReportBlock({ title, report, quote }: { title: string; report: SideReport; quote: string }) {
+  const { t } = useT()
   return (
     <section className="min-w-0 flex-1">
       <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>{title}</h3>
       <dl className={cn("grid grid-cols-2 gap-x-4 gap-y-2.5 tabular-nums", softType.caption)}>
         <div>
-          <dt className="text-zinc-600">Trades</dt>
+          <dt className="text-zinc-600">{t('report.trades')}</dt>
           <dd className="text-zinc-200">{report.count}</dd>
         </div>
         <div>
-          <dt className="text-zinc-600">Win rate</dt>
+          <dt className="text-zinc-600">{t('report.winRate')}</dt>
           <dd className="text-zinc-200">{formatWinRate(report.winRate)}</dd>
         </div>
         <div>
-          <dt className="whitespace-nowrap text-zinc-600">W / L</dt>
+          <dt className="whitespace-nowrap text-zinc-600">{t('report.wl')}</dt>
           <dd className="text-zinc-200">
             {report.wins} / {report.losses}
             {report.breakeven > 0 ? (
@@ -40,18 +42,38 @@ function ReportBlock({ title, report, quote }: { title: string; report: SideRepo
           </dd>
         </div>
         <div>
-          <dt className="text-zinc-600">Total PnL</dt>
+          <dt className="text-zinc-600">{t('report.totalPnl')}</dt>
           <dd className={report.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
             {formatPnlCcy(report.totalPnl, quote)}
           </dd>
         </div>
         <div>
-          <dt className="text-zinc-600">Max profit</dt>
-          <dd className="text-emerald-400">{formatPnlCcy(report.maxProfit, quote)}</dd>
+          <dt className="text-zinc-600">{t('report.maxProfit')}</dt>
+          <dd
+            className={
+              report.maxProfit == null
+                ? 'text-zinc-500'
+                : report.maxProfit >= 0
+                  ? 'text-emerald-400'
+                  : 'text-red-400'
+            }
+          >
+            {formatPnlCcy(report.maxProfit, quote)}
+          </dd>
         </div>
         <div>
-          <dt className="text-zinc-600">Max loss</dt>
-          <dd className="text-red-400">{formatPnlCcy(report.maxLoss, quote)}</dd>
+          <dt className="text-zinc-600">{t('report.maxLoss')}</dt>
+          <dd
+            className={
+              report.maxLoss == null
+                ? 'text-zinc-500'
+                : report.maxLoss > 0
+                  ? 'text-emerald-400'
+                  : 'text-red-400'
+            }
+          >
+            {formatPnlCcy(report.maxLoss, quote)}
+          </dd>
         </div>
       </dl>
     </section>
@@ -65,6 +87,7 @@ function EquityCurveChart({
   points: EquityPoint[]
   quote: string
 }) {
+  const { t } = useT()
   if (points.length < 2) return null
   const width = 560
   const height = 120
@@ -84,7 +107,7 @@ function EquityCurveChart({
   return (
     <div className="mb-4 rounded-xl border border-white/5 bg-zinc-900/50 p-3 shadow-lg shadow-black/10">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className={cn("uppercase tracking-[0.14em]", softType.micro)}>Equity curve</h3>
+        <h3 className={cn("uppercase tracking-[0.14em]", softType.micro)}>{t('report.equityCurve')}</h3>
         <span className={`text-caption tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
           {formatPnlCcy(last.equity, quote)}
         </span>
@@ -109,6 +132,7 @@ function EquityCurveChart({
 }
 
 export default function SessionReportDialog() {
+  const { t } = useT()
   const sessionReport = useReplayStore((s) => s.sessionReport)
   const dismissSessionReport = useReplayStore((s) => s.dismissSessionReport)
   const previewSessionReport = useUiLayoutStore((s) => s.previewSessionReport)
@@ -199,17 +223,20 @@ export default function SessionReportDialog() {
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <div>
             <h2 id="session-report-title" className="text-sm font-semibold text-zinc-100">
-              Session performance
+              {t('report.title')}
             </h2>
             <p className={cn("mt-1", softType.caption)}>
-              {symbol} · {timeframe} · {summary.overall.count} closed trade
-              {summary.overall.count === 1 ? '' : 's'}
+              {symbol} · {timeframe} ·{' '}
+              {t('report.closedTrades', {
+                count: summary.overall.count,
+                suffix: summary.overall.count === 1 ? '' : 's'
+              })}
               {closedOpenOnExit
                 ? (() => {
-                    const flattened = Math.max(0, trades.length - summary.overall.count)
+                    const flattened = trades.filter((t) => t.exitReason === 'session_exit').length
                     return flattened > 0
-                      ? ` · ${flattened} open flattened at exit (excluded from win rate)`
-                      : ' · open flattened at exit (excluded from win rate)'
+                      ? ` · ${t('report.flattened', { count: flattened })}`
+                      : ` · ${t('report.flattened', { count: 0 })}`
                   })()
                 : null}
               {sessionUsd != null ? ` · ≈ ${formatPnlCcy(sessionUsd, 'USD')}` : null}
@@ -220,7 +247,7 @@ export default function SessionReportDialog() {
           </div>
           <button
             type="button"
-            aria-label="Close report"
+            aria-label={t('report.closeAria')}
             onClick={dismiss}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
@@ -230,16 +257,16 @@ export default function SessionReportDialog() {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           <div className="mb-4 flex flex-col gap-5 border-b border-zinc-800/80 pb-4 sm:flex-row sm:gap-6">
-            <ReportBlock title="Overall" report={summary.overall} quote={quoteCurrency} />
+            <ReportBlock title={t('report.overall')} report={summary.overall} quote={quoteCurrency} />
             <div className="hidden w-px bg-zinc-800 sm:block" aria-hidden />
-            <ReportBlock title="Long" report={summary.long} quote={quoteCurrency} />
+            <ReportBlock title={t('report.long')} report={summary.long} quote={quoteCurrency} />
             <div className="hidden w-px bg-zinc-800 sm:block" aria-hidden />
-            <ReportBlock title="Short" report={summary.short} quote={quoteCurrency} />
+            <ReportBlock title={t('report.short')} report={summary.short} quote={quoteCurrency} />
           </div>
 
           <EquityCurveChart points={curve} quote={quoteCurrency} />
 
-          <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>Trades</h3>
+          <h3 className={cn("mb-2 uppercase tracking-[0.14em]", softType.micro)}>{t('report.tradesList')}</h3>
           <ul className={cn("divide-y divide-zinc-800/80", softType.caption)}>
             {trades.map((trade) => (
               <li
@@ -313,14 +340,14 @@ export default function SessionReportDialog() {
             className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 text-caption font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
-            Export CSV
+            {t('report.exportCsv')}
           </button>
           <button
             type="button"
             onClick={dismiss}
             className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-caption font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200"
           >
-            Done
+            {t('report.done')}
           </button>
         </div>
       </div>

@@ -1137,23 +1137,16 @@ export function sideReport(trades: ClosedTrade[]): SideReport {
 
 export function summarizeSession(closedTrades: ClosedTrade[]): SessionSummary {
   const trades = Array.isArray(closedTrades) ? closedTrades : []
-  // Win-rate / W-L counts exclude forced flatten-on-exit fills so open PnL is
-  // not treated as a discretionary closed trade. totalPnl still includes them.
-  const scored = trades.filter((t) => t.exitReason !== 'session_exit')
-  const overall = sideReport(scored)
-  overall.totalPnl = cumulativeRealizedPnl(trades)
+  // Product rule: every closed row in the Session performance list counts as one
+  // trade for Overall / Long / Short (counts, W/L, win rate, Max profit/loss).
+  // Total PnL is the sum of those same rows. session_exit (flatten on exit) is a
+  // normal close of that position — one row, one count, its PnL included — so it
+  // cannot create double-count or ghost-PnL on a zero-count side.
+  const overall = sideReport(trades)
   return {
     overall,
-    long: (() => {
-      const r = sideReport(scored.filter((t) => t.side === 'long'))
-      r.totalPnl = cumulativeRealizedPnl(trades.filter((t) => t.side === 'long'))
-      return r
-    })(),
-    short: (() => {
-      const r = sideReport(scored.filter((t) => t.side === 'short'))
-      r.totalPnl = cumulativeRealizedPnl(trades.filter((t) => t.side === 'short'))
-      return r
-    })()
+    long: sideReport(trades.filter((t) => t.side === 'long')),
+    short: sideReport(trades.filter((t) => t.side === 'short'))
   }
 }
 

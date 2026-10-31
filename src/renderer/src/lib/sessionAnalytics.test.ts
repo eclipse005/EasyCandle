@@ -85,7 +85,7 @@ describe('sessionAnalytics', () => {
       trade({ id: '2', side: 'long', pnl: 25, exitTime: tue })
     ]
     const monthly = monthlyPnlBuckets(trades, 3, Date.UTC(2026, 2, 31))
-    const mar = monthly.find((m) => m.label === 'Mar')
+    const mar = monthly.find((m) => m.label.startsWith('Mar'))
     expect(mar?.pnl).toBe(75)
     const daily = weekdayPnlBuckets(trades)
     expect(daily.find((d) => d.label === 'Monday')?.pnl).toBe(50)
@@ -98,7 +98,7 @@ describe('sessionAnalytics', () => {
     const mar2024 = Date.UTC(2024, 2, 15, 12) / 1000
     const trades = [trade({ id: '1', side: 'long', pnl: 40, exitTime: mar2024 })]
     const monthly = monthlyPnlBuckets(trades, 3, Date.UTC(2026, 9, 31))
-    const mar = monthly.find((m) => m.label === 'Mar')
+    const mar = monthly.find((m) => m.label.startsWith('Mar'))
     expect(mar?.pnl).toBe(40)
     expect(mar?.tradeCount).toBe(1)
   })

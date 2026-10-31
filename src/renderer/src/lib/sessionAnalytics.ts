@@ -172,7 +172,13 @@ export function monthlyPnlBuckets(
     const m = d.getUTCMonth()
     const key = `${year}-${String(m + 1).padStart(2, '0')}`
     index.set(key, buckets.length)
-    buckets.push({ key, label: MONTH_LABELS[m] ?? key, pnl: 0, tradeCount: 0 })
+    // Short year context so cross-year windows stay readable without a redesign.
+    buckets.push({
+      key,
+      label: `${MONTH_LABELS[m] ?? key} ${String(year).slice(2)}`,
+      pnl: 0,
+      tradeCount: 0
+    })
   }
   for (const t of list) {
     if (!Number.isFinite(t.exitTime) || !Number.isFinite(t.pnl)) continue

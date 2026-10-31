@@ -26,15 +26,9 @@ import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import Tooltip from '@/components/Tooltip'
 import { softType } from '@/components/ui/softTokens'
+import { useT } from '@/i18n/useT'
 
 type HistoryTab = 'positions' | 'openOrders' | 'orderHistory' | 'positionHistory'
-
-const TABS: { id: HistoryTab; label: string }[] = [
-  { id: 'positions', label: 'Open positions' },
-  { id: 'openOrders', label: 'Pending orders' },
-  { id: 'orderHistory', label: 'Order History' },
-  { id: 'positionHistory', label: 'Closed positions' }
-]
 
 function tabClass(active: boolean): string {
   return `shrink-0 rounded-lg px-2.5 py-1.5 text-caption font-medium transition-colors ${
@@ -313,6 +307,14 @@ function ClosedPositionRow({
 
 /** Session PnL + Positions / Open Orders / Order History / Position History. */
 export default function TradePanel() {
+  const { t } = useT()
+  const TABS: { id: HistoryTab; label: string }[] = [
+    { id: 'positions', label: t('blotter.openPositions') },
+    { id: 'openOrders', label: t('blotter.pendingOrders') },
+    { id: 'orderHistory', label: t('blotter.orderHistory') },
+    { id: 'positionHistory', label: t('blotter.closedPositions') }
+  ]
+
   const [showPositions, setShowPositions] = useState(true)
   const [tab, setTab] = useState<HistoryTab>('positions')
   const mode = useReplayStore((s) => s.mode)
@@ -417,7 +419,7 @@ export default function TradePanel() {
       ) : neverTraded ? (
         howTo
       ) : (
-        <EmptyRow>No open positions</EmptyRow>
+        <EmptyRow>{t('blotter.emptyPositions')}</EmptyRow>
       )
   } else if (tab === 'openOrders') {
     body =
@@ -436,7 +438,7 @@ export default function TradePanel() {
           ))}
         </HistoryList>
       ) : (
-        <EmptyRow>No open orders. Place a Limit or Stop Limit from the ticket.</EmptyRow>
+        <EmptyRow>{t('blotter.emptyOrders')}</EmptyRow>
       )
   } else if (tab === 'orderHistory') {
     body =
@@ -452,7 +454,7 @@ export default function TradePanel() {
           ))}
         </HistoryList>
       ) : (
-        <EmptyRow>No order history yet. Filled and canceled orders show here.</EmptyRow>
+        <EmptyRow>{t('blotter.emptyHistory')}</EmptyRow>
       )
   } else {
     body =
@@ -470,7 +472,7 @@ export default function TradePanel() {
           ))}
         </HistoryList>
       ) : (
-        <EmptyRow>No closed positions yet.</EmptyRow>
+        <EmptyRow>{t('blotter.emptyClosed')}</EmptyRow>
       )
   }
 
@@ -482,7 +484,7 @@ export default function TradePanel() {
       }`}
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3.5 py-2.5">
-        <span className={cn(softType.body, "font-medium text-zinc-400")}>Paper trade</span>
+        <span className={cn(softType.body, "font-medium text-zinc-400")}>{t('blotter.paperTrade')}</span>
 
         <div className="ml-auto flex flex-wrap items-center gap-3 text-caption tabular-nums">
           {activeSession ? (

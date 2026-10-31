@@ -24,6 +24,7 @@ import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { formatWinRatePct } from '@/lib/localPerformance'
 import { sideReport } from '@/lib/paperTrade'
+import { useT } from '@/i18n/useT'
 
 type SideFilter = 'all' | 'long' | 'short'
 type OutcomeFilter = 'all' | 'win' | 'loss' | 'be'
@@ -46,6 +47,7 @@ function entryTypeOf(t: ClosedTrade): 'market' | 'limit' | 'stop-limit' {
 
 /** Local analytics from IndexedDB — FXR free subset with filters + drawdown. */
 export default function AnalyticsTab(): ReactNode {
+  const { t } = useT()
   const sessions = useSessionStore((s) => s.sessions)
   const strategies = useStrategiesStore((s) => s.strategies)
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
@@ -203,8 +205,7 @@ export default function AnalyticsTab(): ReactNode {
   if (allTrades.length === 0) {
     return (
       <SoftEmpty>
-        Analytics appear once you have closed trades in local sessions. No cloud lock —
-        everything stays in IndexedDB.
+        {t('analytics.empty')}
       </SoftEmpty>
     )
   }
@@ -217,26 +218,26 @@ export default function AnalyticsTab(): ReactNode {
       <SoftCard className={cn(softSpace.cardPadSm, 'space-y-4')}>
         <div className="flex flex-wrap items-end gap-3">
           <label className="min-w-[8rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Type</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.type')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={entryTypeFilter}
               onChange={(e) => setEntryTypeFilter(e.target.value as EntryTypeFilter)}
             >
-              <option value="all">All</option>
-              <option value="market">Market</option>
-              <option value="limit">Limit</option>
-              <option value="stop-limit">Stop-limit</option>
+              <option value="all">{t('analytics.all')}</option>
+              <option value="market">{t('analytics.market')}</option>
+              <option value="limit">{t('analytics.limit')}</option>
+              <option value="stop-limit">{t('analytics.stopLimit')}</option>
             </SoftSelect>
           </label>
           <label className="min-w-[8rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Assets</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.assets')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={assetFilter}
               onChange={(e) => setAssetFilter(e.target.value)}
             >
-              <option value="all">All</option>
+              <option value="all">{t('analytics.all')}</option>
               {assetOptions.map((sym) => (
                 <option key={sym} value={sym}>
                   {sym}
@@ -245,38 +246,38 @@ export default function AnalyticsTab(): ReactNode {
             </SoftSelect>
           </label>
           <label className="min-w-[8rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Side</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.side')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={sideFilter}
               onChange={(e) => setSideFilter(e.target.value as SideFilter)}
             >
-              <option value="all">All</option>
-              <option value="long">Buy</option>
-              <option value="short">Sell</option>
+              <option value="all">{t('analytics.all')}</option>
+              <option value="long">{t('analytics.buy')}</option>
+              <option value="short">{t('analytics.sell')}</option>
             </SoftSelect>
           </label>
           <label className="min-w-[8rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Outcome</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.outcome')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={outcomeFilter}
               onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)}
             >
-              <option value="all">All</option>
-              <option value="win">Wins</option>
-              <option value="loss">Losses</option>
-              <option value="be">Break-even</option>
+              <option value="all">{t('analytics.all')}</option>
+              <option value="win">{t('analytics.wins')}</option>
+              <option value="loss">{t('analytics.losses')}</option>
+              <option value="be">{t('analytics.be')}</option>
             </SoftSelect>
           </label>
           <label className="min-w-[10rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Session</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.session')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={sessionFilter}
               onChange={(e) => setSessionFilter(e.target.value)}
             >
-              <option value="all">All sessions</option>
+              <option value="all">{t('analytics.allSessions')}</option>
               {sessionOptions.map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}
@@ -285,14 +286,14 @@ export default function AnalyticsTab(): ReactNode {
             </SoftSelect>
           </label>
           <label className="min-w-[10rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>Strategy</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.strategy')}</span>
             <SoftSelect
               className="h-11 text-body"
               value={strategyFilter}
               onChange={(e) => setStrategyFilter(e.target.value)}
             >
-              <option value="all">All</option>
-              <option value="none">No strategy</option>
+              <option value="all">{t('analytics.all')}</option>
+              <option value="none">{t('analytics.noStrategy')}</option>
               {strategies.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -301,7 +302,7 @@ export default function AnalyticsTab(): ReactNode {
             </SoftSelect>
           </label>
           <label className="min-w-[9rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>From</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.from')}</span>
             <SoftInput
               type="date"
               className="h-11 text-body"
@@ -310,7 +311,7 @@ export default function AnalyticsTab(): ReactNode {
             />
           </label>
           <label className="min-w-[9rem]">
-            <span className={cn('mb-1.5 block', softType.caption)}>To</span>
+            <span className={cn('mb-1.5 block', softType.caption)}>{t('analytics.filter.to')}</span>
             <SoftInput
               type="date"
               className="h-11 text-body"
@@ -319,20 +320,20 @@ export default function AnalyticsTab(): ReactNode {
             />
           </label>
           <SoftButton size="sm" variant="ghost" onClick={clearFilters}>
-            Clear filters
+            {t('analytics.clearFilters')}
           </SoftButton>
         </div>
 
         <p className={cn(softType.micro, 'text-zinc-600')} title={accountTimezone}>
-          Date filters and monthly / daily buckets use account timezone ({accountTzLabel}).
+          {t('analytics.tzNote', { tz: accountTzLabel })}
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className={softType.caption}>P&amp;L</span>
+          <span className={softType.caption}>{t('analytics.pnl')}</span>
           {(
             [
-              ['all', 'All'],
-              ['day', 'Day']
+              ['all', t('analytics.pnlAll')],
+              ['day', t('analytics.pnlDay')]
             ] as const
           ).map(([id, label]) => (
             <SoftButton
@@ -346,11 +347,11 @@ export default function AnalyticsTab(): ReactNode {
             </SoftButton>
           ))}
           <span className="mx-2 h-5 w-px bg-white/10" aria-hidden />
-          <span className={softType.caption}>View</span>
+          <span className={softType.caption}>{t('analytics.view')}</span>
           {(
             [
-              ['performance', 'Performance'],
-              ['drawdown', 'Drawdown']
+              ['performance', t('analytics.viewPerformance')],
+              ['drawdown', t('analytics.viewDrawdown')]
             ] as const
           ).map(([id, label]) => (
             <SoftButton
@@ -364,52 +365,50 @@ export default function AnalyticsTab(): ReactNode {
             </SoftButton>
           ))}
           <span className={cn('ml-auto', softType.caption)}>
-            {filtered.length} of {allTrades.length} closed trades
+            {t('analytics.filteredOf', { filtered: filtered.length, total: allTrades.length })}
           </span>
         </div>
       </SoftCard>
 
       {filtered.length === 0 ? (
-        <SoftEmpty>
-          No trades match these filters. Clear filters or take more paper trades.
-        </SoftEmpty>
+        <SoftEmpty>{t('analytics.noMatch')}</SoftEmpty>
       ) : view === 'performance' ? (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
             <StatCard
-              label="Win rate"
+              label={t('analytics.winRate')}
               value={formatWinRatePct(report.winRate)}
               hint={`${report.wins}W / ${report.losses}L · ${report.count} trade${report.count === 1 ? '' : 's'}`}
             />
             <StatCard
-              label="Realized PnL"
+              label={t('analytics.realizedPnl')}
               value={formatPnl(report.totalPnl)}
-              hint="Filtered closes"
+              hint={t('analytics.hintFilteredCloses')}
               tone={report.totalPnl >= 0 ? 'up' : 'down'}
             />
-            <StatCard label="Risk / Reward" value={formatRiskRewardRatio(rr)} hint="Avg win ÷ |avg loss|" />
+            <StatCard label={t('analytics.riskReward')} value={formatRiskRewardRatio(rr)} hint={t('analytics.hintAvgWinLoss')} />
             <StatCard
-              label="Expectancy"
+              label={t('analytics.expectancy')}
               value={exp == null ? '—' : formatPnl(exp)}
-              hint="Avg PnL per trade"
+              hint={t('analytics.hintAvgPnl')}
               tone={exp == null ? 'neutral' : exp >= 0 ? 'up' : 'down'}
             />
             <StatCard
-              label="Profit factor"
+              label={t('analytics.profitFactor')}
               value={pf == null ? '—' : pf.toFixed(2)}
-              hint="Gross wins ÷ |gross losses|"
+              hint={t('analytics.hintGrossWins')}
             />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
-              <h2 className={softType.section}>Monthly performance</h2>
-              <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by calendar month.</p>
+              <h2 className={softType.section}>{t('analytics.monthlyTitle')}</h2>
+              <p className={cn('mt-1 mb-4', softType.caption)}>{t('analytics.monthlyHint')}</p>
               <BarRow buckets={monthly} positiveClass="from-emerald-600 via-emerald-400 to-emerald-200" />
             </SoftCard>
             <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[260px] flex-col')}>
-              <h2 className={softType.section}>Daily performance</h2>
-              <p className={cn('mt-1 mb-4', softType.caption)}>Closed-trade PnL by weekday.</p>
+              <h2 className={softType.section}>{t('analytics.dailyTitle')}</h2>
+              <p className={cn('mt-1 mb-4', softType.caption)}>{t('analytics.dailyHint')}</p>
               <BarRow
                 buckets={daily}
                 positiveClass="from-sky-600 via-sky-400 to-sky-200"
@@ -420,12 +419,12 @@ export default function AnalyticsTab(): ReactNode {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <SoftCard className={softSpace.cardPad}>
-              <h2 className={softType.section}>By side</h2>
+              <h2 className={softType.section}>{t('analytics.bySide')}</h2>
               <ul className="mt-4 space-y-4">
                 {(
                   [
-                    ['Buy', bySide.buy],
-                    ['Sell', bySide.sell]
+                    [t('analytics.buy'), bySide.buy],
+                    [t('analytics.sell'), bySide.sell]
                   ] as const
                 ).map(([label, row]) => (
                   <li key={label} className="flex items-baseline justify-between gap-3">
@@ -442,8 +441,8 @@ export default function AnalyticsTab(): ReactNode {
             </SoftCard>
 
             <SoftCard className={softSpace.cardPad}>
-              <h2 className={softType.section}>Trades by symbol</h2>
-              <p className={cn('mt-1', softType.caption)}>Win rate and realized PnL from filtered closes.</p>
+              <h2 className={softType.section}>{t('analytics.bySymbol')}</h2>
+              <p className={cn('mt-1', softType.caption)}>{t('analytics.bySymbolHint')}</p>
               <ul className="mt-4 space-y-3">
                 {bySymbol.map((row) => (
                   <li key={row.symbol}>
@@ -471,7 +470,7 @@ export default function AnalyticsTab(): ReactNode {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <SoftCard className={cn(softSpace.cardPad, 'flex min-h-[320px] flex-col')}>
-            <h2 className={softType.section}>Equity &amp; drawdown</h2>
+            <h2 className={softType.section}>{t('analytics.equityDd')}</h2>
             <p className={cn('mt-1 mb-4', softType.caption)}>
               Underwater from peak after each filtered close (start{' '}
               {formatPnl(startingBalance).replace(/^[+-]/, '')}).
@@ -480,7 +479,7 @@ export default function AnalyticsTab(): ReactNode {
           </SoftCard>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <StatCard
-              label="Max drawdown"
+              label={t('analytics.maxDd')}
               value={
                 dd.maxDrawdown <= 0
                   ? '0.00'
@@ -490,7 +489,7 @@ export default function AnalyticsTab(): ReactNode {
               tone={dd.maxDrawdown > 0 ? 'down' : 'neutral'}
             />
             <StatCard
-              label="Max drawdown %"
+              label={t('analytics.maxDdPct')}
               value={
                 dd.maxDrawdownPct == null
                   ? '—'
@@ -500,7 +499,7 @@ export default function AnalyticsTab(): ReactNode {
               tone={dd.maxDrawdownPct && dd.maxDrawdownPct > 0 ? 'down' : 'neutral'}
             />
             <StatCard
-              label="Ending equity"
+              label={t('analytics.endingEquity')}
               value={formatPnl(dd.points[dd.points.length - 1]?.equity ?? startingBalance).replace(
                 /^[+-]/,
                 ''
@@ -526,21 +525,21 @@ function StatCard({
   tone?: 'up' | 'down' | 'neutral'
 }): ReactNode {
   return (
-    <SoftCard className={cn(softSpace.cardPadSm, 'min-w-0 overflow-hidden')}>
-      <p className={cn(softType.caption, 'text-pretty')}>{label}</p>
+    <SoftCard className={cn(softSpace.cardPadSm, 'min-w-0 overflow-hidden px-5 py-5')}>
+      <p className={cn(softType.caption, 'truncate')}>{label}</p>
       <p
         className={cn(
-          'mt-2 break-words tabular-nums leading-tight',
-          softType.metric,
-          'text-[clamp(1.05rem,2.1vw,1.65rem)]',
+          'mt-2 whitespace-nowrap tabular-nums leading-none tracking-tight',
+          'text-[clamp(0.95rem,1.55vw,1.35rem)] font-bold',
           tone === 'up' && 'text-emerald-400',
           tone === 'down' && 'text-red-400',
           tone === 'neutral' && 'text-zinc-50'
         )}
+        title={value}
       >
         {value}
       </p>
-      <p className={cn('mt-1 text-pretty', softType.caption, 'text-zinc-600')}>{hint}</p>
+      <p className={cn('mt-1.5 truncate', softType.caption, 'text-zinc-600')}>{hint}</p>
     </SoftCard>
   )
 }

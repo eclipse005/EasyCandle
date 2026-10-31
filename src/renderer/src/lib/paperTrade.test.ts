@@ -1169,7 +1169,47 @@ describe('summarizeSession / export', () => {
     expect(formatWinRate(0.5)).toBe('50.0%')
   })
 
-  it('session_exit excluded from W/L counts but kept in total PnL', () => {
+  it('session_exit counts as a trade with its PnL (no ghost PnL)', () => {
+    // Smoke case shape: LONG SL −200 + SHORT EXIT +217 → 2 trades, 1W/1L, +17
+    const smoke = [
+      flatClosed({
+        id: 'long-sl',
+        side: 'long',
+        entryPrice: 1.1,
+        entryTime: 1,
+        exitPrice: 1.098,
+        exitTime: 2,
+        pnl: -200,
+        exitReason: 'sl'
+      }),
+      flatClosed({
+        id: 'short-exit',
+        side: 'short',
+        entryPrice: 1.1,
+        entryTime: 3,
+        exitPrice: 1.09783,
+        exitTime: 4,
+        pnl: 217,
+        exitReason: 'session_exit'
+      })
+    ]
+    const summary = summarizeSession(smoke)
+    expect(summary.overall.count).toBe(2)
+    expect(summary.overall.wins).toBe(1)
+    expect(summary.overall.losses).toBe(1)
+    expect(summary.overall.winRate).toBeCloseTo(0.5)
+    expect(summary.overall.totalPnl).toBeCloseTo(17)
+    expect(summary.overall.maxProfit).toBeCloseTo(217)
+    expect(summary.overall.maxLoss).toBeCloseTo(-200)
+    expect(summary.long.count).toBe(1)
+    expect(summary.long.totalPnl).toBeCloseTo(-200)
+    expect(summary.long.maxProfit).toBeCloseTo(-200)
+    expect(summary.short.count).toBe(1)
+    expect(summary.short.totalPnl).toBeCloseTo(217)
+    expect(summary.short.wins).toBe(1)
+  })
+
+  it('session_exit included in W/L counts and total PnL', () => {
     const withFlat = [
       ...sample,
       flatClosed({
@@ -1185,8 +1225,11 @@ describe('summarizeSession / export', () => {
     ]
     const summary = summarizeSession(withFlat)
     expect(withFlat.length).toBe(5)
-    expect(summary.overall.count).toBe(4)
+    expect(summary.overall.count).toBe(5)
+    expect(summary.overall.wins).toBe(3)
     expect(summary.overall.totalPnl).toBeCloseTo(6)
+    expect(summary.long.count).toBe(3)
+    expect(summary.long.totalPnl).toBeCloseTo(6)
   })
 
   it('exports CSV with header, exit reason, and levels', () => {

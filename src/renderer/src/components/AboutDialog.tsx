@@ -4,6 +4,7 @@ import iconUrl from '@/assets/barreplay-logo.png'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { APP_NAME } from '@shared/appName'
 import { getReleaseCodename, parseSemverMajor } from '@shared/releaseCodenames'
+import { useT } from '@/i18n/useT'
 
 /** Same mascot set the splash uses, keyed by codename slug. */
 const mascotUrls = import.meta.glob('../../assets/splash/codenames/*.png', {
@@ -12,6 +13,7 @@ const mascotUrls = import.meta.glob('../../assets/splash/codenames/*.png', {
 }) as Record<string, string>
 
 export default function AboutDialog() {
+  const { t } = useT()
   const open = useUiLayoutStore((s) => s.aboutDialogOpen)
   const setOpen = useUiLayoutStore((s) => s.setAboutDialogOpen)
   const [version, setVersion] = useState('')
@@ -56,7 +58,7 @@ export default function AboutDialog() {
 
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t('about.closeAria')}
           onClick={() => setOpen(false)}
           className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/5 hover:text-zinc-100"
         >
@@ -80,7 +82,7 @@ export default function AboutDialog() {
               {version ? (
                 <p className="mt-1">
                   <span className="inline-flex items-center rounded-full border border-white/10 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400">
-                    Version {version}
+                    {t('about.version', { version })}
                   </span>
                 </p>
               ) : null}
@@ -88,15 +90,13 @@ export default function AboutDialog() {
           </div>
 
           <p className="mt-4 text-[13px] leading-relaxed text-zinc-400">
-            Replay charts and paper-trade without risk.
+            {t('about.tagline')}
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-            Analytics / trade day cuts follow Settings → Account timezone (default New York).
-            Chart timezone (bottom-right) is display-only and does not change stored data or
-            buckets. Import Confirm requires an explicit CSV data timezone before save.
+            {t('about.timezoneNote')}
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-            Charts built with{' '}
+            {t('about.chartsBuilt')}{' '}
             <a
               href="https://www.tradingview.com/"
               target="_blank"
@@ -121,7 +121,7 @@ export default function AboutDialog() {
               </span>
               <span className="flex flex-col gap-1.5 border-l border-zinc-800 pl-3">
                 <span className="text-[9px] font-semibold uppercase tracking-[0.3em] text-zinc-500">
-                  Generation
+                  {t('about.generation')}
                 </span>
                 <span className="text-[13px] font-bold uppercase leading-none tracking-[0.18em] text-amber-500">
                   {codename}

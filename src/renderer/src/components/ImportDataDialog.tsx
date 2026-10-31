@@ -12,6 +12,7 @@ import { useSymbolParamsStore } from '@/store/symbolParamsStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { isDesktopRuntime } from '@/lib/runtime'
 import ImportProgressBar, { type ImportProgress } from '@/components/ImportProgressBar'
+import { useT } from '@/i18n/useT'
 
 export type ImportFeedback = {
   tone: 'error' | 'info'
@@ -64,6 +65,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
   const selectImportedDataset = useReplayStore((s) => s.selectImportedDataset)
   const ensureSymbol = useSymbolParamsStore((s) => s.ensureSymbol)
   const desktop = isDesktopRuntime()
+  const { t } = useT()
 
   const open = useUiLayoutStore((s) => s.importDataDialogOpen)
   const setOpen = useUiLayoutStore((s) => s.setImportDataDialogOpen)
@@ -187,11 +189,14 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
       setLoadProgress({ label: 'Ready…', percent: 98 })
       if (batch.every((b) => b.status === 'error')) {
+        const firstErr = batch.find((b) => b.error)?.error
         showInline(
           'error',
           batch.length === 1
             ? batch[0].error || 'Import failed.'
-            : `All ${batch.length} files failed to parse.`
+            : firstErr
+              ? `All ${batch.length} files failed to parse. First: ${firstErr}`
+              : `All ${batch.length} files failed to parse.`
         )
         discardBatchTokens(batch)
         return
@@ -355,8 +360,8 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
         type="button"
         data-tour="import-data"
         disabled={disabled}
-        title="Import MT4/MT5 1-minute CSV"
-        aria-label="Import data"
+        title={t('import.titleTip')}
+        aria-label={t('import.aria')}
         onClick={() => {
           setMessage(null)
           setModalError(null)
@@ -365,7 +370,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
         className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary-500/90 px-3 text-xs font-medium text-white shadow-sm shadow-primary-950/30 hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Database className="h-3.5 w-3.5" aria-hidden />
-        Import CSV
+        {t('import.csv')}
       </button>
 
       {open && (
@@ -384,17 +389,17 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
               <div>
                 <h2 id="import-data-title" className="text-sm font-semibold text-zinc-100">
-                  Import data
+                  {t('import.data')}
                 </h2>
                 <p className="mt-0.5 text-[11px] text-zinc-500">
                   {desktop
-                    ? 'CSV files · multi-select · confirm to save locally'
-                    : 'CSV files · multi-select · confirm to save in this browser'}
+                    ? t('import.hintDesktop')
+                    : t('import.hintBrowser')}
                 </p>
               </div>
               <button
                 type="button"
-                aria-label="Close"
+                aria-label={t('import.closeAria')}
                 disabled={disabled}
                 onClick={() => closeDialog()}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
@@ -405,7 +410,7 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
 
             <div className="space-y-4 px-4 py-4">
               <section>
-                <span className="text-[11px] font-medium text-zinc-400">Import CSV</span>
+                <span className="text-[11px] font-medium text-zinc-400">{t('import.csv')}</span>
                 <button
                   type="button"
                   disabled={disabled}
@@ -413,13 +418,13 @@ export default function ImportDataDialog({ onFeedback }: ImportDataDialogProps):
                   className="mt-1.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500/90 px-3 text-xs font-medium text-white shadow-sm shadow-primary-950/30 hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {loadProgress ? (
-                    <span>Importing…</span>
+                    <span>{t('import.importing')}</span>
                   ) : busy ? (
-                    <span>Reading…</span>
+                    <span>{t('import.reading')}</span>
                   ) : (
                     <>
                       <FileUp className="h-4 w-4" aria-hidden />
-                      Import MT4/MT5 1-minute CSV
+                      {t('import.mtCsv')}
                     </>
                   )}
                 </button>

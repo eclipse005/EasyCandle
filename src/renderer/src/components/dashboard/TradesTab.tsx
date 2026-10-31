@@ -19,6 +19,7 @@ import {
 import { analyticsDayBounds } from '@/lib/sessionAnalytics'
 import { chartTimezoneById, sessionUtcOffsetLabel } from '@/lib/chartTimezone'
 import { useAccountPrefsStore } from '@/store/accountPrefsStore'
+import { useT } from '@/i18n/useT'
 
 type SideFilter = 'all' | 'long' | 'short'
 type StatusFilter = 'all' | TradeRowStatus
@@ -85,19 +86,23 @@ function returnR(row: AggregatedTradeRow): number | null {
   return move / risk
 }
 
-function statusBadge(status: TradeRowStatus): { label: string; className: string } {
+function statusBadge(
+  status: TradeRowStatus,
+  t: (key: import('@/i18n/messages').MessageKey) => string
+): { label: string; className: string } {
   switch (status) {
     case 'open':
-      return { label: 'Open', className: 'bg-teal-500/15 text-teal-300' }
+      return { label: t('trades.open'), className: 'bg-teal-500/15 text-teal-300' }
     case 'pending':
-      return { label: 'Pending', className: 'bg-amber-500/15 text-amber-300' }
+      return { label: t('trades.pending'), className: 'bg-amber-500/15 text-amber-300' }
     default:
-      return { label: 'Closed', className: 'bg-zinc-800/80 text-zinc-300' }
+      return { label: t('trades.closed'), className: 'bg-zinc-800/80 text-zinc-300' }
   }
 }
 
 /** Aggregate open / pending / closed trades — FXR Basic filters locally. */
 export default function TradesTab(): ReactNode {
+  const { t } = useT()
   const sessions = useSessionStore((s) => s.sessions)
   const accountTimezone = useAccountPrefsStore((s) => s.accountTimezone)
   const accountTzLabel = `${chartTimezoneById(accountTimezone).city} (${sessionUtcOffsetLabel(accountTimezone)})`
@@ -211,7 +216,7 @@ export default function TradesTab(): ReactNode {
   if (allRows.length === 0) {
     return (
       <SoftEmpty>
-        No trades yet — open a session and take paper trades (open, pending, or closed show here).
+        {t('trades.empty')}
       </SoftEmpty>
     )
   }
@@ -220,7 +225,7 @@ export default function TradesTab(): ReactNode {
     <section className={softSpace.sectionGap}>
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-[10rem] flex-1">
-          <span className={cn('mb-1.5 block', softType.caption)}>Session</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.session')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={sessionFilter}
@@ -229,7 +234,7 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All sessions</option>
+            <option value="all">{t('trades.allSessions')}</option>
             {sessionOptions.map(([id, name]) => (
               <option key={id} value={id}>
                 {name}
@@ -238,7 +243,7 @@ export default function TradesTab(): ReactNode {
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Asset</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.asset')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={assetFilter}
@@ -247,7 +252,7 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All</option>
+            <option value="all">{t('trades.all')}</option>
             {assetOptions.map((sym) => (
               <option key={sym} value={sym}>
                 {sym}
@@ -256,7 +261,7 @@ export default function TradesTab(): ReactNode {
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Side</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.side')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={sideFilter}
@@ -265,13 +270,13 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All</option>
-            <option value="long">Buy</option>
-            <option value="short">Sell</option>
+            <option value="all">{t('trades.all')}</option>
+            <option value="long">{t('trades.buy')}</option>
+            <option value="short">{t('trades.sell')}</option>
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Outcome</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.outcome')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={outcomeFilter}
@@ -280,15 +285,15 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All</option>
-            <option value="win">Wins</option>
-            <option value="loss">Losses</option>
-            <option value="be">Break-even</option>
-            <option value="open">Open / pending</option>
+            <option value="all">{t('trades.all')}</option>
+            <option value="win">{t('trades.wins')}</option>
+            <option value="loss">{t('trades.losses')}</option>
+            <option value="be">{t('trades.be')}</option>
+            <option value="open">{t('trades.openPending')}</option>
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Type</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.type')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={statusFilter}
@@ -297,14 +302,14 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All</option>
-            <option value="open">Open</option>
-            <option value="pending">Pending</option>
-            <option value="closed">Closed</option>
+            <option value="all">{t('trades.all')}</option>
+            <option value="open">{t('trades.open')}</option>
+            <option value="pending">{t('trades.pending')}</option>
+            <option value="closed">{t('trades.closed')}</option>
           </SoftSelect>
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Entry type</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.entryType')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={entryTypeFilter}
@@ -313,14 +318,14 @@ export default function TradesTab(): ReactNode {
               setPage(0)
             }}
           >
-            <option value="all">All</option>
-            <option value="market">Market</option>
-            <option value="limit">Limit</option>
-            <option value="stop-limit">Stop-limit</option>
+            <option value="all">{t('trades.all')}</option>
+            <option value="market">{t('trades.market')}</option>
+            <option value="limit">{t('trades.limit')}</option>
+            <option value="stop-limit">{t('trades.stopLimit')}</option>
           </SoftSelect>
         </label>
         <label className="min-w-[9rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>From</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.from')}</span>
           <SoftInput
             type="date"
             className="h-11 text-body"
@@ -332,7 +337,7 @@ export default function TradesTab(): ReactNode {
           />
         </label>
         <label className="min-w-[9rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>To</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.to')}</span>
           <SoftInput
             type="date"
             className="h-11 text-body"
@@ -344,23 +349,23 @@ export default function TradesTab(): ReactNode {
           />
         </label>
         <label className="min-w-[8rem]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Sort</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.sort')}</span>
           <SoftSelect
             className="h-11 text-body"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
           >
-            <option value="time">Latest</option>
-            <option value="entry">Entry time</option>
-            <option value="pnl">PnL</option>
-            <option value="symbol">Symbol</option>
+            <option value="time">{t('trades.sort.latest')}</option>
+            <option value="entry">{t('trades.sort.entry')}</option>
+            <option value="pnl">{t('trades.sort.pnl')}</option>
+            <option value="symbol">{t('trades.sort.symbol')}</option>
           </SoftSelect>
         </label>
         <label className="min-w-[12rem] flex-[2]">
-          <span className={cn('mb-1.5 block', softType.caption)}>Search</span>
+          <span className={cn('mb-1.5 block', softType.caption)}>{t('trades.filter.search')}</span>
           <SoftInput
             className="h-11 text-body"
-            placeholder="Symbol, session…"
+            placeholder={t('trades.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -369,37 +374,42 @@ export default function TradesTab(): ReactNode {
           />
         </label>
         <SoftButton size="sm" variant="ghost" onClick={resetFilters}>
-          Clear filters
+          {t('trades.clearFilters')}
         </SoftButton>
       </div>
 
       <p className={softType.caption}>
-        {filtered.length} trade{filtered.length === 1 ? '' : 's'}
-        {filtered.length !== allRows.length ? ` (of ${allRows.length})` : ''} · local only
+        {t('trades.count', {
+          count: filtered.length,
+          suffix: filtered.length === 1 ? '' : 's'
+        })}
+        {filtered.length !== allRows.length
+          ? t('trades.ofTotal', { total: allRows.length })
+          : ''}
+        {t('trades.localOnly')}
         <span className="text-zinc-600" title={accountTimezone}>
-          {' '}
-          · dates in {accountTzLabel}
+          {t('trades.datesIn', { tz: accountTzLabel })}
         </span>
       </p>
 
       <SoftCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1280px] border-collapse text-left">
+          <table className="w-full min-w-[1480px] border-collapse text-left">
             <thead>
               <tr className="border-b border-white/[0.06] text-caption text-zinc-500">
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Session</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Type</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Entry</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Exit</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Asset</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Side</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Entry type</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Entry px</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Exit px</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return ($)</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return (%)</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">Return (R)</th>
-                <th className="whitespace-nowrap px-4 py-3.5 font-medium">Reason</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.session')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.type')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entry')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.exit')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.asset')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.side')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.entryType')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.entryPx')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.exitPx')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnUsd')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnPct')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium text-right">{t('trades.col.returnR')}</th>
+                <th className="whitespace-nowrap px-4 py-3.5 font-medium">{t('trades.col.reason')}</th>
               </tr>
             </thead>
             <tbody>
@@ -408,7 +418,7 @@ export default function TradesTab(): ReactNode {
                 const precision = resolvePricePrecision(row.symbol)
                 const pct = returnPct(row)
                 const rMult = returnR(row)
-                const badge = statusBadge(row.status)
+                const badge = statusBadge(row.status, t)
                 return (
                   <tr
                     key={`${row.sessionId}:${row.status}:${row.id}`}
@@ -446,10 +456,10 @@ export default function TradesTab(): ReactNode {
                             : 'bg-red-500/15 text-red-400'
                         )}
                       >
-                        {row.side === 'long' ? 'Buy' : 'Sell'}
+                        {row.side === 'long' ? t('trades.buy') : t('trades.sell')}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3">
                       <span className="rounded-lg bg-zinc-800/60 px-2 py-0.5 text-caption text-zinc-400">
                         {entryTypeLabel(row)}
                       </span>
@@ -462,7 +472,7 @@ export default function TradesTab(): ReactNode {
                     </td>
                     <td
                       className={cn(
-                        'min-w-[9.5rem] whitespace-nowrap px-4 py-3 text-right tabular-nums font-medium',
+                        'min-w-[11rem] whitespace-nowrap px-4 py-3 text-right tabular-nums font-medium',
                         row.pnl == null
                           ? 'text-zinc-600'
                           : row.pnl >= 0
@@ -536,7 +546,7 @@ export default function TradesTab(): ReactNode {
             </SoftButton>
           </div>
           <label className="flex items-center gap-2">
-            <span className={softType.caption}>Per page</span>
+            <span className={softType.caption}>{t('trades.perPage')}</span>
             <SoftSelect
               className="h-9 w-20"
               value={pageSize}
@@ -553,8 +563,11 @@ export default function TradesTab(): ReactNode {
             </SoftSelect>
           </label>
           <span className={softType.caption}>
-            Showing {pageRows.length ? safePage * pageSize + 1 : 0}–
-            {safePage * pageSize + pageRows.length} of {filtered.length}
+            {t('trades.showing', {
+              from: pageRows.length ? safePage * pageSize + 1 : 0,
+              to: safePage * pageSize + pageRows.length,
+              total: filtered.length
+            })}
           </span>
         </div>
       </SoftCard>

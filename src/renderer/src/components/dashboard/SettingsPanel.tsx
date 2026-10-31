@@ -91,32 +91,8 @@ export default function SettingsPanel(): ReactNode {
           </div>
         </SoftCard>
 
-        {/* Account timezone — analytics day-cut (FXR-style) */}
+        {/* Bottom-left / under Language: About */}
         <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-1 md:row-start-2')}>
-          <h2 className={softType.section}>{t('settings.accountTimezone')}</h2>
-          <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.accountTimezoneHint')}</p>
-          <label className="mt-5 block">
-            <span className="sr-only">{t('settings.accountTimezone')}</span>
-            <SoftSelect
-              className="h-11 max-w-sm text-body"
-              value={accountTimezone}
-              aria-label={t('settings.accountTimezone')}
-              onChange={(e) => setAccountTimezone(e.target.value)}
-            >
-              {ACCOUNT_TIMEZONE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-              {!ACCOUNT_TIMEZONE_OPTIONS.some((o) => o.id === accountTimezone) ? (
-                <option value={accountTimezone}>{accountZoneLabel}</option>
-              ) : null}
-            </SoftSelect>
-          </label>
-        </SoftCard>
-
-        {/* Below Account timezone: About */}
-        <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-2 md:row-start-2')}>
           <h2 className={softType.section}>{t('settings.about')}</h2>
           <p className={`mt-1 leading-relaxed ${softType.bodyMuted}`}>
             {t('settings.aboutBody', { app: APP_NAME })}
@@ -140,6 +116,30 @@ export default function SettingsPanel(): ReactNode {
               {t('settings.version', { version })}
             </p>
           ) : null}
+        </SoftCard>
+
+        {/* Bottom-right / under Appearance: Account timezone */}
+        <SoftCard className={cn(softSpace.cardPadSm, 'md:col-start-2 md:row-start-2')}>
+          <h2 className={softType.section}>{t('settings.accountTimezone')}</h2>
+          <p className={`mt-2 ${softType.bodyMuted}`}>{t('settings.accountTimezoneHint')}</p>
+          <label className="mt-5 block">
+            <span className="sr-only">{t('settings.accountTimezone')}</span>
+            <SoftSelect
+              className="h-11 max-w-sm text-body"
+              value={accountTimezone}
+              aria-label={t('settings.accountTimezone')}
+              onChange={(e) => setAccountTimezone(e.target.value)}
+            >
+              {ACCOUNT_TIMEZONE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+              {!ACCOUNT_TIMEZONE_OPTIONS.some((o) => o.id === accountTimezone) ? (
+                <option value={accountTimezone}>{accountZoneLabel}</option>
+              ) : null}
+            </SoftSelect>
+          </label>
         </SoftCard>
       </div>
     </div>

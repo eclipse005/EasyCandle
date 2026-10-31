@@ -26,8 +26,11 @@ import { TIMEFRAMES } from '@shared/timeframes'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
+import { useT } from '@/i18n/useT'
 
 export default function ReplayControls() {
+  const { t } = useT()
+
   const replayStatus = useReplayStore((s) => s.replayStatus)
   const isPlaying = useReplayStore((s) => s.isPlaying)
   const speed = useReplayStore((s) => s.speed)
@@ -98,7 +101,7 @@ export default function ReplayControls() {
       <div className="flex items-center gap-1">
         {!isPlaying ? (
           <IconButton
-            tooltip="Play"
+            tooltip={t('replay.play')}
             disabled={busy || ended}
             onClick={play}
             tone="accent"
@@ -110,7 +113,7 @@ export default function ReplayControls() {
           </IconButton>
         ) : (
           <IconButton
-            tooltip="Pause"
+            tooltip={t('replay.pause')}
             shortcut={['Space']}
             disabled={busy}
             onClick={pause}
@@ -123,7 +126,7 @@ export default function ReplayControls() {
         )}
 
         <IconButton
-          tooltip="Step backward"
+          tooltip={t('replay.stepBack')}
           shortcut={['ArrowLeft']}
           disabled={busy || driverIndex <= 0}
           onClick={stepBackward}
@@ -133,7 +136,7 @@ export default function ReplayControls() {
         </IconButton>
 
         <IconButton
-          tooltip="Step forward"
+          tooltip={t('replay.stepForward')}
           shortcut={['ArrowRight']}
           disabled={busy || ended}
           onClick={stepForward}
@@ -144,7 +147,7 @@ export default function ReplayControls() {
       </div>
 
       {chartSplit && (
-        <Tooltip text="Toggle next-candle pane" kbds={['Tab']} side="top">
+        <Tooltip text={t('replay.toggleNext')} kbds={['Tab']} side="top">
           <button
             type="button"
             disabled={busy}
@@ -152,10 +155,10 @@ export default function ReplayControls() {
               setDriverPane(driverPane === 'primary' ? 'secondary' : 'primary')
               event.currentTarget.blur()
             }}
-            aria-label="Toggle next candle pane"
+            aria-label={t('replay.toggleNext')}
             className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="text-zinc-500">Next</span>
+            <span className="text-zinc-500">{t('replay.next')}</span>
             <span className="font-medium text-primary-300">
               {driverPane === 'secondary'
                 ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · right`
@@ -167,11 +170,11 @@ export default function ReplayControls() {
 
       <label className="flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-400">
         <Gauge className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
-        <span className="sr-only">Speed</span>
+        <span className="sr-only">{t('replay.speed')}</span>
         <select
           value={String(speed)}
           disabled={busy}
-          aria-label="Playback speed"
+          aria-label={t('replay.speedAria')}
           onChange={(e) => {
             setSpeed(Number(e.target.value))
             e.currentTarget.blur()
@@ -187,7 +190,7 @@ export default function ReplayControls() {
       </label>
 
       <IconButton
-        tooltip="Pause after price hits TP or SL"
+        tooltip={t('replay.pauseOnTpSl')}
         active={pauseOnTpSl}
         pressed={pauseOnTpSl}
         tooltipSide="top"
@@ -268,7 +271,7 @@ export default function ReplayControls() {
       </Dropdown>
 
       <IconButton
-        tooltip="Save & close session"
+        tooltip={t('replay.saveClose')}
         onClick={() => void closeActiveSession()}
         tooltipSide="top"
         className="ml-0.5"

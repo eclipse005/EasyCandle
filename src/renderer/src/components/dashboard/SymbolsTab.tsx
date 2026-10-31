@@ -42,6 +42,7 @@ function CategoryTabList({
   activeKey: string
   onChange: (key: string) => void
 }): ReactNode {
+  const { t } = useT()
   const listRef = useRef<HTMLDivElement>(null)
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [underline, setUnderline] = useState({ left: 0, width: 0, ready: false })
@@ -84,7 +85,7 @@ function CategoryTabList({
       ref={listRef}
       className="relative flex flex-wrap items-center gap-6 border-b border-white/[0.06]"
       role="tablist"
-      aria-label="Symbol categories"
+      aria-label={t('symbols.categoriesAria')}
     >
       {groups.map((group, i) => {
         const active = group.key === activeKey
@@ -157,8 +158,18 @@ export default function SymbolsTab(): ReactNode {
 
   const visibleGroups = useMemo(() => {
     const hasOther = [...importStats.keys()].some((key) => findGroupForSymbol(key) == null)
-    return SYMBOL_GROUPS.filter((g) => g.key !== 'other' || hasOther)
-  }, [importStats])
+    const catKey = (key: string): 'symbols.cat.forex' | 'symbols.cat.metals' | 'symbols.cat.indices' | 'symbols.cat.energy' | 'symbols.cat.other' => {
+      if (key === 'metals') return 'symbols.cat.metals'
+      if (key === 'indices') return 'symbols.cat.indices'
+      if (key === 'energy') return 'symbols.cat.energy'
+      if (key === 'other') return 'symbols.cat.other'
+      return 'symbols.cat.forex'
+    }
+    return SYMBOL_GROUPS.filter((g) => g.key !== 'other' || hasOther).map((g) => ({
+      ...g,
+      label: t(catKey(g.key))
+    }))
+  }, [importStats, t])
 
   const [activeKey, setActiveKey] = useState(() => visibleGroups[0]?.key ?? 'forex')
 

@@ -35,6 +35,7 @@ import { useAccountPrefsStore } from '@/store/accountPrefsStore'
 import { useSessionStore, type Session } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { useT } from '@/i18n/useT'
 
 type SortOrder = 'newest' | 'oldest'
 
@@ -46,6 +47,7 @@ export default function SessionsTab({
   /** @deprecated kept for callers that still pass summary */
   summary?: boolean
 }): ReactNode {
+  const { t } = useT()
   const sessions = useSessionStore((s) => s.sessions)
   const loadSession = useSessionStore((s) => s.loadSession)
   const deleteSession = useSessionStore((s) => s.deleteSession)
@@ -97,14 +99,14 @@ export default function SessionsTab({
     return (
       <section className={softSpace.sectionGap}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className={softType.section}>Sessions</h2>
+          <h2 className={softType.section}>{t('sessions.title')}</h2>
           <SoftButton variant="primary" onClick={onNewSession}>
             <Plus className="h-5 w-5" aria-hidden />
-            New session
+            {t('sessions.new')}
           </SoftButton>
         </div>
         <SoftEmpty>
-          No sessions yet — create one from a dataset to start replaying candles.
+          {t('sessions.empty')}
         </SoftEmpty>
       </section>
     )
@@ -120,24 +122,24 @@ export default function SessionsTab({
           />
           <SoftInput
             className="h-11 pl-10 text-body"
-            placeholder="Search sessions…"
+            placeholder={t('sessions.search')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search sessions"
+            aria-label={t('sessions.search')}
           />
         </label>
         <SoftSelect
           className="h-11 min-w-[12rem] text-body"
           value={sort}
           onChange={(e) => setSort(e.target.value as SortOrder)}
-          aria-label="Sort sessions"
+          aria-label={t('sessions.sortAria')}
         >
-          <option value="newest">Newest to oldest</option>
-          <option value="oldest">Oldest to newest</option>
+          <option value="newest">{t('sessions.newest')}</option>
+          <option value="oldest">{t('sessions.oldest')}</option>
         </SoftSelect>
         <SoftButton variant="primary" onClick={onNewSession}>
           <Plus className="h-5 w-5" aria-hidden />
-          New session
+          {t('sessions.new')}
         </SoftButton>
       </div>
 
@@ -204,10 +206,10 @@ export default function SessionsTab({
 
       <SoftConfirmDialog
         open={pendingDelete != null}
-        title="Delete session"
+        title={t('sessions.deleteTitle')}
         description={
           pendingDelete
-            ? `Delete the session “${pendingDelete.name}”? This cannot be undone.`
+            ? t('sessions.deleteBody', { name: pendingDelete.name })
             : undefined
         }
         onCancel={() => setPendingDelete(null)}
@@ -259,6 +261,7 @@ function SessionCard({
   onDuplicate: () => void
   onDelete: () => void
 }): ReactNode {
+  const { t } = useT()
   const [note, setNote] = useState(() => getSessionNote(session.id))
   const [datasetMeta, setDatasetMeta] = useState<ImportedDatasetMeta | null>(null)
 
@@ -407,11 +410,11 @@ function SessionCard({
               onClick={onGoChart}
             >
               <Play className="h-4 w-4 fill-current" aria-hidden />
-              Go to chart
+              {t('sessions.goToChart')}
             </SoftButton>
-            <SoftButton size="sm" variant="secondary" onClick={onSummary} aria-label="Session summary">
+            <SoftButton size="sm" variant="secondary" onClick={onSummary} aria-label={t('sessions.summary')}>
               <FileText className="h-4 w-4" aria-hidden />
-              Summary
+              {t('sessions.summary')}
             </SoftButton>
             <SoftButton size="sm" variant="secondary" onClick={onAnalytics} aria-label="Analytics">
               <BarChart3 className="h-4 w-4" aria-hidden />
@@ -430,7 +433,7 @@ function SessionCard({
               onClick={onToggleNotes}
               aria-label="Edit notes"
             >
-              Notes
+              {t('sessions.notes')}
             </SoftButton>
             <SoftButton
               size="sm"
@@ -469,7 +472,7 @@ function SessionCard({
           <SoftTextarea
             className="min-h-[6rem] text-body"
             value={note}
-            placeholder="Notes for this session…"
+            placeholder={t('sessions.notesPlaceholder')}
             onChange={(e) => setNote(e.target.value)}
             onBlur={() => setSessionNote(session.id, note)}
           />
@@ -491,16 +494,16 @@ function SessionCard({
               )}
             >
               <div className="grid gap-4 lg:grid-cols-3">
-                <MiniChartCard title="Equity">
+                <MiniChartCard title={t('sessions.equity')}>
                   <EquitySparkline points={analytics.equity.map((p) => p.equity)} />
                 </MiniChartCard>
-                <MiniChartCard title="Monthly">
+                <MiniChartCard title={t('sessions.monthly')}>
                   <BarSparkline
                     buckets={analytics.monthly}
                     positiveClass="from-emerald-600 via-emerald-400 to-emerald-200"
                   />
                 </MiniChartCard>
-                <MiniChartCard title="Daily">
+                <MiniChartCard title={t('sessions.daily')}>
                   <BarSparkline
                     buckets={analytics.daily}
                     positiveClass="from-sky-600 via-sky-400 to-sky-200"
