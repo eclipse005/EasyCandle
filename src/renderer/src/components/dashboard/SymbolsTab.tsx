@@ -14,6 +14,7 @@ import {
   resolvePricePrecision
 } from '@shared/pricePrecision'
 import { quoteCurrencyForSymbol } from '@shared/pnlCurrency'
+import { coverageDaysFromMetas } from '@shared/dateCoverage'
 import { SYMBOL_GROUPS, findGroupForSymbol, type SymbolGroup } from '@shared/symbols'
 import { useReplayStore } from '@/store/replayStore'
 import { useSymbolParamsStore } from '@/store/symbolParamsStore'
@@ -26,8 +27,7 @@ import { softMotion, softNav, softType } from '@/components/ui/softTokens'
 type SymbolRow = {
   symbol: string
   label: string
-  candleCount: number
-  datasetCount: number
+  coverageDays: number
   hasData: boolean
 }
 
@@ -134,18 +134,20 @@ export default function SymbolsTab(): ReactNode {
   }, [ensureCatalogDefaults])
 
   const importStats = useMemo(() => {
-    const bySymbol = new Map<string, { candleCount: number; datasetCount: number; symbol: string }>()
+    const metasBySymbol = new Map<string, { symbol: string; metas: typeof imports }>()
     for (const meta of imports) {
       const key = normalizeSymbolKey(meta.symbol)
       if (!key) continue
-      const entry = bySymbol.get(key) ?? {
-        symbol: meta.symbol,
-        candleCount: 0,
-        datasetCount: 0
-      }
-      entry.candleCount += meta.candleCount
-      entry.datasetCount += 1
-      bySymbol.set(key, entry)
+      const entry = metasBySymbol.get(key) ?? { symbol: meta.symbol, metas: [] }
+      entry.metas.push(meta)
+      metasBySymbol.set(key, entry)
+    }
+    const bySymbol = new Map<string, { symbol: string; coverageDays: number }>()
+    for (const [key, entry] of metasBySymbol) {
+      bySymbol.set(key, {
+        symbol: entry.symbol,
+        coverageDays: coverageDaysFromMetas(entry.metas).size
+      })
     }
     return bySymbol
   }, [imports])
@@ -171,9 +173,8 @@ export default function SymbolsTab(): ReactNode {
         out.push({
           symbol: stats.symbol,
           label: stats.symbol,
-          candleCount: stats.candleCount,
-          datasetCount: stats.datasetCount,
-          hasData: true
+          coverageDays: stats.coverageDays,
+          hasData: stats.coverageDays > 0
         })
       }
       return out.sort((a, b) => (a.symbol < b.symbol ? -1 : 1))
@@ -187,9 +188,8 @@ export default function SymbolsTab(): ReactNode {
       return {
         symbol: entry.id,
         label: entry.label,
-        candleCount: stats?.candleCount ?? 0,
-        datasetCount: stats?.datasetCount ?? 0,
-        hasData: (stats?.datasetCount ?? 0) > 0
+        coverageDays: stats?.coverageDays ?? 0,
+        hasData: (stats?.coverageDays ?? 0) > 0
       }
     })
   }, [activeKey, importStats])
@@ -233,7 +233,7 @@ export default function SymbolsTab(): ReactNode {
                     <span className="shrink-0 text-body font-semibold text-zinc-50">{row.label}</span>
                     <span className={cn('min-w-0 truncate', softType.micro)}>
                       {row.hasData
-                        ? `${row.datasetCount} file${row.datasetCount === 1 ? '' : 's'} · ${row.candleCount.toLocaleString()} · ${quote} · p${precision}`
+                        ? `${row.coverageDays.toLocaleString()} day${row.coverageDays === 1 ? '' : 's'} · ${quote} · p${precision}`
                         : `No data · ${quote} · p${precision}`}
                     </span>
                   </div>

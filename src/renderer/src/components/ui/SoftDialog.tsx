@@ -30,6 +30,10 @@ export default function SoftDialog({
 }: SoftDialogProps) {
   if (!open) return null
 
+  // cn() is plain join (no tailwind-merge); skip defaults when caller already sets max-w/max-h.
+  const hasMaxW = Boolean(className && /\bmax-w-/.test(className))
+  const hasMaxH = Boolean(className && /\bmax-h-/.test(className))
+
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
@@ -43,7 +47,9 @@ export default function SoftDialog({
         aria-modal="true"
         aria-labelledby={labelledBy}
         className={cn(
-          'flex max-h-[min(90vh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl shadow-black/50',
+          'flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl shadow-black/50',
+          !hasMaxH && 'max-h-[min(90vh,40rem)]',
+          !hasMaxW && 'max-w-md',
           className
         )}
         onClick={(event) => event.stopPropagation()}
