@@ -48,6 +48,16 @@ import {
 import { useT } from '@/i18n/useT'
 import type { MessageKey } from '@/i18n/messages'
 import { TIMEFRAME_IDS } from '@shared/timeframes'
+import { usePricePrecision } from '@/hooks/usePricePrecision'
+import { useChartSettingsStore } from '@/store/chartSettingsStore'
+import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
+import {
+  chartTimezoneById,
+  parseSessionParts,
+  sessionDateTimeParts,
+  sessionUtcOffsetLabel,
+  unixSecondsFromChartTime
+} from '@/lib/chartTimezone'
 
 const WIDTHS = [1, 2, 3, 4]
 const LINE_STYLES = ['solid', 'dashed', 'dotted'] as const
@@ -814,6 +824,161 @@ function TextPane({
   )
 }
 
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+/** Wall-clock parts for a drawing point in the chart timezone. */
+function pointWallClock(
+  time: unknown,
+  timezone: string
+): { date: string; clock: string } {
+  const seconds = unixSecondsFromChartTime(time)
+  if (seconds == null) return { date: '', clock: '' }
+  const parts = sessionDateTimeParts(seconds, timezone)
+  if (!parts) return { date: '', clock: '' }
+  return {
+    date: `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`,
+    clock: `${pad2(parts.hour)}:${pad2(parts.minute)}:${pad2(parts.second)}`
+  }
+}
+
+function PointPriceInput({
+  value,
+  precision,
+  onChange
+}: {
+  value: number
+  precision: number
+  onChange: (value: number) => void
+}): ReactElement {
+  const formatted = formatAssetPrice(value, precision)
+  const [draft, setDraft] = useState(formatted)
+  const focusedRef = useRef(false)
+
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(formatted)
+  }, [formatted])
+
+  function commitPrice(raw: string): number | null {
+    const parsed = Number(String(raw).trim().replace(',', '.'))
+    if (!Number.isFinite(parsed)) return null
+    const next = roundPriceToPrecision(parsed, precision)
+    onChange(next)
+    return next
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onFocus={(event) => {
+        focusedRef.current = true
+        event.currentTarget.select()
+      }}
+      onChange={(event) => {
+        setDraft(event.target.value)
+        commitPrice(event.target.value)
+      }}
+      onBlur={(event) => {
+        focusedRef.current = false
+        const next = commitPrice(event.target.value)
+        setDraft(next == null ? formatted : formatAssetPrice(next, precision))
+      }}
+      className={selectClass}
+    />
+  )
+}
+
+function PointCoordinatesCard({
+  point,
+  index,
+  timezone,
+  precision,
+  t,
+  onChange
+}: {
+  point: DrawingSnapshot['points'][number]
+  index: number
+  timezone: string
+  precision: number
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string
+  onChange: (point: DrawingSnapshot['points'][number]) => void
+}): ReactElement {
+  const canonical = pointWallClock(point.time, timezone)
+  const [date, setDate] = useState(canonical.date)
+  const [clock, setClock] = useState(canonical.clock)
+
+  useEffect(() => {
+    setDate(canonical.date)
+    setClock(canonical.clock)
+  }, [canonical.date, canonical.clock])
+
+  function applyTime(nextDate: string, nextClock: string): void {
+    const seconds = parseSessionParts(nextDate, nextClock, timezone)
+    if (seconds == null) return
+    onChange({ ...point, time: seconds as typeof point.time })
+  }
+
+  function resetInvalid(): void {
+    if (parseSessionParts(date, clock, timezone) == null) {
+      setDate(canonical.date)
+      setClock(canonical.clock)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+          {t('draw.pointTime', { n: index + 1 })}
+        </span>
+        <span className="rounded-md bg-zinc-800/80 px-1.5 py-0.5 text-[10px] tabular-nums text-zinc-400">
+          {sessionUtcOffsetLabel(
+            timezone,
+            unixSecondsFromChartTime(point.time) ?? Math.floor(Date.now() / 1000)
+          )}
+        </span>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+        <Field label={t('draw.date')}>
+          <input
+            type="date"
+            value={date}
+            onChange={(event) => {
+              setDate(event.target.value)
+              if (event.target.value) applyTime(event.target.value, clock)
+            }}
+            onBlur={resetInvalid}
+            className={selectClass}
+          />
+        </Field>
+        <Field label={t('draw.time')}>
+          <input
+            type="time"
+            step={1}
+            value={clock}
+            onChange={(event) => {
+              setClock(event.target.value)
+              if (event.target.value) applyTime(date, event.target.value)
+            }}
+            onBlur={resetInvalid}
+            className={selectClass}
+          />
+        </Field>
+        <Field label={t('draw.price')}>
+          <PointPriceInput
+            value={point.price}
+            precision={precision}
+            onChange={(price) => onChange({ ...point, price })}
+          />
+        </Field>
+      </div>
+    </div>
+  )
+}
+
 function CoordinatesPane({
   points,
   t,
@@ -823,44 +988,30 @@ function CoordinatesPane({
   t: (key: MessageKey, vars?: Record<string, string | number>) => string
   onChange: (points: DrawingSnapshot['points']) => void
 }): ReactElement {
+  const timezone = useChartSettingsStore((state) => state.timezone)
+  const pricePrecision = usePricePrecision()
+  const zone = chartTimezoneById(timezone)
+
   if (points.length === 0) {
     return <p className="text-xs text-zinc-500">{t('draw.noCoords')}</p>
   }
   return (
     <div className="space-y-2">
+      <p className="px-0.5 text-[11px] text-zinc-500">
+        {t('draw.coordsTimezone', { zone: zone.city })}
+      </p>
       {points.map((point, index) => (
-        <div
+        <PointCoordinatesCard
           key={index}
-          className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-2"
-        >
-          <Field label={t('draw.pointTime', { n: index + 1 })}>
-            <input
-              type="number"
-              value={typeof point.time === 'number' ? point.time : 0}
-              onChange={(event) => {
-                const next = points.map((item, i) =>
-                  i === index ? { ...item, time: Number(event.target.value) as typeof item.time } : item
-                )
-                onChange(next)
-              }}
-              className={selectClass}
-            />
-          </Field>
-          <Field label={t('draw.price')}>
-            <input
-              type="number"
-              step="any"
-              value={point.price}
-              onChange={(event) => {
-                const next = points.map((item, i) =>
-                  i === index ? { ...item, price: Number(event.target.value) } : item
-                )
-                onChange(next)
-              }}
-              className={selectClass}
-            />
-          </Field>
-        </div>
+          point={point}
+          index={index}
+          timezone={timezone}
+          precision={pricePrecision}
+          t={t}
+          onChange={(nextPoint) =>
+            onChange(points.map((item, i) => (i === index ? nextPoint : item)))
+          }
+        />
       ))}
     </div>
   )
