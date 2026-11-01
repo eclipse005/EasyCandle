@@ -2,6 +2,7 @@ import type { DrawingKind, DrawingStyle as LcdStyle } from 'lightweight-charts-d
 import { LineStyle } from 'lightweight-charts'
 import type { DrawingStyle as LegacyStyle, DrawingToolType } from '@/lib/chart/drawingGeometry'
 import { DEFAULT_TOOL_DEFAULTS, defaultStyleForTool, useDrawingSettingsStore } from '@/store/drawingSettingsStore'
+import { TIMEFRAME_IDS } from '@shared/timeframes'
 
 /** Map LCD DrawingKind → legacy tool type used by presets / toolDefaults. */
 export function legacyToolForKind(kind: string): DrawingToolType | null {
@@ -78,21 +79,31 @@ export function lcdDefaultsForKind(kind: DrawingKind | string): Partial<LcdStyle
   return legacyStyleToLcd(defaultStyleForTool(tool))
 }
 
-/** TV-style interval string for LCD visibility (`"1"`, `"60"`, `"1D"`). */
+/** TV-style interval string for LCD visibility (`"1"`, `"60"`, `"1D"`, `"1W"`, `"1M"`). */
 export function toLcdInterval(timeframeId: string): string {
   switch (timeframeId) {
     case '1m':
       return '1'
+    case '3m':
+      return '3'
     case '5m':
       return '5'
     case '15m':
       return '15'
+    case '30m':
+      return '30'
     case '1h':
       return '60'
     case '4h':
       return '240'
+    case '6h':
+      return '360'
     case '1d':
       return '1D'
+    case '1w':
+      return '1W'
+    case '1M':
+      return '1M'
     default:
       return timeframeId
   }
@@ -111,71 +122,62 @@ export type IntervalVisibility = {
 
 const UNIT_OFF = { on: false, from: 1, to: 1 }
 
-/** Build an IntervalVisibility that shows only the selected app timeframe ids. */
+const MINUTE_STEPS = [
+  ['1m', 1],
+  ['3m', 3],
+  ['5m', 5],
+  ['15m', 15],
+  ['30m', 30]
+] as const
+
+const HOUR_STEPS = [
+  ['1h', 1],
+  ['4h', 4],
+  ['6h', 6]
+] as const
+
+function span(values: number[]): { on: boolean; from: number; to: number } {
+  if (values.length === 0) return { ...UNIT_OFF }
+  return { on: true, from: Math.min(...values), to: Math.max(...values) }
+}
+
+/** Build an IntervalVisibility that shows the selected app timeframe ids.
+ *  Each unit is a from–to range, so checking both ends includes the steps between. */
 export function visibilityFromTimeframes(enabled: readonly string[]): IntervalVisibility {
   const set = new Set(enabled)
-  const minutesOn = ['1m', '5m', '15m'].some((id) => set.has(id))
-  const hoursOn = ['1h', '4h'].some((id) => set.has(id))
-  const daysOn = set.has('1d')
-
-  const minuteValues = (['1m', '5m', '15m'] as const)
-    .filter((id) => set.has(id))
-    .map((id) => (id === '1m' ? 1 : id === '5m' ? 5 : 15))
-  const hourValues = (['1h', '4h'] as const)
-    .filter((id) => set.has(id))
-    .map((id) => (id === '1h' ? 1 : 4))
+  const minuteValues = MINUTE_STEPS.filter(([id]) => set.has(id)).map(([, n]) => n)
+  const hourValues = HOUR_STEPS.filter(([id]) => set.has(id)).map(([, n]) => n)
 
   return {
     ticks: false,
     seconds: { ...UNIT_OFF },
-    minutes: minutesOn
-      ? {
-          on: true,
-          from: Math.min(...minuteValues),
-          to: Math.max(...minuteValues)
-        }
-      : { ...UNIT_OFF },
-    hours: hoursOn
-      ? {
-          on: true,
-          from: Math.min(...hourValues),
-          to: Math.max(...hourValues)
-        }
-      : { ...UNIT_OFF },
-    days: daysOn ? { on: true, from: 1, to: 1 } : { ...UNIT_OFF },
-    weeks: { ...UNIT_OFF },
-    months: { ...UNIT_OFF },
+    minutes: span(minuteValues),
+    hours: span(hourValues),
+    days: set.has('1d') ? { on: true, from: 1, to: 1 } : { ...UNIT_OFF },
+    weeks: set.has('1w') ? { on: true, from: 1, to: 1 } : { ...UNIT_OFF },
+    months: set.has('1M') ? { on: true, from: 1, to: 1 } : { ...UNIT_OFF },
     ranges: false
   }
 }
 
-/** Inverse of visibilityFromTimeframes for our six app timeframes (best-effort). */
+/** Inverse of visibilityFromTimeframes. Absent visibility means every app timeframe. */
 export function timeframesFromVisibility(v: IntervalVisibility | undefined): string[] {
-  if (!v) return ['1m', '5m', '15m', '1h', '4h', '1d']
+  if (!v) return [...TIMEFRAME_IDS]
   const out: string[] = []
   if (v.minutes?.on) {
-    const from = v.minutes.from
-    const to = v.minutes.to
-    for (const [id, n] of [
-      ['1m', 1],
-      ['5m', 5],
-      ['15m', 15]
-    ] as const) {
-      if (n >= from && n <= to) out.push(id)
+    for (const [id, n] of MINUTE_STEPS) {
+      if (n >= v.minutes.from && n <= v.minutes.to) out.push(id)
     }
   }
   if (v.hours?.on) {
-    const from = v.hours.from
-    const to = v.hours.to
-    for (const [id, n] of [
-      ['1h', 1],
-      ['4h', 4]
-    ] as const) {
-      if (n >= from && n <= to) out.push(id)
+    for (const [id, n] of HOUR_STEPS) {
+      if (n >= v.hours.from && n <= v.hours.to) out.push(id)
     }
   }
   if (v.days?.on) out.push('1d')
-  return out.length > 0 ? out : ['1m', '5m', '15m', '1h', '4h', '1d']
+  if (v.weeks?.on) out.push('1w')
+  if (v.months?.on) out.push('1M')
+  return out
 }
 
 export function savePresetFromLcd(

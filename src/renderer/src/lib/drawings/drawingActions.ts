@@ -1,19 +1,14 @@
 import {
   defaultStyleFor,
+  factoryStyleFor,
   type Drawing,
   type DrawingStyle,
   type NewDrawing
 } from 'lightweight-charts-drawing'
 import * as bridge from '@/lib/drawings/drawingBridge'
-import {
-  lcdDefaultsForKind,
-  legacyStyleToLcd,
-  legacyToolForKind,
-  resetLcdStyleToFactory,
-  savePresetFromLcd,
-  visibilityFromTimeframes
-} from '@/lib/drawings/drawingStyleBridge'
-import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
+import { cloneStyle, type DrawingSnapshot } from '@/lib/drawings/drawingProperties'
+import { lcdDefaultsForKind, visibilityFromTimeframes } from '@/lib/drawings/drawingStyleBridge'
+import { hasKindDefault, useDrawingTemplateStore } from '@/store/drawingTemplateStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 
 /** In-memory clipboard for Copy / Paste of a single LCD drawing (JSON without id). */
@@ -114,6 +109,14 @@ export function patchDrawingStyle(id: string, stylePatch: Partial<DrawingStyle>)
   afterMutation()
 }
 
+export function setDrawingStyle(id: string, style: DrawingStyle): void {
+  const mgr = primary()
+  const d = mgr?.get(id)
+  if (!mgr || !d) return
+  mgr.update({ ...d, style: cloneStyle(style) })
+  afterMutation()
+}
+
 export function patchDrawing(
   id: string,
   patch: Partial<Omit<Drawing, 'id' | 'kind'>> & {
@@ -157,9 +160,11 @@ function findDrawing(id: string): Drawing | undefined {
   return primary()?.get(id)
 }
 
-/** Apply the user's per-tool style defaults onto a freshly placed LCD drawing.
- *  Skips paste / clone / import when the style is already non-factory. */
+/** Apply the legacy per-tool color defaults onto a freshly placed LCD drawing.
+ *  A saved LCD kind default is already baked in by the library. Paste / clone
+ *  keep their own style when it no longer matches the factory stroke. */
 export function applyToolDefaultsOnAdd(drawing: Drawing): void {
+  if (hasKindDefault(drawing.kind)) return
   const mgr = primary()
   const patch = lcdDefaultsForKind(drawing.kind)
   if (!mgr || !patch) return
@@ -180,7 +185,7 @@ export function applyToolDefaultsOnAdd(drawing: Drawing): void {
 export function saveTemplateAs(drawingId: string, name: string): boolean {
   const d = findDrawing(drawingId)
   if (!d) return false
-  const ok = savePresetFromLcd(d.kind, name, d.style)
+  const ok = useDrawingTemplateStore.getState().saveTemplate(d.kind, name, d.style)
   if (ok) afterMutation()
   return ok
 }
@@ -189,21 +194,12 @@ export function applySavedTemplate(drawingId: string, presetId: string): boolean
   const mgr = primary()
   const d = findDrawing(drawingId)
   if (!mgr || !d) return false
-  const tool = legacyToolForKind(d.kind)
-  if (!tool) return false
-  const presets = useDrawingSettingsStore.getState().presets[tool] ?? []
-  const preset = presets.find((p) => p.id === presetId)
+  const preset = (useDrawingTemplateStore.getState().templates[d.kind] ?? []).find(
+    (item) => item.id === presetId
+  )
   if (!preset) return false
-  const patch = legacyStyleToLcd({
-    color: preset.color,
-    lineWidth: preset.lineWidth,
-    lineStyle: preset.lineStyle,
-    fillColor: preset.fillColor,
-    tpColor: preset.tpColor,
-    slColor: preset.slColor
-  })
   try {
-    mgr.update({ ...d, style: { ...d.style, ...patch } })
+    mgr.update({ ...d, style: cloneStyle(preset.style) })
     afterMutation()
     return true
   } catch {
@@ -215,10 +211,30 @@ export function resetDrawingStyle(drawingId: string): boolean {
   const mgr = primary()
   const d = findDrawing(drawingId)
   if (!mgr || !d) return false
-  const patch = resetLcdStyleToFactory(d.kind)
-  if (!patch) return false
   try {
-    mgr.update({ ...d, style: { ...d.style, ...patch } })
+    mgr.update({ ...d, style: factoryStyleFor(d.kind) })
+    afterMutation()
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function restoreDrawingSnapshot(drawingId: string, snap: DrawingSnapshot): boolean {
+  const mgr = primary()
+  const d = findDrawing(drawingId)
+  if (!mgr || !d) return false
+  try {
+    mgr.update({
+      ...d,
+      style: cloneStyle(snap.style),
+      points: snap.points,
+      name: snap.name,
+      text: snap.text,
+      locked: snap.locked,
+      hidden: snap.hidden,
+      visibility: snap.visibility
+    } as Drawing)
     afterMutation()
     return true
   } catch {
@@ -246,11 +262,9 @@ export function setDrawingVisibility(
 export function listPresetsForDrawing(drawingId: string): Array<{ id: string; name: string }> {
   const d = findDrawing(drawingId)
   if (!d) return []
-  const tool = legacyToolForKind(d.kind)
-  if (!tool) return []
-  return (useDrawingSettingsStore.getState().presets[tool] ?? []).map((p) => ({
-    id: p.id,
-    name: p.name
+  return (useDrawingTemplateStore.getState().templates[d.kind] ?? []).map((preset) => ({
+    id: preset.id,
+    name: preset.name
   }))
 }
 
