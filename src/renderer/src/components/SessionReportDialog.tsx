@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Download, X } from 'lucide-react'
 import {
   equityCurve,
@@ -213,9 +214,9 @@ export default function SessionReportDialog() {
     URL.revokeObjectURL(url)
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-3 sm:p-6"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-3 sm:p-6"
       role="presentation"
       onClick={dismiss}
     >
@@ -357,6 +358,7 @@ export default function SessionReportDialog() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

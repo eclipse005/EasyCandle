@@ -1,29 +1,22 @@
 import type { ReactNode } from 'react'
 import { BadgeInfo, Circle, LoaderCircle } from 'lucide-react'
 import { formatSessionCandleTime } from '@/lib/chartTimezone'
+import type { MessageKey } from '@/i18n/messages'
 import type { ReplayStatus } from '@/lib/replayEngine'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
+import { useT } from '@/i18n/useT'
 import { isMetatraderImport } from '@shared/importTypes'
 import Tooltip from '@/components/Tooltip'
 
 const SEPARATOR = ' · '
 
-const REPLAY_LABELS: Record<ReplayStatus, string> = {
-  idle: 'Idle',
-  ready: 'Ready',
-  playing: 'Playing',
-  paused: 'Paused',
-  ended: 'Ended'
-}
-
-const END_MESSAGES = {
-  imported: 'End of imported file — jump within range or step back.',
-  buffer: 'End of buffer — jump, step back, or wait for prefetch.'
-} as const
-
-function replayLabel(status: ReplayStatus): string {
-  return REPLAY_LABELS[status]
+const REPLAY_LABELS: Record<ReplayStatus, MessageKey> = {
+  idle: 'status.idle',
+  ready: 'status.ready',
+  playing: 'status.playing',
+  paused: 'status.paused',
+  ended: 'status.ended'
 }
 
 function splitMessage(message: string | null): { mode: string | undefined; text: string } {
@@ -51,6 +44,7 @@ function StatusDot({ isPlaying, ended }: { isPlaying: boolean; ended: boolean })
 }
 
 function ReplayStatus() {
+  const { t } = useT()
   const replayStatus = useReplayStore((s) => s.replayStatus)
   const isPlaying = useReplayStore((s) => s.isPlaying)
   const speed = useReplayStore((s) => s.speed)
@@ -70,7 +64,7 @@ function ReplayStatus() {
   const busy = replayLoading || isPrefetching
   const speedLabel = isPlaying ? `(${speed}x)` : null
   const details = compact([
-    imported ? (mtFeed ? 'MetaTrader' : 'Imported') : null,
+    imported ? (mtFeed ? t('status.metaTrader') : t('status.imported')) : null,
     isPlaying ? `${speed}x` : null,
     formatSessionCandleTime(currentCandle?.time, timezone),
     bufferLength > 0 ? `${replayIndex + 1}/${bufferLength}` : '0/0'
@@ -82,14 +76,14 @@ function ReplayStatus() {
       <Tooltip text={details.join(SEPARATOR)} side="bottom">
         <StatusPill tone={ended ? 'warn' : 'default'}>
           <StatusDot isPlaying={isPlaying} ended={ended} />
-          {replayLabel(replayStatus)} {speedLabel}
+          {t(REPLAY_LABELS[replayStatus])} {speedLabel}
           {busy && <LoaderCircle className="h-3 w-3 animate-spin text-zinc-500" aria-hidden />}
         </StatusPill>
       </Tooltip>
 
       {ended && !replayMessage && (
         <span className="text-amber-400/80">
-          {imported ? END_MESSAGES.imported : END_MESSAGES.buffer}
+          {imported ? t('status.endImported') : t('status.endBuffer')}
         </span>
       )}
 

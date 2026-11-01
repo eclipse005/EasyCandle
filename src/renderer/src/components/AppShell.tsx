@@ -3,7 +3,6 @@ import { Minimize2 } from 'lucide-react'
 import AboutDialog from '@/components/AboutDialog'
 import AppTour from '@/components/AppTour'
 import ChartSettingsDialog from '@/components/ChartSettingsDialog'
-import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
 import DrawingToolbar, { DrawingFavoritesBar } from '@/components/DrawingToolbar'
 import DrawingSettingsDialog from '@/components/DrawingSettingsDialog'
 import DrawingObjectDialog from '@/components/DrawingObjectDialog'
@@ -85,7 +84,8 @@ export default function AppShell({
 
       {showEndedBanner && (
         <div className="shrink-0 border-b border-amber-900/40 bg-amber-950/30 px-3 py-1.5 text-xs text-amber-200/90 sm:px-4">
-          Replay reached the end of the imported file. Step back, jump within the file, or exit replay.
+          Replay reached the end of the imported file. Step back, jump within the file, or exit
+          replay.
         </div>
       )}
 
@@ -98,20 +98,13 @@ export default function AppShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             className={`relative min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
-              chartFullscreen ? 'rounded-none border-0 shadow-none' : 'rounded-2xl border border-white/10'
+              chartFullscreen
+                ? 'rounded-none border-0 shadow-none'
+                : 'rounded-2xl border border-white/10'
             }`}
           >
             {showDrawingToolbar ? <DrawingFavoritesBar /> : null}
             {children}
-            <div
-              className="pointer-events-none absolute z-20"
-              style={{
-                right: Math.max(priceScaleWidth, 0) + 6,
-                bottom: 4
-              }}
-            >
-              <ChartTimezoneSelect />
-            </div>
             {showReplayControls && inReplay && <FloatingReplayBar />}
             {chartFullscreen && inReplay && <FloatingTradeBar />}
             {chartFullscreen && (

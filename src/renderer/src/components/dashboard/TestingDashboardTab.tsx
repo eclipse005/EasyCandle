@@ -23,12 +23,19 @@ const GITHUB_README = 'https://github.com/eclipse005/BarReplay#readme'
  * optional time-invested bars from IndexedDB sessions.
  */
 export default function TestingDashboardTab({
-  onStartSession
+  onStartSession,
+  onResumeSession
 }: {
   onStartSession: () => void
+  onResumeSession: (id: string) => void
 }): ReactNode {
   const { t } = useT()
   const sessions = useSessionStore((s) => s.sessions)
+  const lastSession = useMemo(
+    () =>
+      [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null,
+    [sessions]
+  )
   const stats = useMemo(() => computeLocalPerformance(sessions), [sessions])
   const maxMonthMs = useMemo(
     () => Math.max(1, ...stats.monthlyTimeInvested.map((m) => m.ms)),
@@ -70,14 +77,25 @@ export default function TestingDashboardTab({
         </a>
       </div>
 
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className={softType.section}>{t('dashboard.performance')}</h2>
-        <span className={softType.caption}>
-          {t('dashboard.sessionsLocal', {
-            count: stats.sessionCount,
-            suffix: stats.sessionCount === 1 ? '' : 's'
-          })}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={softType.caption}>
+            {t('dashboard.sessionsLocal', {
+              count: stats.sessionCount,
+              suffix: stats.sessionCount === 1 ? '' : 's'
+            })}
+          </span>
+          {lastSession ? (
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              onClick={() => onResumeSession(lastSession.id)}
+            >
+              {t('dashboard.resumeLast')}
+            </SoftButton>
+          ) : null}
+        </div>
       </div>
 
       <div className={cn('grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]', softSpace.rowGap)}>

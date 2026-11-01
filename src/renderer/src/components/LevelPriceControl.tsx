@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Crosshair } from 'lucide-react'
+import { useT } from '@/i18n/useT'
 import { formatAssetPrice } from '@shared/pricePrecision'
 
 export function parseLevelPrice(raw: string): number | null | undefined {
@@ -35,6 +36,7 @@ export default function LevelPriceControl({
   onChange,
   onPickClick
 }: LevelPriceControlProps) {
+  const { t } = useT()
   const display = value != null ? formatAssetPrice(value, precision) : ''
   const [draft, setDraft] = useState(display)
   const focusedRef = useRef(false)
@@ -98,9 +100,9 @@ export default function LevelPriceControl({
       {onPickClick && (
         <button
           type="button"
-          aria-label={`Pick ${ariaLabel} from chart`}
+          aria-label={`${t('ticket.pickFromChart')} (${ariaLabel})`}
           aria-pressed={picking}
-          title="Pick price from chart"
+          title={t('ticket.pickFromChart')}
           disabled={disabled}
           onClick={onPickClick}
           className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${

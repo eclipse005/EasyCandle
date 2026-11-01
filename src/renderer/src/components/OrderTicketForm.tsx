@@ -219,31 +219,31 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
 
   const placeTooltip = !canPlace
     ? !canSubmit
-      ? 'Waiting for price data'
+      ? t('ticket.waitingPrice')
       : isPendingTicketType(orderType) && limitPrice == null
-        ? 'Pick or type an entry price'
+        ? t('ticket.pickEntry')
         : side === 'long'
           ? orderType === 'stopLimit'
-            ? 'Buy Stop needs a price above market, with TP above and SL below entry'
+            ? t('ticket.buyStopHint')
             : orderType === 'limit'
-              ? 'Buy Limit needs a price below market, with TP above and SL below entry'
-              : 'TP/SL levels do not allow a long'
+              ? t('ticket.buyLimitHint')
+              : t('ticket.longTpSlBad')
           : orderType === 'stopLimit'
-            ? 'Sell Stop needs a price below market, with TP below and SL above entry'
+            ? t('ticket.sellStopHint')
             : orderType === 'limit'
-              ? 'Sell Limit needs a price above market, with TP below and SL above entry'
-              : 'TP/SL levels do not allow a short'
+              ? t('ticket.sellLimitHint')
+              : t('ticket.shortTpSlBad')
     : side === 'long'
       ? orderType === 'stopLimit'
-        ? 'Place Buy Stop — wait for price to trade up to the stop'
+        ? t('ticket.placeBuyStop')
         : orderType === 'limit'
-          ? 'Place Buy Limit — wait for price to trade down to the limit'
-          : 'Place Buy — open long at the current close'
+          ? t('ticket.placeBuyLimit')
+          : t('ticket.placeBuy')
       : orderType === 'stopLimit'
-        ? 'Place Sell Stop — wait for price to trade down to the stop'
+        ? t('ticket.placeSellStop')
         : orderType === 'limit'
-          ? 'Place Sell Limit — wait for price to trade up to the limit'
-          : 'Place Sell — open short at the current close'
+          ? t('ticket.placeSellLimit')
+          : t('ticket.placeSell')
 
   const showEst = estLoss != null || estProfit != null || estRr != null
 
@@ -274,7 +274,11 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       </div>
 
       {/* 2. Risk basis */}
-      <div className="flex flex-wrap items-center gap-3 px-0.5" role="radiogroup" aria-label="Risk basis">
+      <div
+        className="flex flex-wrap items-center gap-3 px-0.5"
+        role="radiogroup"
+        aria-label={t('ticket.riskBasis')}
+      >
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
           <input
             type="radio"
@@ -283,7 +287,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             checked={riskBasis === 'initial'}
             onChange={() => setRiskBasis('initial')}
           />
-          Initial balance
+          {t('ticket.initialBalance')}
         </label>
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
           <input
@@ -293,7 +297,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
             checked={riskBasis === 'current'}
             onChange={() => setRiskBasis('current')}
           />
-          Current balance
+          {t('ticket.currentBalance')}
         </label>
       </div>
 
@@ -301,18 +305,20 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between px-0.5">
           <span className="text-[11px] font-medium text-zinc-400">
-            Risk percentage
+            {t('ticket.riskPercent')}
           </span>
           <span className="text-[10px] tabular-nums text-zinc-600">
-            {riskPercent}% of{' '}
-            {balanceForRisk.toLocaleString('en-US', {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            })}{' '}
-            {ACCOUNT_CURRENCY}
+            {t('ticket.riskPercentOf', {
+              percent: riskPercent,
+              balance: balanceForRisk.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }),
+              currency: ACCOUNT_CURRENCY
+            })}
           </span>
         </div>
-        <div className="flex gap-1" role="group" aria-label="Risk percent">
+        <div className="flex gap-1" role="group" aria-label={t('ticket.riskPercent')}>
           {RISK_CHIPS.map((chip) => {
             const active = riskPercent === chip
             return (
@@ -321,11 +327,13 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
                 type="button"
                 disabled={busy}
                 aria-pressed={active}
-                title={
-                  slValue == null
-                    ? `Risk ${chip}% (set SL to auto-size)`
-                    : `Risk ${chip}% of ${riskBasis} balance and size lots from SL`
-                }
+                title={t('ticket.riskHint', {
+                  percent: chip,
+                  basis:
+                    riskBasis === 'initial'
+                      ? t('ticket.basisInitial')
+                      : t('ticket.basisCurrent')
+                })}
                 onClick={() => onRiskChip(chip)}
                 className={`h-8 min-w-0 flex-1 rounded-xl border text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
@@ -372,14 +380,14 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         </div>
       ) : (
         <div className="rounded-xl border border-white/[0.06] bg-zinc-950/30 px-2.5 py-2 text-[11px] text-zinc-500">
-          Set SL / TP to see estimated loss, profit, and R:R.
+          {t('ticket.estHint')}
         </div>
       )}
 
       {/* 5. Market | Limit | Stop */}
       <div className="flex flex-col gap-1">
         <span className="px-0.5 text-[11px] font-medium text-zinc-400">
-          Order type
+          {t('ticket.typeAria')}
         </span>
         <div
           role="group"
@@ -406,11 +414,13 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         {isPendingTicketType(orderType) ? (
           <LevelPriceControl
             label={t('ticket.entry')}
-            ariaLabel={orderType === 'stopLimit' ? 'Stop price' : 'Limit price'}
+            ariaLabel={
+              orderType === 'stopLimit' ? t('ticket.stopPrice') : t('ticket.limitPrice')
+            }
             title={
               orderType === 'stopLimit'
-                ? 'Stop price. Type or pick from the chart. Buy Stop must be above market; Sell Stop must be below market.'
-                : 'Limit price. Type or pick from the chart. Buy Limit must be below market; Sell Limit must be above market.'
+                ? t('ticket.stopPriceTip')
+                : t('ticket.limitPriceTip')
             }
             value={limitPrice}
             precision={pricePrecision}
@@ -423,10 +433,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         ) : (
           <div
             className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/50 px-1.5 py-0.5"
-            title="Market entry uses the current close"
+            title={t('ticket.marketEntryHint')}
           >
             <span className="px-0.5 text-[11px] font-medium text-zinc-400">
-              Entry
+              {t('ticket.entry')}
             </span>
             <span className="min-w-0 flex-1 text-center text-xs font-semibold tabular-nums text-zinc-300">
               {mark != null ? formatAssetPrice(mark, pricePrecision) : '—'}
@@ -439,7 +449,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       <LevelPriceControl
         label="SL"
         ariaLabel={t('ticket.stopLoss')}
-        title="Stop loss price. Type to set, or use the crosshair to pick from the chart. Long SL is below entry, short SL is above. First fill seeds the other level at the R:R guide."
+        title={t('ticket.slTip')}
         value={slValue}
         precision={pricePrecision}
         disabled={busy}
@@ -451,7 +461,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
       <LevelPriceControl
         label="TP"
         ariaLabel={t('ticket.takeProfit')}
-        title="Take profit price. Type to set, or use the crosshair to pick from the chart. Long TP is above entry, short TP is below. First fill seeds the other level at the R:R guide."
+        title={t('ticket.tpTip')}
         value={tpValue}
         precision={pricePrecision}
         disabled={busy}
@@ -461,7 +471,10 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         onPickClick={() => setPricePick('tp')}
       />
 
-      <RiskRewardControl />
+      <RiskRewardControl
+        displayRr={estRr}
+        manualLevels={slValue != null && tpValue != null}
+      />
 
       {/* 8. Place order */}
       <Tooltip className="w-full" text={placeTooltip}>
@@ -471,13 +484,13 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           onClick={submit}
           className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary-500/95 text-sm font-semibold text-white shadow-sm shadow-primary-950/30 transition-colors enabled:hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Place order
+          {t('ticket.placeOrder')}
         </button>
       </Tooltip>
 
       {mark != null && !canPlace && canSubmit ? (
         <p className="text-[11px] leading-relaxed text-zinc-400">
-          {ticketValidationHint(orderType, mark, ticketLevels, side)}
+          {ticketValidationHint(t, orderType, mark, ticketLevels, side)}
         </p>
       ) : null}
     </div>
@@ -485,30 +498,31 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
 }
 
 function ticketValidationHint(
+  t: ReturnType<typeof useT>['t'],
   orderType: TicketOrderType,
   markPrice: number | null,
   levels: { takeProfit: number | null; stopLoss: number | null; limitPrice: number | null },
   side: TicketSide
 ): string {
-  if (markPrice == null) return 'Waiting for price data.'
+  if (markPrice == null) return t('ticket.waitingPriceDot')
   const entry = isPendingTicketType(orderType) ? levels.limitPrice : markPrice
   if (entry == null || !Number.isFinite(entry)) {
-    return isPendingTicketType(orderType) ? 'Enter an entry price first.' : 'Waiting for price data.'
+    return isPendingTicketType(orderType)
+      ? t('ticket.enterEntryFirst')
+      : t('ticket.waitingPriceDot')
   }
   if (levels.takeProfit != null && levels.stopLoss != null) {
-    return side === 'long'
-      ? 'Long needs TP above entry and SL below entry.'
-      : 'Short needs TP below entry and SL above entry.'
+    return side === 'long' ? t('ticket.longNeedsLevels') : t('ticket.shortNeedsLevels')
   }
   if (levels.stopLoss != null) {
     const slAbove = levels.stopLoss > entry
-    if (side === 'long' && slAbove) return 'SL is above entry — valid for Sell, not for Buy.'
-    if (side === 'short' && !slAbove) return 'SL is below entry — valid for Buy, not for Sell.'
+    if (side === 'long' && slAbove) return t('ticket.slAbove')
+    if (side === 'short' && !slAbove) return t('ticket.slBelow')
   }
   if (levels.takeProfit != null) {
     const tpAbove = levels.takeProfit > entry
-    if (side === 'long' && !tpAbove) return 'TP is below entry — valid for Sell, not for Buy.'
-    if (side === 'short' && tpAbove) return 'TP is above entry — valid for Buy, not for Sell.'
+    if (side === 'long' && !tpAbove) return t('ticket.tpBelow')
+    if (side === 'short' && tpAbove) return t('ticket.tpAbove')
   }
-  return 'Order cannot be placed with the current levels.'
+  return t('ticket.cannotPlace')
 }

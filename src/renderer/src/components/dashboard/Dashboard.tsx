@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { APP_NAME } from '@shared/appName'
 import { useReplayStore } from '@/store/replayStore'
+import { useSessionStore } from '@/store/sessionStore'
 import {
   useUiLayoutStore,
   type SidebarNav,
@@ -238,6 +239,7 @@ export default function Dashboard(): ReactNode {
   const testingTab = useUiLayoutStore((s) => s.testingTab)
   const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
   const refreshImportedList = useReplayStore((s) => s.refreshImportedList)
+  const loadSession = useSessionStore((s) => s.loadSession)
   const [createOpen, setCreateOpen] = useState(false)
   const [version, setVersion] = useState('')
   const [sidebarExpanded, setSidebarExpanded] = useState(readSidebarExpanded)
@@ -290,7 +292,12 @@ export default function Dashboard(): ReactNode {
         mainBody = <AnalyticsTab />
         break
       default:
-        mainBody = <TestingDashboardTab onStartSession={() => openCreate()} />
+        mainBody = (
+          <TestingDashboardTab
+            onStartSession={() => openCreate()}
+            onResumeSession={(id) => void loadSession(id)}
+          />
+        )
     }
   } else if (sidebarNav === 'strategies') {
     mainBody = <StrategiesTab />

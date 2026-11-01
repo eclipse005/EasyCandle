@@ -8,13 +8,14 @@ import {
   setDrawingLocked
 } from '@/lib/drawings/drawingActions'
 import * as bridge from '@/lib/drawings/drawingBridge'
+import { kindLabel } from '@/lib/drawings/drawingProperties'
 import { useT } from '@/i18n/useT'
 
 /**
  * Drawing list shown in the right dock when Object tree is selected.
  */
 export default function DrawingObjectTreeDialog(): ReactElement {
-  const { t } = useT()
+  const { t, locale } = useT()
   const revision = useDrawingUiStore((s) => s.revision)
   const openObjectDialog = useDrawingUiStore((s) => s.openObjectDialog)
   const selectedIds = useDrawingUiStore((s) => s.selectedIds)
@@ -39,10 +40,12 @@ export default function DrawingObjectTreeDialog(): ReactElement {
             <table className="w-full text-left text-xs text-zinc-300">
               <thead className="sticky top-0 bg-zinc-950 text-[10px] uppercase tracking-[0.08em] text-zinc-500">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Name</th>
-                  <th className="px-3 py-2 font-medium">Kind</th>
-                  <th className="px-3 py-2 font-medium">State</th>
-                  <th className="px-3 py-2 font-medium text-right">Actions</th>
+                  <th className="px-3 py-2 font-medium">{t('objects.name')}</th>
+                  <th className="px-3 py-2 font-medium">{t('objects.kind')}</th>
+                  <th className="px-3 py-2 font-medium">{t('objects.state')}</th>
+                  <th className="px-3 py-2 font-medium text-right">
+                    {t('objects.actions')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -68,18 +71,24 @@ export default function DrawingObjectTreeDialog(): ReactElement {
                             openObjectDialog(d.id)
                           }}
                         >
-                          {d.name || d.kind.replace(/-/g, ' ')}
+                          {d.name || kindLabel(d.kind, locale)}
                         </button>
                       </td>
-                      <td className="px-3 py-2 text-zinc-500">{d.kind}</td>
                       <td className="px-3 py-2 text-zinc-500">
-                        {d.hidden ? 'hidden' : d.locked ? 'locked' : '—'}
+                        {kindLabel(d.kind, locale)}
+                      </td>
+                      <td className="px-3 py-2 text-zinc-500">
+                        {d.hidden
+                          ? t('objects.hidden')
+                          : d.locked
+                            ? t('objects.locked')
+                            : '—'}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            aria-label={d.hidden ? 'Show' : 'Hide'}
+                            aria-label={d.hidden ? t('objects.show') : t('objects.hide')}
                             onClick={() => setDrawingHidden(d.id, !d.hidden)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                           >
@@ -91,7 +100,7 @@ export default function DrawingObjectTreeDialog(): ReactElement {
                           </button>
                           <button
                             type="button"
-                            aria-label={d.locked ? 'Unlock' : 'Lock'}
+                            aria-label={d.locked ? t('objects.unlock') : t('objects.lock')}
                             onClick={() => setDrawingLocked(d.id, !d.locked)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                           >
@@ -103,7 +112,7 @@ export default function DrawingObjectTreeDialog(): ReactElement {
                           </button>
                           <button
                             type="button"
-                            aria-label="Delete"
+                            aria-label={t('common.delete')}
                             onClick={() => removeDrawing(d.id)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-red-950/70 hover:text-red-300"
                           >

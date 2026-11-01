@@ -14,8 +14,8 @@ const VARIANT: Record<SoftButtonVariant, string> = {
   primary:
     'bg-primary-500/90 text-white hover:bg-primary-400 border border-transparent shadow-sm shadow-primary-950/40',
   secondary:
-    'border border-white/10 bg-zinc-900/60 text-zinc-300 hover:border-white/15 hover:bg-zinc-800/80 hover:text-zinc-100',
-  ghost: 'border border-transparent text-zinc-500 hover:bg-white/5 hover:text-zinc-300',
+    'border border-zinc-700/70 bg-zinc-900/60 text-zinc-300 hover:border-zinc-500/80 hover:bg-zinc-800/80 hover:text-zinc-100',
+  ghost: 'border border-transparent text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300',
   danger:
     'border border-transparent bg-red-600 text-white hover:bg-red-500 hover:text-white shadow-sm shadow-red-950/25'
 }

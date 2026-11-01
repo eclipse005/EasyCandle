@@ -261,10 +261,9 @@ export default function SymbolsTab(): ReactNode {
                 <SoftCard
                   key={key}
                   elevated
-                  className="grid min-w-0 items-center gap-x-2 overflow-hidden px-3 py-1.5 [grid-template-columns:max-content_minmax(calc(8ch+1.25rem),1fr)_max-content_max-content_max-content]"
+                  className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 overflow-hidden px-3 py-1.5"
                 >
-                  {/* Fixed ticker + meta; spacer ≥1 Contract width takes freed Spread/Comm width; all 3 inputs share 8ch. */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span
                       className="inline-block w-[5rem] shrink-0 whitespace-nowrap text-body font-semibold text-zinc-50"
                       title={row.label !== row.symbol ? row.label : undefined}
@@ -278,7 +277,6 @@ export default function SymbolsTab(): ReactNode {
                       {metaText}
                     </span>
                   </div>
-                  <div className="min-w-0" aria-hidden="true" />
                   <label
                     className="flex shrink-0 items-center justify-start gap-1"
                     title={lotLabel}
@@ -291,7 +289,7 @@ export default function SymbolsTab(): ReactNode {
                       min="0"
                       step="any"
                       placeholder={String(info.contractSize)}
-                      aria-label={`Contract size for ${row.symbol}`}
+                      aria-label={t('symbols.contractAria', { symbol: row.symbol })}
                       title={lotLabel}
                       value={userSize ?? ''}
                       onChange={(event) => {
@@ -312,11 +310,11 @@ export default function SymbolsTab(): ReactNode {
                       min="0"
                       step="any"
                       placeholder="0"
-                      aria-label={`Spread for ${row.symbol}`}
+                      aria-label={t('symbols.spreadAria', { symbol: row.symbol })}
                       title={
                         spec.spread == null
-                          ? 'Empty — no spread (0)'
-                          : 'Full bid–ask width in price units'
+                          ? t('symbols.spreadEmpty')
+                          : t('symbols.spreadTip')
                       }
                       value={spec.spread ?? ''}
                       onChange={(event) => {
@@ -336,11 +334,11 @@ export default function SymbolsTab(): ReactNode {
                       min="0"
                       step="any"
                       placeholder="0"
-                      aria-label={`Commission per lot for ${row.symbol}`}
+                      aria-label={t('symbols.commCommissionAria', { symbol: row.symbol })}
                       title={
                         spec.commissionPerLot == null
-                          ? `Empty — no commission (0 ${quote})`
-                          : `Round-turn commission in ${quote} per 1.0 lot`
+                          ? t('symbols.commEmpty', { quote })
+                          : t('symbols.commTip', { quote })
                       }
                       value={spec.commissionPerLot ?? ''}
                       onChange={(event) => {

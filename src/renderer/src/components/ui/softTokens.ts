@@ -7,11 +7,11 @@
 /** Surfaces */
 export const softSurface = {
   page: 'bg-zinc-950 text-zinc-200',
-  card: 'rounded-2xl border border-white/[0.06] bg-zinc-900/45 shadow-lg shadow-black/15',
-  cardElevated: 'rounded-2xl border border-white/[0.06] bg-zinc-900/70 shadow-lg shadow-black/15',
-  hairline: 'border-white/[0.06]',
-  hairlineStrong: 'border-white/10',
-  inset: 'rounded-2xl border border-white/[0.05] bg-zinc-950/50'
+  card: 'rounded-2xl border border-zinc-800/80 bg-zinc-900/45 shadow-lg shadow-black/15',
+  cardElevated: 'rounded-2xl border border-zinc-800/80 bg-zinc-900/70 shadow-lg shadow-black/15',
+  hairline: 'border-zinc-800/70',
+  hairlineStrong: 'border-zinc-700/80',
+  inset: 'rounded-2xl border border-zinc-800/70 bg-zinc-950/50'
 } as const
 
 /** Type roles (Tailwind fontSize extensions from theme). */
@@ -41,7 +41,7 @@ export const softSpace = {
 /** Nav / pill active states (FXR soft SaaS). */
 export const softNav = {
   pillActive: 'bg-zinc-800/80 text-zinc-50 shadow-sm shadow-black/20',
-  pillIdle: 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
+  pillIdle: 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200',
   tabActive: 'text-zinc-50',
   tabIdle: 'text-zinc-500 hover:text-zinc-300',
   tabUnderline: 'absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-zinc-100'

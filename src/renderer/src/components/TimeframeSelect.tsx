@@ -83,39 +83,44 @@ export default function TimeframeSelect() {
           </button>
         )}
       >
-        {availableIds.map((id) => {
-          const isFavorite = favorites.includes(id)
-          return (
-            <div
-              key={id}
-              className={`group flex items-center ${
-                id === timeframe ? 'bg-primary-950/20 dark:bg-primary-950/40' : 'hover:bg-zinc-800/80'
-              }`}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => setTimeframe(id)}
-                className={`flex-1 px-3 py-2 text-left text-xs transition-colors ${
-                  id === timeframe ? 'text-primary-300' : 'text-zinc-300 group-hover:text-zinc-100'
+        {({ close }) =>
+          availableIds.map((id) => {
+            const isFavorite = favorites.includes(id)
+            return (
+              <div
+                key={id}
+                className={`group flex items-center ${
+                  id === timeframe ? 'bg-primary-950/20 dark:bg-primary-950/40' : 'hover:bg-zinc-800/80'
                 }`}
               >
-                {TIMEFRAMES[id].label}
-              </button>
-              <button
-                type="button"
-                aria-label={`${isFavorite ? 'Remove' : 'Add'} ${TIMEFRAMES[id].label} favorite`}
-                aria-pressed={isFavorite}
-                onClick={() => toggleFavorite(id)}
-                className={`px-2.5 py-2 transition-colors ${
-                  isFavorite ? 'text-primary-300' : 'text-zinc-500 group-hover:text-zinc-200'
-                }`}
-              >
-                <Star className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} aria-hidden />
-              </button>
-            </div>
-          )
-        })}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setTimeframe(id)
+                    close()
+                  }}
+                  className={`flex-1 px-3 py-2 text-left text-xs transition-colors ${
+                    id === timeframe ? 'text-primary-300' : 'text-zinc-300 group-hover:text-zinc-100'
+                  }`}
+                >
+                  {TIMEFRAMES[id].label}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${isFavorite ? 'Remove' : 'Add'} ${TIMEFRAMES[id].label} favorite`}
+                  aria-pressed={isFavorite}
+                  onClick={() => toggleFavorite(id)}
+                  className={`px-2.5 py-2 transition-colors ${
+                    isFavorite ? 'text-primary-300' : 'text-zinc-500 group-hover:text-zinc-200'
+                  }`}
+                >
+                  <Star className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} aria-hidden />
+                </button>
+              </div>
+            )
+          })
+        }
       </Dropdown>
 
       {favoriteIds.length > 0 && (

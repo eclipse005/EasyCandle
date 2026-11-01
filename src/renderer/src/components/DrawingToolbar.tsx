@@ -270,16 +270,16 @@ export default memo(function DrawingToolbar() {
 
       <div className="my-0.5 h-px w-6 shrink-0 bg-zinc-800" aria-hidden />
 
-      <IconButton variant="ghost" className="!h-8 !w-8" tooltip="Undo" tooltipSide="right" disabled={!canUndo} onClick={undo}>
+      <IconButton variant="ghost" className="!h-8 !w-8" tooltip={t('draw.undo')} tooltipSide="right" disabled={!canUndo} onClick={undo}>
         <Undo2 className="h-5 w-5" strokeWidth={1.5} />
       </IconButton>
-      <IconButton variant="ghost" className="!h-8 !w-8" tooltip="Redo" tooltipSide="right" disabled={!canRedo} onClick={redo}>
+      <IconButton variant="ghost" className="!h-8 !w-8" tooltip={t('draw.redo')} tooltipSide="right" disabled={!canRedo} onClick={redo}>
         <Redo2 className="h-5 w-5" strokeWidth={1.5} />
       </IconButton>
       <IconButton
         variant="ghost"
         className="!h-8 !w-8"
-        tooltip={drawingsLocked ? 'Unlock' : 'Lock'}
+        tooltip={drawingsLocked ? t('draw.unlock') : t('draw.lock')}
         tooltipSide="right"
         active={drawingsLocked}
         disabled={disabled}

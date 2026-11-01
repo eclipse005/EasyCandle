@@ -43,7 +43,9 @@ export function attachPane(
 
   manager.on('change', () => {
     const json = manager.exportJSON()
-    if (json !== lastCommitted) {
+    // Undo/redo imports fire 'change' too; recording them would push the
+    // restored snapshot onto the undo stack and clear the redo stack.
+    if (!syncing && json !== lastCommitted) {
       pushUndo(lastCommitted)
       lastCommitted = json
     }
@@ -106,7 +108,9 @@ export function importDrawings(json: string): number {
   } finally {
     syncing = false
   }
-  lastCommitted = managers.primary?.exportJSON() ?? '[]'
+  // No pane may be attached yet (dashboard → session load). Keep the pending
+  // snapshot so the freshly mounted DrawingManager can restore it.
+  lastCommitted = managers.primary?.exportJSON() ?? json
   return loaded
 }
 

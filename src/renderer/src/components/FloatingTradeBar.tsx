@@ -13,6 +13,7 @@ export default function FloatingTradeBar() {
       pos={pos}
       onPosChange={setTradePanelPos}
       defaultPlacement="top-right"
+      persistDefault={false}
     >
       <OrderTicketForm compact />
     </FloatingPanel>

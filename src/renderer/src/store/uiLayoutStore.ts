@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { IChartApi } from 'lightweight-charts'
 import type { SessionReport } from '@/store/replayStore'
 
-const STORAGE_KEY = 'bar-replay:ui-layout:v2'
+const STORAGE_KEY = 'bar-replay:ui-layout:v4'
 
 /** Primary left-sidebar destinations (FX Replay–style). */
 export type SidebarNav = 'testing' | 'strategies' | 'datasets' | 'symbols' | 'settings'

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import iconUrl from '@/assets/barreplay-logo.png'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
@@ -38,9 +39,9 @@ export default function AboutDialog() {
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-3 sm:p-6"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-3 sm:p-6"
       role="presentation"
       onClick={() => setOpen(false)}
     >
@@ -140,6 +141,7 @@ export default function AboutDialog() {
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

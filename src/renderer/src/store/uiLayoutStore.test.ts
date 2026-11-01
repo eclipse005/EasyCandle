@@ -54,7 +54,7 @@ describe('drawing widget position', () => {
 
   it('loads a persisted position on init and ignores invalid ones', async () => {
     const store = {
-      'bar-replay:ui-layout:v2': JSON.stringify({
+      'bar-replay:ui-layout:v4': JSON.stringify({
         drawingWidgetPos: { x: 300, y: 42 }
       })
     }
@@ -70,7 +70,7 @@ describe('drawing widget position', () => {
     vi.resetModules()
     const mod = await import('@/store/uiLayoutStore')
     mod.useUiLayoutStore.getState().setDrawingWidgetPos({ x: 7, y: 11 })
-    const raw = store['bar-replay:ui-layout:v2']
+    const raw = store['bar-replay:ui-layout:v4']
     const parsed = JSON.parse(raw ?? '{}') as { drawingWidgetPos: { x: number; y: number } }
     expect(parsed.drawingWidgetPos).toEqual({ x: 7, y: 11 })
   })
@@ -79,7 +79,7 @@ describe('drawing widget position', () => {
 describe('app tour', () => {
   it('loads a persisted completion flag', async () => {
     const store = {
-      'bar-replay:ui-layout:v2': JSON.stringify({ hasCompletedTour: true })
+      'bar-replay:ui-layout:v4': JSON.stringify({ hasCompletedTour: true })
     }
     stubLocalStorage(store)
     vi.resetModules()
@@ -96,7 +96,7 @@ describe('app tour', () => {
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(false)
     mod.useUiLayoutStore.getState().completeTour()
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(true)
-    const parsed = JSON.parse(store['bar-replay:ui-layout:v2'] ?? '{}') as { hasCompletedTour?: boolean }
+    const parsed = JSON.parse(store['bar-replay:ui-layout:v4'] ?? '{}') as { hasCompletedTour?: boolean }
     expect(parsed.hasCompletedTour).toBe(true)
   })
 
@@ -107,7 +107,7 @@ describe('app tour', () => {
     const mod = await import('@/store/uiLayoutStore')
     mod.useUiLayoutStore.getState().skipTour()
     expect(mod.useUiLayoutStore.getState().hasCompletedTour).toBe(true)
-    const parsed = JSON.parse(store['bar-replay:ui-layout:v2'] ?? '{}') as { hasCompletedTour?: boolean }
+    const parsed = JSON.parse(store['bar-replay:ui-layout:v4'] ?? '{}') as { hasCompletedTour?: boolean }
     expect(parsed.hasCompletedTour).toBe(true)
   })
 
@@ -139,7 +139,7 @@ describe('app tour', () => {
     expect(next.shortcutsDialogOpen).toBe(false)
     expect(next.importDataDialogOpen).toBe(false)
     expect(next.chartSettingsDialogOpen).toBe(false)
-    const parsed = JSON.parse(store['bar-replay:ui-layout:v2'] ?? '{}') as {
+    const parsed = JSON.parse(store['bar-replay:ui-layout:v4'] ?? '{}') as {
       showMainToolbar?: boolean
       showDrawingToolbar?: boolean
     }
@@ -157,7 +157,7 @@ describe('app tour', () => {
     api.getState().beginPaperTradePreview()
     expect(api.getState().tourPaperTradePreview).toBe(true)
     expect(api.getState().showPaperTrade).toBe(true)
-    expect(store['bar-replay:ui-layout:v2']).toBeUndefined()
+    expect(store['bar-replay:ui-layout:v4']).toBeUndefined()
     api.getState().endPaperTradePreview()
     expect(api.getState().tourPaperTradePreview).toBe(false)
     expect(api.getState().showPaperTrade).toBe(false)

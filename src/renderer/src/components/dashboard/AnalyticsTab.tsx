@@ -377,7 +377,13 @@ export default function AnalyticsTab(): ReactNode {
             <StatCard
               label={t('analytics.winRate')}
               value={formatWinRatePct(report.winRate)}
-              hint={`${report.wins}W / ${report.losses}L · ${report.count} trade${report.count === 1 ? '' : 's'}`}
+              hint={`${t('analytics.winsLosses', {
+                wins: report.wins,
+                losses: report.losses
+              })} · ${t('trades.count', {
+                count: report.count,
+                suffix: report.count === 1 ? '' : 's'
+              })}`}
             />
             <StatCard
               label={t('analytics.realizedPnl')}
@@ -433,7 +439,11 @@ export default function AnalyticsTab(): ReactNode {
                   <li key={label} className="flex items-baseline justify-between gap-3">
                     <span className={softType.cardTitle}>{label}</span>
                     <span className={softType.caption}>
-                      {row.n} trade{row.n === 1 ? '' : 's'} · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
+                      {t('trades.count', {
+                        count: row.n,
+                        suffix: row.n === 1 ? '' : 's'
+                      })}{' '}
+                      · {formatWinRatePct(row.n ? row.wins / row.n : null)} ·{' '}
                       <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                         {formatPnl(row.pnl)}
                       </span>
@@ -452,7 +462,11 @@ export default function AnalyticsTab(): ReactNode {
                     <div className="mb-1 flex items-baseline justify-between gap-3">
                       <span className={cn(softType.cardTitle, 'text-zinc-200')}>{row.symbol}</span>
                       <span className={softType.caption}>
-                        {row.trades} trade{row.trades === 1 ? '' : 's'} · {formatWinRatePct(row.winRate)} ·{' '}
+                        {t('trades.count', {
+                          count: row.trades,
+                          suffix: row.trades === 1 ? '' : 's'
+                        })}{' '}
+                        · {formatWinRatePct(row.winRate)} ·{' '}
                         <span className={row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                           {formatPnl(row.pnl)}
                         </span>

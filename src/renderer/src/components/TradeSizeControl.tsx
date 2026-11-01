@@ -9,6 +9,7 @@ import {
   MIN_LOT_SIZE,
   TRADE_SIZE_STEP
 } from '@/lib/paperTrade'
+import { useT } from '@/i18n/useT'
 import { tradeSizeKindForSymbol } from '@shared/pricePrecision'
 
 type TradeSizeControlProps = {
@@ -24,9 +25,10 @@ export default function TradeSizeControl({
   disabled = false,
   onChange
 }: TradeSizeControlProps) {
+  const { t } = useT()
   const kind = tradeSizeKindForSymbol(symbol)
-  const noun = kind === 'lot' ? 'lot size' : 'amount'
-  const label = kind === 'lot' ? 'Lot' : 'Amt'
+  const noun = kind === 'lot' ? t('ticket.lot') : t('ticket.amount')
+  const label = noun
   const display = formatTradeSize(value, kind)
   const [draft, setDraft] = useState(display)
   const focusedRef = useRef(false)
@@ -63,18 +65,14 @@ export default function TradeSizeControl({
   return (
     <div
       className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/60 px-1 py-0.5"
-      title={
-        kind === 'lot'
-          ? 'Lot size 0.01–100 (0.01 step). Type to enter.'
-          : 'Coin amount. Type any positive size — no maximum.'
-      }
+      title={kind === 'lot' ? t('ticket.lotTip') : t('ticket.amountTip')}
     >
       <span className="px-0.5 text-[11px] font-medium text-zinc-400">
         {label}
       </span>
       <div className="ml-auto flex items-center gap-1">
         <IconButton
-          tooltip={`Decrease ${noun}`}
+          tooltip={t('ticket.decreaseSize', { noun })}
           disabled={disabled || atMin}
           onClick={() => onChange(clampTradeSize(value - TRADE_SIZE_STEP, kind))}
           className="!h-6 !w-6"
@@ -84,7 +82,7 @@ export default function TradeSizeControl({
         <input
           type="text"
           inputMode="decimal"
-          aria-label={kind === 'lot' ? 'Lot size' : 'Coin amount'}
+          aria-label={kind === 'lot' ? t('ticket.lotAria') : t('ticket.amountAria')}
           disabled={disabled}
           value={draft}
           onFocus={(event) => {
@@ -100,7 +98,7 @@ export default function TradeSizeControl({
           className="h-6 w-14 bg-transparent text-center text-xs font-semibold tabular-nums text-zinc-200 outline-none disabled:opacity-40"
         />
         <IconButton
-          tooltip={`Increase ${noun}`}
+          tooltip={t('ticket.increaseSize', { noun })}
           disabled={disabled || atMax}
           onClick={() => onChange(clampTradeSize(value + TRADE_SIZE_STEP, kind))}
           className="!h-6 !w-6"

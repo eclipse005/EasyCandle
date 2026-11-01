@@ -17,6 +17,8 @@ import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { useT } from '@/i18n/useT'
+import { APP_NAME } from '@shared/appName'
 import iconUrl from '@/assets/barreplay-icon.svg'
 
 type MenuEntry =
@@ -123,48 +125,49 @@ export default function AppMenu() {
   const setAboutDialogOpen = useUiLayoutStore((s) => s.setAboutDialogOpen)
   const startTour = useUiLayoutStore((s) => s.startTour)
   const inReplay = useReplayStore((s) => s.mode === 'replay')
+  const { t } = useT()
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
 
   const entries: MenuEntry[] = [
     {
       type: 'item',
-      label: 'Sessions home',
+      label: t('menu.sessionsHome'),
       icon: Home,
       onSelect: () => void closeActiveSession()
     },
     { type: 'separator' },
     {
       type: 'item',
-      label: 'Dark theme',
+      label: t('menu.darkTheme'),
       icon: Moon,
       checked: theme === 'dark',
       onSelect: () => setTheme(theme === 'dark' ? 'light' : 'dark')
     },
     {
       type: 'item',
-      label: 'Paper trade',
+      label: t('menu.paperTrade'),
       icon: TrendingUp,
       checked: showPaperTrade,
       onSelect: togglePaperTrade
     },
     {
       type: 'item',
-      label: 'Status bar',
+      label: t('menu.statusBar'),
       icon: PanelBottom,
       checked: showStatusBar,
       onSelect: toggleStatusBar
     },
     {
       type: 'item',
-      label: 'Drawing toolbar',
+      label: t('menu.drawingToolbar'),
       icon: PenLine,
       checked: showDrawingToolbar,
       onSelect: toggleDrawingToolbar
     },
     {
       type: 'item',
-      label: 'Replay controls',
+      label: t('menu.replayControls'),
       icon: Play,
       checked: showReplayControls,
       onSelect: toggleReplayControls
@@ -172,28 +175,28 @@ export default function AppMenu() {
     { type: 'separator' },
     {
       type: 'item',
-      label: 'Take a tour',
+      label: t('menu.tour'),
       icon: Compass,
       disabled: inReplay,
-      title: inReplay ? 'Exit replay to take the tour' : undefined,
+      title: inReplay ? t('menu.tourInReplay') : undefined,
       onSelect: startTour
     },
     {
       type: 'item',
-      label: 'Keyboard shortcuts',
+      label: t('menu.shortcuts'),
       icon: Keyboard,
       onSelect: () => setShortcutsDialogOpen(true)
     },
     {
       type: 'item',
-      label: 'About',
+      label: t('menu.about'),
       icon: Info,
       onSelect: () => setAboutDialogOpen(true)
     },
     { type: 'separator' },
     {
       type: 'item',
-      label: 'GitHub (BarReplay)',
+      label: t('menu.github', { app: APP_NAME }),
       icon: ExternalLink,
       href: 'https://github.com/eclipse005/BarReplay',
       onSelect: () => {}

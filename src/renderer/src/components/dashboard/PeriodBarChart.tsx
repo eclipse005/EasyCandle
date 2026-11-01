@@ -58,6 +58,10 @@ export default function PeriodBarChart({
   const [hovered, setHovered] = useState<string | null>(null)
   const maxAbs = Math.max(1, ...buckets.map((b) => Math.abs(b.pnl)))
   const hasData = buckets.some((b) => b.pnl !== 0 || (b.tradeCount ?? 0) > 0)
+  // Narrow panels cannot fit a label under every monthly bar; thin them out
+  // while keeping hover/aria labels for all buckets.
+  const labelStep =
+    mode === 'weekday' ? 1 : buckets.length > 8 ? 3 : buckets.length > 5 ? 2 : 1
   if (!hasData) {
     return (
       <p className={cn('flex flex-1 items-center justify-center text-center', softType.caption)}>
@@ -68,10 +72,12 @@ export default function PeriodBarChart({
 
   return (
     <div className={cn('flex min-h-[8rem] flex-1 items-end overflow-visible px-1 pb-1 pt-7', gapClassName)}>
-      {buckets.map((b) => {
+      {buckets.map((b, index) => {
         const height = Math.max(b.pnl === 0 ? 0 : 6, Math.round((Math.abs(b.pnl) / maxAbs) * 100))
         const label =
           mode === 'weekday' ? weekdayAxisLabel(b.key, t) : monthAxisLabel(b.key, t)
+        const showLabel =
+          index % labelStep === 0 || index === buckets.length - 1
         const up = b.pnl >= 0
         const active = hovered === b.key
         const pnlText = formatPnl(b.pnl)
@@ -117,12 +123,12 @@ export default function PeriodBarChart({
             </div>
             <span
               className={cn(
-                'truncate transition-colors',
+                'whitespace-nowrap transition-colors',
                 softType.micro,
                 active ? 'text-zinc-100' : 'text-zinc-500'
               )}
             >
-              {label}
+              {showLabel ? label : '\u00a0'}
             </span>
           </div>
         )

@@ -29,6 +29,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * - Escape → disarm tool / close object dialog / exit chart fullscreen ONLY.
  *   NEVER leaves or closes the trading session (no closeActiveSession / exitReplay).
  * - Delete / Backspace → delete the selected LCD (or legacy) drawing
+ * - Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z / Ctrl+Y → undo / redo drawing edits
  * - Ctrl/Cmd+C / D / V → copy / clone / paste drawing
  */
 export function useUiHotkeys(): void {
@@ -77,8 +78,19 @@ export function useUiHotkeys(): void {
       const mod = event.ctrlKey || event.metaKey
       if (mod && !event.altKey) {
         const key = event.key.toLowerCase()
-        const selected = useDrawingUiStore.getState().selectedIds
+        const ui = useDrawingUiStore.getState()
+        const selected = ui.selectedIds
         const id = selected[0]
+        if (key === 'z' && !event.shiftKey && ui.canUndo) {
+          event.preventDefault()
+          ui.undo()
+          return
+        }
+        if (((key === 'z' && event.shiftKey) || key === 'y') && ui.canRedo) {
+          event.preventDefault()
+          ui.redo()
+          return
+        }
         if (key === 'c' && id) {
           event.preventDefault()
           copyDrawing(id)

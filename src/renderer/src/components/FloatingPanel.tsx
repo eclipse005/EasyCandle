@@ -156,17 +156,25 @@ export default memo(function FloatingPanel({
     if (!el) return
 
     const reclamp = (): void => {
-      const current = pos ?? previewPos
       const box = frame()
-      if (current == null || !box) return
+      if (!box) return
       const panelRect = el.getBoundingClientRect()
       if (panelRect.width <= 0 || panelRect.height <= 0) return
-      const next = clampPanelPos(current, box.width, box.height, panelRect.width, panelRect.height)
+
+      // An undragged panel is laid out, not frozen: recompute its default
+      // anchor when the chart card grows or shrinks (trade book open/close).
       if (pos == null) {
-        setPreviewPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next))
-      } else if (next.x !== current.x || next.y !== current.y) {
-        onPosChange(next)
+        const next = resolveDefaultPos(
+          { width: box.width, height: box.height } as DOMRect,
+          panelRect
+        )
+        if (persistDefault) onPosChange(next)
+        else setPreviewPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next))
+        return
       }
+
+      const next = clampPanelPos(pos, box.width, box.height, panelRect.width, panelRect.height)
+      if (next.x !== pos.x || next.y !== pos.y) onPosChange(next)
     }
 
     const observer = new ResizeObserver(reclamp)
@@ -178,7 +186,7 @@ export default memo(function FloatingPanel({
       observer.disconnect()
       if (scope === 'viewport') window.removeEventListener('resize', reclamp)
     }
-  }, [pos, previewPos, onPosChange, frame, scope])
+  }, [pos, onPosChange, frame, scope, resolveDefaultPos, persistDefault])
 
   useEffect(() => {
     if (!dragging) return undefined

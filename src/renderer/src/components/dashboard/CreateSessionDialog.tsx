@@ -15,6 +15,7 @@ import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 import { useStrategiesStore } from '@/store/strategiesStore'
 import { useT } from '@/i18n/useT'
+import { TIMEFRAME_IDS, TIMEFRAMES } from '@shared/timeframes'
 
 export type CreateSessionDialogProps = {
   open: boolean
@@ -48,6 +49,7 @@ export default function CreateSessionDialog({
   const [symbolKey, setSymbolKey] = useState('')
   const [startDate, setStartDate] = useState('')
   const [balance, setBalance] = useState('100000')
+  const [timeframe, setTimeframe] = useState('1m')
   const [strategyId, setStrategyId] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -102,25 +104,25 @@ export default function CreateSessionDialog({
 
   function submit(): void {
     if (!group) {
-      setError('Select a symbol with imported data.')
+      setError(t('session.errorSymbol'))
       return
     }
     if (!startDate) {
-      setError('Start date is required.')
+      setError(t('session.errorStartRequired'))
       return
     }
     if (!isDayCovered(group.coverageDays, startDate)) {
-      setError('Start date has no data for this symbol.')
+      setError(t('session.errorStartNoData'))
       return
     }
     const seconds = parseSessionParts(startDate, '00:00', DEFAULT_CHART_TIMEZONE)
     if (seconds == null) {
-      setError('Enter a valid start date (YYYY-MM-DD).')
+      setError(t('session.errorStartInvalid'))
       return
     }
     const balanceNumber = Number(balance)
     if (!Number.isFinite(balanceNumber) || balanceNumber <= 0) {
-      setError('Initial balance must be a positive number.')
+      setError(t('session.errorBalance'))
       return
     }
 
@@ -129,14 +131,14 @@ export default function CreateSessionDialog({
     void openSession({
       name,
       symbol: group.symbol,
-      timeframe: '1m',
+      timeframe,
       startDate: seconds,
       balance: balanceNumber,
       strategyId: strategyId || undefined
     }).then((id) => {
       setBusy(false)
       if (id) onClose()
-      else setError('Could not start the session — check that the symbol still has data.')
+      else setError(t('session.errorCreate'))
     })
   }
 
@@ -179,30 +181,46 @@ export default function CreateSessionDialog({
           </SoftSelect>
         </SoftLabel>
 
-        <SoftLabel caption={t('session.startDate')}>
-          {group ? (
-            <DateCoveragePopover
-              mode="pick"
-              coverageDays={group.coverageDays}
-              selectedDay={startDate}
+        <div className="grid grid-cols-2 gap-3">
+          <SoftLabel caption={t('session.startDate')}>
+            {group ? (
+              <DateCoveragePopover
+                mode="pick"
+                coverageDays={group.coverageDays}
+                selectedDay={startDate}
+                disabled={busy}
+                placeholder={t('session.pickDay')}
+                initialMonth={startDate ? startDate.slice(0, 7) : undefined}
+                onSelectDay={(day) => {
+                  setError(null)
+                  setStartDate(day)
+                }}
+              />
+            ) : (
+              <SoftInput
+                type="text"
+                value=""
+                disabled
+                aria-label={t('session.startDate')}
+                placeholder={t('session.pickDay')}
+              />
+            )}
+          </SoftLabel>
+          <SoftLabel caption={t('session.timeframe')}>
+            <SoftSelect
+              value={timeframe}
               disabled={busy}
-              placeholder={t('session.pickDay')}
-              initialMonth={startDate ? startDate.slice(0, 7) : undefined}
-              onSelectDay={(day) => {
-                setError(null)
-                setStartDate(day)
-              }}
-            />
-          ) : (
-            <SoftInput
-              type="text"
-              value=""
-              disabled
-              aria-label={t('session.startDate')}
-              placeholder={t('session.pickDay')}
-            />
-          )}
-        </SoftLabel>
+              aria-label={t('session.timeframe')}
+              onChange={(event) => setTimeframe(event.target.value)}
+            >
+              {TIMEFRAME_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {TIMEFRAMES[id].label}
+                </option>
+              ))}
+            </SoftSelect>
+          </SoftLabel>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <SoftLabel caption={t('session.balance')}>
@@ -243,7 +261,7 @@ export default function CreateSessionDialog({
             placeholder={
               displaySymbol
                 ? `${displaySymbol} ${startDate || 'YYYY-MM-DD'}`
-                : 'Session name'
+                : t('session.namePlaceholder')
             }
             onChange={(event) => setName(event.target.value)}
           />
@@ -251,7 +269,7 @@ export default function CreateSessionDialog({
 
         {symbolGroups.length === 0 && (
           <p className="text-[12px] leading-relaxed text-zinc-400">
-            No imported datasets yet — import a CSV from the Datasets tab first.
+            {t('session.importHint')}
           </p>
         )}
         {error && <p className="text-[12px] text-red-400">{error}</p>}

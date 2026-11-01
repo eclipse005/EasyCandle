@@ -119,7 +119,7 @@ type SessionStoreState = {
     balance: number
     strategyId?: string
   }) => Promise<string | null>
-  /** Flatten open trades, save the active session, and return to the home view. */
+  /** Save the active session snapshot and return to the session list. */
   closeActiveSession: () => Promise<void>
 }
 
@@ -637,6 +637,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   async loadSession(id) {
     const session = get().sessions.find((item) => item.id === id)
     if (!session) return false
+    const leavingId = get().activeSessionId
+    if (leavingId != null && leavingId !== id) {
+      updateSessionSnapshot(leavingId, chartSnapshot())
+    }
     suppressAutoSave += 1
     try {
       const replay = useReplayStore.getState()
@@ -764,18 +768,12 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   async closeActiveSession() {
     const id = get().activeSessionId
     if (id == null) return
-    const session = get().sessions.find((s) => s.id === id)
     suppressAutoSave += 1
     try {
-      // Flatten open trades and build the report — sessionReport is kept in
-      // the store so the Dashboard can show it before the user dismisses it.
-      const report = useReplayStore.getState().finalizeSessionTrades()
-      if (report && session) {
-        useReplayStore.setState({
-          sessionReport: { ...report, startingBalance: session.startingBalance }
-        })
-      }
+      // Exit is non-destructive: persist the playhead, open orders, drawings,
+      // and trade state so reopening the session continues exactly here.
       updateSessionSnapshot(id, chartSnapshot())
+      useReplayStore.setState({ sessionReport: null })
       // Return the chart store to its neutral state while on the dashboard:
       // otherwise the lingering replay mode would keep the import button on
       // the Datasets tab disabled.

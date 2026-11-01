@@ -4,10 +4,12 @@ import AppShell from '@/components/AppShell'
 import CandleChart from '@/components/CandleChart'
 import PaneChrome from '@/components/PaneChrome'
 import { runAppStartup } from '@/lib/appStartup'
+import { useT } from '@/i18n/useT'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
 
 export default function App() {
+  const { t } = useT()
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
   const timeframe = useReplayStore((s) => s.timeframe)
   const chartSplit = useReplayStore((s) => s.chartSplit)
@@ -51,7 +53,7 @@ export default function App() {
         <div
           className={`relative min-h-0 min-w-0 ${chartSplit ? 'flex-1 border-r border-zinc-800' : 'h-full w-full'}`}
         >
-          {chartSplit && <PaneChrome label="Left" timeframe={timeframe} />}
+          {chartSplit && <PaneChrome label={t('pane.left')} timeframe={timeframe} />}
           <div className={chartSplit ? 'absolute inset-0 top-9' : 'absolute inset-0'}>
             <CandleChart
               isPrimary
@@ -63,14 +65,12 @@ export default function App() {
         {chartSplit && (
           <div className="relative min-h-0 min-w-0 flex-1">
             <PaneChrome
-              label="Right"
+              label={t('pane.right')}
               timeframe={secondaryTimeframe}
               timeframeEditable
               timeframeDisabled={secondaryTfDisabled}
               timeframeTitle={
-                dataSource === 'imported'
-                  ? 'Secondary pane can use another timeframe from the same import'
-                  : undefined
+                dataSource === 'imported' ? t('pane.secondaryTfTip') : undefined
               }
               onTimeframeChange={setSecondaryTimeframe}
             />

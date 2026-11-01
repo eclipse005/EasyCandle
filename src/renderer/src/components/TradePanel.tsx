@@ -99,8 +99,15 @@ function sideLabel(side: 'long' | 'short', t: (key: 'trades.buy' | 'trades.sell'
   return side === 'long' ? t('trades.buy') : t('trades.sell')
 }
 
-function JournalCell() {
-  return <Td className="text-zinc-600">—</Td>
+function JournalCell({ note }: { note?: string | null }) {
+  if (!note) return <Td className="text-zinc-600">—</Td>
+  return (
+    <Td className="max-w-[14rem]">
+      <span className="block truncate text-zinc-400" title={note}>
+        {note}
+      </span>
+    </Td>
+  )
 }
 
 function GripMenu({ label, items }: { label: string; items: { label: string; danger?: boolean; onSelect: () => void }[] }) {
@@ -335,6 +342,12 @@ function ClosedPositionRow({
       </Td>
       <Td>{symbol}</Td>
       <Td className={sideClass(trade.side)}>{sideLabel(trade.side, t)}</Td>
+      <Td className="text-zinc-400">{positionSizeLabel(trade.lots, symbol)}</Td>
+      <Td>{formatAssetPrice(trade.entryPrice, pricePrecision)}</Td>
+      <Td>{formatAssetPrice(trade.exitPrice, pricePrecision)}</Td>
+      <Td className={pnlClass(pnl.value)}>{formatAccountValue(pnl)}</Td>
+      <Td className="text-zinc-400">{formatAccountValue(commission)}</Td>
+      <JournalCell note={trade.note} />
       <Td>
         <button
           type="button"
@@ -348,7 +361,6 @@ function ClosedPositionRow({
         </button>
       </Td>
       <Td className="text-zinc-400">{formatAccountDateTime(trade.exitTime, accountTimezone)}</Td>
-      <Td>{formatAssetPrice(trade.entryPrice, pricePrecision)}</Td>
       <Td className="text-orange-400/90">
         {trade.stopLoss == null ? '—' : formatAssetPrice(trade.stopLoss, pricePrecision)}
       </Td>
@@ -356,11 +368,6 @@ function ClosedPositionRow({
         {trade.takeProfit == null ? '—' : formatAssetPrice(trade.takeProfit, pricePrecision)}
       </Td>
       <Td>{rr == null ? '—' : formatRiskReward(rr)}</Td>
-      <Td className="text-zinc-400">{positionSizeLabel(trade.lots, symbol)}</Td>
-      <Td>{formatAssetPrice(trade.exitPrice, pricePrecision)}</Td>
-      <Td className={pnlClass(pnl.value)}>{formatAccountValue(pnl)}</Td>
-      <Td className="text-zinc-400">{formatAccountValue(commission)}</Td>
-      <JournalCell />
     </tr>
   )
 }
@@ -443,17 +450,17 @@ export default function TradePanel() {
   const closedColumns = [
     t('blotter.asset'),
     t('blotter.side'),
-    t('blotter.dateStart'),
-    t('blotter.dateEnd'),
-    t('ticket.entry'),
-    t('blotter.initialSl'),
-    t('blotter.maxTp'),
-    t('blotter.maxRr'),
     t('blotter.size'),
+    t('ticket.entry'),
     t('blotter.closeAvg'),
     t('blotter.realizedPnl'),
     t('blotter.commission'),
-    t('blotter.journal')
+    t('blotter.journal'),
+    t('blotter.dateStart'),
+    t('blotter.dateEnd'),
+    t('blotter.initialSl'),
+    t('blotter.maxTp'),
+    t('blotter.maxRr')
   ]
   const liveClosedIds = closedTrades.map((trade) => trade.id)
   const shownLive = shownIds.filter((id) => liveClosedIds.includes(id))

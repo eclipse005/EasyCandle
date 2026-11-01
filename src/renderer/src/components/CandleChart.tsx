@@ -14,6 +14,7 @@ import {
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type ITextWatermarkPluginApi,
+  type LineData,
   type LogicalRange,
   type SeriesMarker,
   type SeriesType,
@@ -90,7 +91,6 @@ function chartLocalization(
   secondsVisible: boolean
 ): {
   timeFormatter: (time: Time) => string
-  tickMarkFormatter: (time: Time, tickMarkType: TickMarkType) => string
 } {
   const step = TIMEFRAMES[timeframe]?.seconds ?? 60
   // Daily, weekly, and monthly bars match TradingView: date only, no clock.
@@ -100,12 +100,16 @@ function chartLocalization(
       formatChartCrosshairTime(unixSecondsFromChartTime(time), timezone, {
         withTime,
         withSeconds: withTime && secondsVisible
-      }),
-    tickMarkFormatter: (time, tickMarkType) => {
-      const seconds = unixSecondsFromChartTime(time)
-      if (seconds == null) return ''
-      return tickMarkLabel(seconds, tickMarkType, timezone)
-    }
+      })
+  }
+}
+
+/** Time-scale ticks are a timeScale option, not a localization option. */
+function chartTickMarkFormatter(timezone: string): (time: Time, tickMarkType: TickMarkType) => string {
+  return (time, tickMarkType) => {
+    const seconds = unixSecondsFromChartTime(time)
+    if (seconds == null) return ''
+    return tickMarkLabel(seconds, tickMarkType, timezone)
   }
 }
 
@@ -145,29 +149,36 @@ function focusLatestCandle(
   // single-candle sessions from appearing as giant blocks.
   const visibleBars = Math.max(leftBars, candleCount)
   const rightPad = Math.max(4, Math.floor(visibleBars * 0.15))
-  const from = last - (visibleBars - rightPad)
+  // Sparse sessions (a handful of bars so far) would otherwise reserve most of
+  // the viewport as unlabelled empty space to the left of the first candle.
+  const from = Math.max(-0.5, last - (visibleBars - rightPad))
   const to = last + rightPad
 
   chart.timeScale().setVisibleLogicalRange({ from, to })
 }
 
 /**
- * Future whitespace on the main series so the time scale keeps labelling the
- * empty area to the right of the latest candle (TradingView/FXR behaviour).
+ * Future time points for the axis. lightweight-charts only labels time points
+ * backed by real data, and trailing whitespace is trimmed, so an invisible
+ * line series supplies the future slots. It is excluded from autoscaling, so
+ * its flat placeholder price cannot stretch the price scale.
  */
 const FUTURE_AXIS_BARS = 1000
+const FUTURE_AXIS_RENEW_BARS = 200
+const FUTURE_AXIS_COLOR = 'rgba(0,0,0,0)'
 
-function futureAxisWhitespace(
-  data: Candle[],
-  timeframe: string
-): { time: Time }[] {
+function futureAxisData(data: Candle[], timeframe: string): LineData[] {
   if (data.length === 0) return []
   const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
   if (interval >= 24 * 60 * 60) return []
   const last = data[data.length - 1]
-  const out: { time: Time }[] = []
+  const out: LineData[] = []
   for (let i = 1; i <= FUTURE_AXIS_BARS; i += 1) {
-    out.push({ time: (last.time + interval * i) as Time })
+    out.push({
+      time: (last.time + interval * i) as Time,
+      value: last.close,
+      color: FUTURE_AXIS_COLOR
+    })
   }
   return out
 }
@@ -280,7 +291,9 @@ export default function CandleChart({
   const haLastRef = useRef<Candle | null>(null)
   const haPrevRef = useRef<Candle | null>(null)
   const seriesLastTimeRef = useRef<number | null>(null)
+  const futureSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const futureAxisEndRef = useRef<number | null>(null)
+  const realCandleCountRef = useRef(0)
   const pricePrecision = useMemo(
     () => resolvePricePrecision(symbol, candles ?? visibleCandles),
     [symbol, candles, visibleCandles]
@@ -305,6 +318,29 @@ export default function CandleChart({
     chartTypeRef.current = chartType
   }, [chartType])
 
+  function ensureFutureAxisSeries(chart: IChartApi): ISeriesApi<'Line'> {
+    if (futureSeriesRef.current) return futureSeriesRef.current
+    const future = chart.addSeries(LineSeries, {
+      color: FUTURE_AXIS_COLOR,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      autoscaleInfoProvider: () => null
+    })
+    futureSeriesRef.current = future
+    return future
+  }
+
+  function syncFutureAxis(chart: IChartApi | null, data: Candle[]): void {
+    if (!chart) return
+    const future = ensureFutureAxisSeries(chart)
+    const points = futureAxisData(data, timeframe)
+    future.setData(points as never)
+    futureAxisEndRef.current =
+      points.length > 0 ? Number(points[points.length - 1].time) : null
+  }
+
   function reset(next: Candle[] = [], opts: { fitContent?: boolean } = {}): void {
     const series = seriesRef.current
     const chart = chartRef.current
@@ -322,11 +358,10 @@ export default function CandleChart({
       haPrevRef.current = null
     }
 
-    const whitespace = futureAxisWhitespace(data, timeframe)
-    series.setData([...buildSeriesData(type, data), ...whitespace] as never)
+    series.setData(buildSeriesData(type, data) as never)
+    syncFutureAxis(chart, data)
+    realCandleCountRef.current = data.length
     seriesLastTimeRef.current = data.length > 0 ? data[data.length - 1].time : null
-    futureAxisEndRef.current =
-      whitespace.length > 0 ? Number(whitespace[whitespace.length - 1].time) : null
     // A new series means a new history edge: allow one more edge callback.
     rangeCandlesRef.current = data
     reportedEdgeKeyRef.current = null
@@ -373,17 +408,37 @@ export default function CandleChart({
       }
     }
 
+    const chart = chartRef.current
+    const timeScale = chart?.timeScale()
+    const rangeBefore = timeScale?.getVisibleLogicalRange() ?? null
+    const lastRealIndex = realCandleCountRef.current - 1
+    // Future axis points already occupy the padding slots, so LWC has no new
+    // right edge to follow. Follow the playhead ourselves while it is on screen.
+    const wasFollowing =
+      rangeBefore != null &&
+      lastRealIndex >= rangeBefore.from &&
+      lastRealIndex <= rangeBefore.to
+
     series.update(point as never, true)
 
     const previousLast = seriesLastTimeRef.current
     if (previousLast == null || candle.time > previousLast) {
       seriesLastTimeRef.current = candle.time
+      realCandleCountRef.current += 1
+      if (wasFollowing && rangeBefore && timeScale) {
+        timeScale.setVisibleLogicalRange({
+          from: rangeBefore.from + 1,
+          to: rangeBefore.to + 1
+        })
+      }
       const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
       const end = futureAxisEndRef.current
-      if (end != null) {
-        const nextEnd = end + interval
-        series.update({ time: nextEnd as Time } as never)
-        futureAxisEndRef.current = nextEnd
+      if (end != null && candle.time + interval * FUTURE_AXIS_RENEW_BARS >= end) {
+        const visible = timeScale?.getVisibleRange() ?? null
+        syncFutureAxis(chart, [candle])
+        // Extending the axis adds time points at the tail; keep the user's view
+        // on the same time window instead of letting it chase the new points.
+        if (chart && visible) chart.timeScale().setVisibleRange(visible)
       }
     }
   }
@@ -470,7 +525,9 @@ export default function CandleChart({
       timeScale: {
         borderColor: palette.scaleBorder,
         timeVisible: settings.timeScale.timeVisible,
-        secondsVisible: settings.timeScale.secondsVisible
+        secondsVisible: settings.timeScale.secondsVisible,
+        shiftVisibleRangeOnNewBar: false,
+        tickMarkFormatter: chartTickMarkFormatter(settings.timezone)
       },
       localization: chartLocalization(
         settings.timezone,
@@ -481,6 +538,7 @@ export default function CandleChart({
 
     const series = addSeries(chart, chartType, pricePrecisionRef.current, palette)
     seriesTypeRef.current = chartType
+    ensureFutureAxisSeries(chart)
 
     markersRef.current = createSeriesMarkers(series, [])
     watermarkRef.current = createTextWatermark(chart.panes()[0], {
@@ -585,6 +643,9 @@ export default function CandleChart({
       }
       chartRef.current = null
       seriesRef.current = null
+      futureSeriesRef.current = null
+      futureAxisEndRef.current = null
+      realCandleCountRef.current = 0
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -621,8 +682,25 @@ export default function CandleChart({
     })
     const offTool = manager.on('tool', (kind) => useDrawingUiStore.setState({ armedTool: kind }))
     const offSelection = manager.on('selection', (ids) => {
-      if (isPrimary) useDrawingUiStore.getState().setSelectedIds(ids)
+      if (!isPrimary) return
+      const locked = new Set(
+        manager
+          .drawings()
+          .filter((drawing) => drawing.locked)
+          .map((drawing) => drawing.id)
+      )
+      const allowed = ids.filter((id) => !locked.has(id))
+      if (allowed.length !== ids.length) manager.select(allowed)
+      useDrawingUiStore.getState().setSelectedIds(allowed)
     })
+    const onChartClick = (): void => {
+      if (!isPrimary) return
+      if (manager.hoveredId() != null) return
+      if (manager.selection().length === 0) return
+      manager.select([])
+      useDrawingUiStore.getState().setSelectedIds([])
+    }
+    chartReady.chart.subscribeClick(onChartClick)
 
     // Re-apply the UI settings (a fresh manager starts from lib defaults) and
     // restore the workspace drawings into the fresh manager.
@@ -656,6 +734,7 @@ export default function CandleChart({
       offGesture()
       offTool()
       offSelection()
+      chartReady.chart.unsubscribeClick(onChartClick)
       offAdd()
       if (isPrimary) {
         registerPrimaryChartView(null)
@@ -695,11 +774,10 @@ export default function CandleChart({
       haPrevRef.current = null
     }
 
-    const whitespace = futureAxisWhitespace(data, timeframe)
-    series.setData([...buildSeriesData(chartType, data), ...whitespace] as never)
+    series.setData(buildSeriesData(chartType, data) as never)
+    syncFutureAxis(chart, data)
+    realCandleCountRef.current = data.length
     seriesLastTimeRef.current = data.length > 0 ? data[data.length - 1].time : null
-    futureAxisEndRef.current =
-      whitespace.length > 0 ? Number(whitespace[whitespace.length - 1].time) : null
     rangeCandlesRef.current = data
     reportedEdgeKeyRef.current = null
 
@@ -777,7 +855,9 @@ export default function CandleChart({
       timeScale: {
         borderColor: palette.scaleBorder,
         timeVisible: settings.timeScale.timeVisible,
-        secondsVisible: settings.timeScale.secondsVisible
+        secondsVisible: settings.timeScale.secondsVisible,
+        shiftVisibleRangeOnNewBar: false,
+        tickMarkFormatter: chartTickMarkFormatter(settings.timezone)
       },
       localization: chartLocalization(
         settings.timezone,

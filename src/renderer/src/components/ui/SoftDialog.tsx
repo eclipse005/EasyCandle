@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/components/ui/cn'
 import SoftButton from '@/components/ui/SoftButton'
@@ -48,7 +49,7 @@ export default function SoftDialog({
   const hasMaxW = Boolean(className && /\bmax-w-/.test(className))
   const hasMaxH = Boolean(className && /\bmax-h-/.test(className))
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
       role="presentation"
@@ -100,6 +101,7 @@ export default function SoftDialog({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

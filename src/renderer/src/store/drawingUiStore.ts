@@ -104,6 +104,7 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
 
   undo() {
     if (bridge.undo()) {
+      set({ selectedIds: [] })
       get().refreshUndoRedo()
       get().bumpRevision()
     }
@@ -111,6 +112,7 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
 
   redo() {
     if (bridge.redo()) {
+      set({ selectedIds: [] })
       get().refreshUndoRedo()
       get().bumpRevision()
     }
