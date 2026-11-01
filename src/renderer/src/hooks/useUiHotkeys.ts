@@ -109,14 +109,18 @@ export function useUiHotkeys(): void {
           state.setPricePick(null)
           return
         }
+        if (state.rewindPick) {
+          state.setRewindPick(false)
+          return
+        }
 
         const ui = useDrawingUiStore.getState()
         if (ui.objectDialogId) {
           ui.openObjectDialog(null)
           return
         }
-        if (ui.objectTreeOpen) {
-          ui.setObjectTreeOpen(false)
+        if (useUiLayoutStore.getState().rightDock === 'objects') {
+          useUiLayoutStore.getState().setRightDock(null)
           return
         }
         if (ui.armedTool != null) {

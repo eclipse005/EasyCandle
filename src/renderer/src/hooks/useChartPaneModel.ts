@@ -1,7 +1,11 @@
 import { useMemo } from 'react'
+import { alignTimeToInterval, TIMEFRAMES } from '@shared/timeframes'
+import { usePricePrecision } from '@/hooks/usePricePrecision'
+import { closedTradeArrowMarkers } from '@/lib/chartTradeMarks'
+import type { TradeMarker } from '@/store/replayStore'
 import { buildOverlays } from '@/lib/indicators'
 import { useReplayStore } from '@/store/replayStore'
-import { alignTimeToInterval, TIMEFRAMES } from '@shared/timeframes'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
 
 /**
  * Per-pane chart data from the replay store. `isPrimary` picks left vs right
@@ -21,7 +25,9 @@ export function useChartPaneModel(isPrimary: boolean) {
     isPrimary ? s.currentCandle : s.secondaryCurrentCandle
   )
   const chartSync = useReplayStore((s) => (isPrimary ? s.chartSync : s.secondaryChartSync))
-  const rawTradeMarkers = useReplayStore((s) => s.tradeMarkers)
+  const closedTrades = useReplayStore((s) => s.closedTrades)
+  const shownClosedTradeIds = useUiLayoutStore((s) => s.shownClosedTradeIds)
+  const pricePrecision = usePricePrecision()
   const chartScrubbing = useReplayStore((s) => s.chartScrubbing)
 
   const overlayIds = activeIndicators
@@ -34,14 +40,25 @@ export function useChartPaneModel(isPrimary: boolean) {
 
   const tradeMarkers = useMemo(() => {
     if (chartScrubbing) return []
-    const markers = rawTradeMarkers ?? []
-    if (isPrimary) return markers
     const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
-    return markers.map((marker) => ({
-      ...marker,
-      time: alignTimeToInterval(marker.time, interval)
-    }))
-  }, [isPrimary, rawTradeMarkers, timeframe, chartScrubbing])
+    const align = (time: number): number => (isPrimary ? time : alignTimeToInterval(time, interval))
+    const shown = new Set(shownClosedTradeIds)
+    const markers: TradeMarker[] = []
+    for (const trade of closedTrades) {
+      if (!shown.has(trade.id)) continue
+      for (const marker of closedTradeArrowMarkers(trade, pricePrecision)) {
+        markers.push({ ...marker, time: align(marker.time) })
+      }
+    }
+    return markers
+  }, [
+    chartScrubbing,
+    isPrimary,
+    timeframe,
+    closedTrades,
+    shownClosedTradeIds,
+    pricePrecision
+  ])
 
   return {
     mode,

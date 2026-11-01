@@ -1,13 +1,22 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ChevronsLeft,
-  ChevronsRight,
-  CirclePause,
-  Gauge,
-  Link2,
-  LogOut,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement
+} from 'react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Info,
   Pause,
   Play,
+  SkipBack,
   SkipForward
 } from 'lucide-react'
 import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
@@ -21,25 +30,269 @@ import {
   sessionTimezoneTitle,
   toSessionParts
 } from '@/lib/chartTimezone'
-import { REPLAY_SPEEDS, stepReplaySpeed } from '@/lib/replayEngine'
+
 import { coverageDaysFromMetas, isDayCovered } from '@shared/dateCoverage'
 import type { ForexGoToKind } from '@shared/forexSession'
 import { TIMEFRAMES } from '@shared/timeframes'
 import type { MessageKey } from '@/i18n/messages'
 import { jumpToForexGoTo } from '@/lib/forexGoTo'
+import { MAX_REPLAY_SPEED, MIN_REPLAY_SPEED, replayCandlesPerSecond } from '@/lib/replayEngine'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
+import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useReplayStore } from '@/store/replayStore'
-import { useSessionStore } from '@/store/sessionStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useT } from '@/i18n/useT'
 
-function indexFromClientX(
-  clientX: number,
-  rect: DOMRect,
-  bufferLength: number
-): number {
-  const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)))
-  return Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
+function TimestepMenu({
+  busy,
+  value,
+  synced,
+  onSync,
+  onChange,
+  syncTip
+}: {
+  busy: boolean
+  value: string
+  synced: boolean
+  onSync: (on: boolean) => void
+  onChange: (id: string) => void
+  syncTip: string
+}): ReactElement {
+  const { t } = useT()
+  const [open, setOpen] = useState(false)
+  const [above, setAbove] = useState(true)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const label = TIMEFRAMES[value]?.label ?? value
+
+  useEffect(() => {
+    if (!open) return undefined
+    function onPointerDown(event: PointerEvent): void {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
+    }
+    function onKey(event: KeyboardEvent): void {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const rect = rootRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setAbove(rect.top > 280)
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        disabled={busy}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={t('replay.timestepTip')}
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex h-8 items-center gap-1 rounded-full px-2 text-sm font-medium text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40"
+      >
+        {label}
+        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+      </button>
+      {open ? (
+        <div
+          className={`absolute left-1/2 z-[70] w-64 -translate-x-1/2 rounded-xl border border-white/10 bg-zinc-950 py-2 shadow-xl shadow-black/50 ${
+            above ? 'bottom-full mb-2' : 'top-full mt-2'
+          }`}
+        >
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <span className="min-w-0 flex-1 text-sm text-zinc-100">{t('replay.syncWithChart')}</span>
+            <Tooltip text={syncTip} side="top">
+              <Info className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+            </Tooltip>
+            <Switch
+              checked={synced}
+              label={t('replay.syncWithChart')}
+              onChange={() => onSync(!synced)}
+            />
+          </div>
+          <div className="my-1 h-px bg-white/10" />
+          <div className="max-h-52 overflow-y-auto py-1">
+            {Object.keys(TIMEFRAMES).map((id) => {
+              const selected = id === value
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    onChange(id)
+                    setOpen(false)
+                  }}
+                  className={`flex w-full px-3 py-1.5 text-left text-sm disabled:opacity-40 ${
+                    selected ? 'bg-zinc-800 text-zinc-50' : 'text-zinc-300 hover:bg-zinc-900'
+                  }`}
+                >
+                  {TIMEFRAMES[id]?.label ?? id}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function Switch({
+  checked,
+  label,
+  onChange
+}: {
+  checked: boolean
+  label: string
+  onChange: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+        checked ? 'bg-emerald-500' : 'bg-zinc-600'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+          checked ? 'left-4' : 'left-0.5'
+        }`}
+      />
+    </button>
+  )
+}
+
+function SpeedSlider({
+  value,
+  onChange
+}: {
+  value: number
+  onChange: (speed: number) => void
+}): ReactElement {
+  const { t } = useT()
+  const trackRef = useRef<HTMLDivElement>(null)
+  const recentTimer = useRef<number | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [recent, setRecent] = useState(false)
+
+  const clamped = Math.min(MAX_REPLAY_SPEED, Math.max(MIN_REPLAY_SPEED, Math.round(value)))
+  const pct = ((clamped - MIN_REPLAY_SPEED) / (MAX_REPLAY_SPEED - MIN_REPLAY_SPEED)) * 100
+  const showTip = hovered || dragging || focused || recent
+  const tip = t('replay.speedPerSec', { n: replayCandlesPerSecond(clamped) })
+
+  useEffect(
+    () => () => {
+      if (recentTimer.current != null) window.clearTimeout(recentTimer.current)
+    },
+    []
+  )
+
+  function commit(next: number): void {
+    const speed = Math.min(MAX_REPLAY_SPEED, Math.max(MIN_REPLAY_SPEED, Math.round(next)))
+    if (speed !== clamped) onChange(speed)
+    setRecent(true)
+    if (recentTimer.current != null) window.clearTimeout(recentTimer.current)
+    recentTimer.current = window.setTimeout(() => setRecent(false), 1200)
+  }
+
+  function speedFromClientX(clientX: number): number {
+    const rect = trackRef.current?.getBoundingClientRect()
+    if (!rect) return clamped
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)))
+    return MIN_REPLAY_SPEED + Math.round(ratio * (MAX_REPLAY_SPEED - MIN_REPLAY_SPEED))
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    setDragging(true)
+    commit(speedFromClientX(event.clientX))
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!dragging) return
+    commit(speedFromClientX(event.clientX))
+  }
+
+  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!dragging) return
+    setDragging(false)
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+  }
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
+    let next = clamped
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = clamped - 1
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = clamped + 1
+    else if (event.key === 'Home') next = MIN_REPLAY_SPEED
+    else if (event.key === 'End') next = MAX_REPLAY_SPEED
+    else return
+    event.preventDefault()
+    commit(next)
+  }
+
+  return (
+    <div
+      className="relative flex h-8 w-28 shrink-0 items-center px-1.5"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div
+        ref={trackRef}
+        role="slider"
+        tabIndex={0}
+        aria-valuemin={MIN_REPLAY_SPEED}
+        aria-valuemax={MAX_REPLAY_SPEED}
+        aria-valuenow={clamped}
+        aria-label={t('replay.speedAria')}
+        aria-valuetext={tip}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className="relative h-5 w-full cursor-ew-resize touch-none select-none rounded-full outline-none focus-visible:ring-1 focus-visible:ring-primary-400"
+      >
+        {showTip ? (
+          <span
+            className="pointer-events-none absolute -top-6 z-[2] -translate-x-1/2 whitespace-nowrap rounded-full bg-primary-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg shadow-black/40"
+            style={{ left: `${pct}%` }}
+          >
+            {tip}
+          </span>
+        ) : null}
+        <span className="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-zinc-700" />
+        <span
+          className="pointer-events-none absolute left-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary-400"
+          style={{ width: `${pct}%` }}
+          aria-hidden
+        />
+        <span
+          className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-400 shadow shadow-black/40"
+          style={{ left: `${pct}%` }}
+          aria-hidden
+        />
+      </div>
+    </div>
+  )
 }
 
 const GO_TO_ITEMS: { kind: ForexGoToKind; label: MessageKey; shortcut: string }[] = [
@@ -56,6 +309,10 @@ export default function ReplayControls() {
   const replayStatus = useReplayStore((s) => s.replayStatus)
   const isPlaying = useReplayStore((s) => s.isPlaying)
   const speed = useReplayStore((s) => s.speed)
+  const setSpeed = useReplayStore((s) => s.setSpeed)
+  const rewindPick = useReplayStore((s) => s.rewindPick)
+  const setRewindPick = useReplayStore((s) => s.setRewindPick)
+  const armedTool = useDrawingUiStore((s) => s.armedTool)
   const replayIndex = useReplayStore((s) => s.replayIndex)
   const replayLoading = useReplayStore((s) => s.replayLoading)
   const secondaryLoading = useReplayStore((s) => s.secondaryLoading)
@@ -64,21 +321,15 @@ export default function ReplayControls() {
   const pause = useReplayStore((s) => s.pause)
   const stepForward = useReplayStore((s) => s.stepForward)
   const stepBackward = useReplayStore((s) => s.stepBackward)
-  const setSpeed = useReplayStore((s) => s.setSpeed)
   const replayTimestep = useReplayStore((s) => s.replayTimestep)
   const syncTimestepWithChart = useReplayStore((s) => s.syncTimestepWithChart)
   const setReplayTimestep = useReplayStore((s) => s.setReplayTimestep)
   const setSyncTimestepWithChart = useReplayStore((s) => s.setSyncTimestepWithChart)
   const jumpToTime = useReplayStore((s) => s.jumpToTime)
-  const seekToIndex = useReplayStore((s) => s.seekToIndex)
   const confirmPendingSeek = useReplayStore((s) => s.confirmPendingSeek)
   const cancelPendingSeek = useReplayStore((s) => s.cancelPendingSeek)
   const pendingSeekConfirm = useReplayStore((s) => s.pendingSeekConfirm)
-  const bufferLength = useReplayStore((s) => s.bufferLength)
-  const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
   const jumpMenuRequestId = useUiLayoutStore((s) => s.jumpMenuRequestId)
-  const pauseOnTpSl = useReplayStore((s) => s.pauseOnTpSl)
-  const setPauseOnTpSl = useReplayStore((s) => s.setPauseOnTpSl)
   const timezone = useChartSettingsStore((s) => s.timezone)
   const timezoneTitle = sessionTimezoneTitle(timezone)
   const importMeta = useReplayStore((s) => s.importMeta)
@@ -95,87 +346,22 @@ export default function ReplayControls() {
   const [jumpTime, setJumpTime] = useState(seed.time)
   const [jumpError, setJumpError] = useState<string | null>(null)
 
-  const trackRef = useRef<HTMLDivElement>(null)
-  const draggingRef = useRef(false)
-  const scrubOriginRef = useRef(0)
-  const scrubRafRef = useRef(0)
-  const scrubPendingRef = useRef<number | null>(null)
-  const [scrubIndex, setScrubIndex] = useState<number | null>(null)
-  const setChartScrubbing = useReplayStore((s) => s.setChartScrubbing)
-
   const busy = replayLoading || secondaryLoading
   const ended = replayStatus === 'ended'
   const driverIndex = replayIndex
-  const displayIndex = scrubIndex ?? driverIndex
-  const timestepLocked = syncTimestepWithChart || busy
-  const progressPct =
-    bufferLength > 0 ? Math.min(100, ((displayIndex + 1) / bufferLength) * 100) : 0
 
   useEffect(() => {
-    if (!draggingRef.current) setScrubIndex(null)
-  }, [driverIndex])
-
-  useEffect(() => {
-    function flushScrubPreview(): void {
-      scrubRafRef.current = 0
-      const idx = scrubPendingRef.current
-      if (idx == null) return
-      scrubPendingRef.current = null
-      setScrubIndex(idx)
-      seekToIndex(idx, { preview: true })
+    if (armedTool && useReplayStore.getState().rewindPick) {
+      useReplayStore.getState().setRewindPick(false)
     }
+  }, [armedTool])
 
-    function scheduleScrubPreview(idx: number): void {
-      scrubPendingRef.current = idx
-      if (scrubRafRef.current) return
-      scrubRafRef.current = requestAnimationFrame(flushScrubPreview)
-    }
-
-    function onMove(event: PointerEvent): void {
-      if (!draggingRef.current || !trackRef.current || bufferLength <= 0) return
-      const idx = indexFromClientX(event.clientX, trackRef.current.getBoundingClientRect(), bufferLength)
-      // Coalesce pointermove storms to one seek/publish per frame (M1 scrub).
-      scheduleScrubPreview(idx)
-    }
-
-    function onUp(event: PointerEvent): void {
-      if (!draggingRef.current) return
-      draggingRef.current = false
-      setChartScrubbing(false)
-      if (scrubRafRef.current) {
-        cancelAnimationFrame(scrubRafRef.current)
-        scrubRafRef.current = 0
-      }
-      scrubPendingRef.current = null
-      const track = trackRef.current
-      const idx =
-        track && bufferLength > 0
-          ? indexFromClientX(event.clientX, track.getBoundingClientRect(), bufferLength)
-          : (scrubIndex ?? driverIndex)
-      setScrubIndex(null)
-      // Commit from the index before the scrub so SoftConfirm can restore it.
-      // Preview already moved the playhead; force=false still gates discard.
-      const origin = scrubOriginRef.current
-      if (idx === origin) {
-        seekToIndex(idx, { force: true })
-        return
-      }
-      // Restore origin first so requestSeek sees a real backward/forward delta
-      // against the pre-scrub trade state (preview never rewound trades).
-      seekToIndex(origin, { preview: true })
-      seekToIndex(idx)
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-      if (scrubRafRef.current) cancelAnimationFrame(scrubRafRef.current)
-    }
-  }, [bufferLength, driverIndex, scrubIndex, seekToIndex, setChartScrubbing])
+  useEffect(
+    () => () => {
+      useReplayStore.getState().setRewindPick(false)
+    },
+    []
+  )
 
   async function onJump(event: FormEvent, close: () => void): Promise<void> {
     event.preventDefault()
@@ -209,17 +395,33 @@ export default function ReplayControls() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex items-center gap-1">
+      <IconButton
+        tooltip={t('replay.rewindPickTip')}
+        active={rewindPick}
+        pressed={rewindPick}
+        disabled={busy}
+        tooltipSide="top"
+        onClick={() => {
+          const next = !rewindPick
+          if (next) {
+            useDrawingUiStore.getState().setArmedTool(null)
+            if (isPlaying) pause()
+          }
+          setRewindPick(next)
+        }}
+      >
+        <SkipBack className="h-4 w-4" />
+      </IconButton>
+      <SpeedSlider value={speed} onChange={setSpeed} />
       <div className="flex items-center gap-1">
         {!isPlaying ? (
           <IconButton
             tooltip={t('replay.play')}
             disabled={busy || ended}
             onClick={play}
-            tone="accent"
             tooltipSide="top"
             shortcut={['Space']}
-            className="!rounded-full"
           >
             <Play className="h-4 w-4 fill-current" />
           </IconButton>
@@ -229,9 +431,7 @@ export default function ReplayControls() {
             shortcut={['Space']}
             disabled={busy}
             onClick={pause}
-            tone="accent"
             tooltipSide="top"
-            className="!rounded-full"
           >
             <Pause className="h-4 w-4 fill-current" />
           </IconButton>
@@ -244,7 +444,7 @@ export default function ReplayControls() {
           onClick={stepBackward}
           tooltipSide="top"
         >
-          <ChevronsLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </IconButton>
 
         <IconButton
@@ -254,128 +454,21 @@ export default function ReplayControls() {
           onClick={stepForward}
           tooltipSide="top"
         >
-          <ChevronsRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </IconButton>
       </div>
 
-      <div className="flex items-center gap-1">
-        <Tooltip text={t('replay.timestepSingleTip')} side="top">
-          <label
-            className={`inline-flex h-8 items-center gap-1.5 rounded-xl border bg-zinc-900/80 px-2 text-xs text-zinc-300 ${
-              timestepLocked ? 'border-zinc-800/80 opacity-80' : 'border-zinc-800'
-            }`}
-            title={t('replay.timestepTip')}
-          >
-            <span className="text-zinc-500">{t('replay.next')}</span>
-            <select
-              disabled={timestepLocked}
-              aria-label={t('replay.timestepTip')}
-              value={replayTimestep}
-              onChange={(event) => {
-                setReplayTimestep(event.target.value)
-                event.currentTarget.blur()
-              }}
-              className="max-w-[4.5rem] rounded bg-transparent font-medium text-primary-300 outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {Object.keys(TIMEFRAMES).map((id) => (
-                <option key={id} value={id} className="bg-zinc-900 text-zinc-100">
-                  {TIMEFRAMES[id]?.label ?? id}
-                </option>
-              ))}
-            </select>
-          </label>
-        </Tooltip>
-        <Tooltip text={syncTimestepWithChart ? t('replay.syncTip') : t('replay.syncOffTip')} side="top">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={(event) => {
-              setSyncTimestepWithChart(!syncTimestepWithChart)
-              event.currentTarget.blur()
-            }}
-            aria-label={t('replay.syncWithChart')}
-            aria-pressed={syncTimestepWithChart}
-            className={`inline-flex h-8 items-center gap-1 rounded-xl border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-              syncTimestepWithChart
-                ? 'border-emerald-900/60 bg-emerald-950/40 text-emerald-300'
-                : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 enabled:hover:border-emerald-800 enabled:hover:text-emerald-300'
-            }`}
-          >
-            <Link2 className="h-3.5 w-3.5" aria-hidden />
-            {syncTimestepWithChart ? t('replay.syncOn') : t('replay.sync')}
-          </button>
-        </Tooltip>
-      </div>
-
-      <div className="flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 text-xs text-zinc-400">
-        <Gauge className="ml-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
-        <span className="sr-only">{t('replay.speed')}</span>
-        <button
-          type="button"
-          disabled={busy || speed <= REPLAY_SPEEDS[0]!}
-          aria-label="Slower"
-          title="Slower (−)"
-          onClick={(event) => {
-            setSpeed(stepReplaySpeed(speed, -1))
-            event.currentTarget.blur()
-          }}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-zinc-300 transition-colors enabled:hover:bg-zinc-800 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          −
-        </button>
-        <label className="flex min-w-[6.5rem] flex-1 items-center gap-1.5 px-0.5">
-          <input
-            type="range"
-            min={0}
-            max={REPLAY_SPEEDS.length - 1}
-            step={1}
-            value={Math.max(
-              0,
-              (REPLAY_SPEEDS as readonly number[]).indexOf(speed) >= 0
-                ? (REPLAY_SPEEDS as readonly number[]).indexOf(speed)
-                : 1
-            )}
-            disabled={busy}
-            aria-label={t('replay.speedAria')}
-            aria-valuetext={`${speed}x`}
-            onChange={(e) => {
-              const idx = Number(e.target.value)
-              const next = REPLAY_SPEEDS[idx]
-              if (next != null) setSpeed(next)
-            }}
-            className="h-1.5 w-full cursor-pointer accent-primary-400 disabled:cursor-not-allowed disabled:opacity-60"
-          />
-          <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-zinc-100">
-            {speed}x
-          </span>
-        </label>
-        <button
-          type="button"
-          disabled={busy || speed >= REPLAY_SPEEDS[REPLAY_SPEEDS.length - 1]!}
-          aria-label="Faster"
-          title="Faster (+)"
-          onClick={(event) => {
-            setSpeed(stepReplaySpeed(speed, 1))
-            event.currentTarget.blur()
-          }}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-zinc-300 transition-colors enabled:hover:bg-zinc-800 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          +
-        </button>
-      </div>
-
-      <IconButton
-        tooltip={t('replay.pauseOnTpSl')}
-        active={pauseOnTpSl}
-        pressed={pauseOnTpSl}
-        tooltipSide="top"
-        onClick={(event) => {
-          setPauseOnTpSl(!pauseOnTpSl)
-          event.currentTarget.blur()
+      <TimestepMenu
+        busy={busy}
+        value={replayTimestep}
+        synced={syncTimestepWithChart}
+        onSync={setSyncTimestepWithChart}
+        onChange={(id) => {
+          setSyncTimestepWithChart(false)
+          setReplayTimestep(id)
         }}
-      >
-        <CirclePause className="h-4 w-4" />
-      </IconButton>
+        syncTip={syncTimestepWithChart ? t('replay.syncTip') : t('replay.syncOffTip')}
+      />
 
       <Dropdown
         align="end"
@@ -467,77 +560,6 @@ export default function ReplayControls() {
           </div>
         )}
       </Dropdown>
-
-      {bufferLength > 0 ? (
-        <div className="ml-0.5 flex min-w-[8.5rem] max-w-[14rem] flex-1 items-center gap-1.5">
-          <div
-            ref={trackRef}
-            role="slider"
-            tabIndex={busy ? -1 : 0}
-            aria-valuemin={1}
-            aria-valuemax={bufferLength}
-            aria-valuenow={displayIndex + 1}
-            aria-label={t('replay.progressAria')}
-            title={t('replay.progressTip')}
-            aria-disabled={busy}
-            className="group relative h-8 min-w-0 flex-1 cursor-ew-resize touch-none rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 disabled:cursor-not-allowed select-none"
-            onPointerDown={(event) => {
-              if (busy || bufferLength <= 0) return
-              event.preventDefault()
-              draggingRef.current = true
-              scrubOriginRef.current = driverIndex
-              setChartScrubbing(true)
-              const idx = indexFromClientX(
-                event.clientX,
-                event.currentTarget.getBoundingClientRect(),
-                bufferLength
-              )
-              setScrubIndex(idx)
-              seekToIndex(idx, { preview: true })
-              event.currentTarget.setPointerCapture?.(event.pointerId)
-            }}
-            onKeyDown={(event) => {
-              if (busy || bufferLength <= 0) return
-              if (event.key === 'ArrowLeft') {
-                event.preventDefault()
-                seekToIndex(Math.max(0, driverIndex - 1))
-              } else if (event.key === 'ArrowRight') {
-                event.preventDefault()
-                seekToIndex(Math.min(bufferLength - 1, driverIndex + 1))
-              } else if (event.key === 'Home') {
-                event.preventDefault()
-                seekToIndex(0)
-              } else if (event.key === 'End') {
-                event.preventDefault()
-                seekToIndex(bufferLength - 1)
-              }
-            }}
-          >
-            <span
-              className="pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-primary-500/35"
-              style={{ width: `calc(${progressPct}% - 0.25rem)` }}
-              aria-hidden
-            />
-            <span
-              className="pointer-events-none absolute top-1/2 z-[2] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary-300 bg-zinc-950 shadow shadow-black/40"
-              style={{ left: `${Math.min(100, Math.max(0, progressPct))}%` }}
-              aria-hidden
-            />
-            <span className="relative z-[1] text-[10px] font-medium tabular-nums text-zinc-400 group-hover:text-zinc-200">
-              {displayIndex + 1}/{bufferLength}
-            </span>
-          </div>
-        </div>
-      ) : null}
-
-      <IconButton
-        tooltip={t('replay.saveClose')}
-        onClick={() => void closeActiveSession()}
-        tooltipSide="top"
-        className="ml-0.5"
-      >
-        <LogOut className="h-4 w-4" />
-      </IconButton>
 
       <SoftConfirmDialog
         open={pendingSeekConfirm != null}

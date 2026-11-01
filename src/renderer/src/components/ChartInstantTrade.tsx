@@ -1,3 +1,4 @@
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import {
   clampTradeSize,
@@ -7,13 +8,14 @@ import {
   MIN_LOT_SIZE
 } from '@/lib/paperTrade'
 import { tradeSizeKindForSymbol } from '@shared/pricePrecision'
+import { useT } from '@/i18n/useT'
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
 
 /**
- * FX Replay–style chart overlay: instant Buy (primary blue) / Sell (red) + qty.
- * Places market orders via paperBuy / paperSell using the shared tradeSize.
+ * Bottom-bar instant Buy / Sell + size. Places market orders via paperBuy / paperSell.
  */
 export default function ChartInstantTrade() {
+  const { t } = useT()
   const mode = useReplayStore((s) => s.mode)
   const replayStatus = useReplayStore((s) => s.replayStatus)
   const replayLoading = useReplayStore((s) => s.replayLoading)
@@ -33,9 +35,7 @@ export default function ChartInstantTrade() {
     if (!focusedRef.current) setDraft(display)
   }, [display])
 
-  if (mode !== 'replay') return null
-
-  const busy = replayLoading || replayStatus === 'ended' || !currentCandle
+  const busy = mode !== 'replay' || replayLoading || replayStatus === 'ended' || !currentCandle
   const atMin = kind === 'lot' ? tradeSize <= MIN_LOT_SIZE : tradeSize <= MIN_CRYPTO_SIZE
   const atMax = kind === 'lot' && tradeSize >= MAX_LOT_SIZE
 
@@ -62,34 +62,33 @@ export default function ChartInstantTrade() {
   }
 
   return (
-    <div
-      className="pointer-events-auto absolute bottom-7 left-2 z-20 flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-900/95 p-1 shadow-lg shadow-black/30 backdrop-blur-sm"
-      data-tour="chart-instant-trade"
-    >
+    <div className="flex items-center gap-1.5" data-tour="chart-instant-trade">
       <button
         type="button"
         disabled={busy}
         onClick={() => paperBuy()}
-        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded-lg px-2.5 text-xs font-semibold text-white transition-colors bg-primary-500 hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Buy
+        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+        {t('trades.buy')}
       </button>
       <button
         type="button"
         disabled={busy}
         onClick={() => paperSell()}
-        className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded-lg px-2.5 text-xs font-semibold text-white transition-colors bg-red-400 hover:bg-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-1 rounded-lg bg-rose-400 px-3 text-sm font-semibold text-white transition-colors hover:bg-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Sell
+        <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />
+        {t('trades.sell')}
       </button>
-      <label className="flex h-7 items-center rounded-xl border border-zinc-800 bg-zinc-950 px-1.5">
-        <span className="sr-only">Order size</span>
+      <label className="flex h-8 items-center rounded-lg border border-white/10 bg-zinc-950 px-1.5">
+        <span className="sr-only">{t('blotter.size')}</span>
         <input
           type="text"
           inputMode="decimal"
           disabled={busy}
           value={draft}
-          aria-label="Order size"
+          aria-label={t('blotter.size')}
           title={atMin || atMax ? 'Size limits apply' : 'Lots / amount for market Buy or Sell'}
           onFocus={() => {
             focusedRef.current = true
@@ -100,7 +99,7 @@ export default function ChartInstantTrade() {
             commit(event.target.value)
           }}
           onKeyDown={onKeyDown}
-          className="h-full w-12 bg-transparent text-center text-xs font-semibold tabular-nums text-zinc-100 outline-none disabled:opacity-40"
+          className="h-full w-14 bg-transparent text-center text-sm font-semibold tabular-nums text-zinc-100 outline-none disabled:opacity-40"
         />
       </label>
     </div>

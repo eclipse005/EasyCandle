@@ -201,7 +201,6 @@ export async function clearBacktestRecordsOnly(): Promise<void> {
     pendingOrders: [],
     closedTrades: [],
     orderHistory: [],
-    tradeMarkers: [],
     sessionReport: null
   })
 }

@@ -18,20 +18,17 @@ type DrawingUiState = {
   selectedIds: string[]
   /** Open the per-object Style/Text/Coordinates/Visibility dialog. */
   objectDialogId: string | null
-  /** Object tree / Table view dialog (FXR empty-RMB). */
-  objectTreeOpen: boolean
   /** Bumped on every drawing-list change so React + auto-save can react. */
   revision: number
   canUndo: boolean
   canRedo: boolean
-  setArmedTool: (kind: DrawingKind | null) => void
+  setArmedTool: (kind: DrawingKind | null, glyph?: string) => void
   setMagnet: (mode: MagnetMode) => void
   toggleStayInDrawingMode: () => void
   setDrawingsVisible: (visible: boolean) => void
   setDrawingsLocked: (locked: boolean) => void
   setSelectedIds: (ids: readonly string[]) => void
   openObjectDialog: (id: string | null) => void
-  setObjectTreeOpen: (open: boolean) => void
   bumpRevision: () => void
   undo: () => void
   redo: () => void
@@ -56,15 +53,15 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
   drawingsLocked: false,
   selectedIds: [],
   objectDialogId: null,
-  objectTreeOpen: false,
   revision: 0,
   canUndo: false,
   canRedo: false,
 
-  setArmedTool(kind) {
+  setArmedTool(kind, glyph) {
     set({ armedTool: kind })
-    bridge.getPrimary()?.setTool(kind)
-    bridge.getSecondary()?.setTool(kind)
+    const options = glyph ? { glyph } : undefined
+    bridge.getPrimary()?.setTool(kind, options)
+    bridge.getSecondary()?.setTool(kind, options)
   },
 
   setMagnet(mode) {
@@ -101,10 +98,6 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
     set({ objectDialogId: id })
   },
 
-  setObjectTreeOpen(open) {
-    set({ objectTreeOpen: open })
-  },
-
   bumpRevision() {
     set((s) => ({ revision: s.revision + 1 }))
   },
@@ -134,7 +127,6 @@ export const useDrawingUiStore = create<DrawingUiState>((set, get) => ({
       drawingsLocked: false,
       selectedIds: [],
       objectDialogId: null,
-      objectTreeOpen: false,
       canUndo: false,
       canRedo: false
     })

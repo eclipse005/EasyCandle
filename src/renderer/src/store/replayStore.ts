@@ -98,7 +98,7 @@ const EMPTY_WORKING_TRADES = {
   selectedWorkingId: null as string | null
 }
 
-import { createReplayEngine, type ReplayStatus } from '@/lib/replayEngine'
+import { createReplayEngine, replayTickMs, type ReplayStatus } from '@/lib/replayEngine'
 import { isChartType, type ChartType } from '@/lib/chart/chartTypes'
 import { isTimeInSeriesRange } from '@/lib/chart/drawingTimeScale'
 import { focusHistoryBars, FOCUS_LOOKBACK_BARS } from '@/lib/chart/focusRange'
@@ -142,24 +142,6 @@ import {
   timestepStepCoverEnd,
   TIMEFRAMES
 } from '@shared/timeframes'
-
-const PAUSE_ON_TP_SL_KEY = 'bar-replay:pause-on-tp-sl'
-
-function loadPauseOnTpSl(): boolean {
-  try {
-    return localStorage.getItem(PAUSE_ON_TP_SL_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function persistPauseOnTpSl(value: boolean): void {
-  try {
-    localStorage.setItem(PAUSE_ON_TP_SL_KEY, value ? '1' : '0')
-  } catch {
-    // ignore quota / private mode
-  }
-}
 
 export type ChartStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type ViewMode = 'live' | 'replay'
@@ -212,7 +194,7 @@ export type TradeMarker = {
 }
 
 /** FX Replay–style entry marker: long → B below, short → S above. */
-function tradeMarkerForSide(side: 'long' | 'short', time: number): TradeMarker {
+export function tradeMarkerForSide(side: 'long' | 'short', time: number): TradeMarker {
   return {
     time,
     position: side === 'long' ? 'belowBar' : 'aboveBar',
@@ -223,7 +205,7 @@ function tradeMarkerForSide(side: 'long' | 'short', time: number): TradeMarker {
 }
 
 /** Closing marker is the opposite side (long exit → S, short exit → B). */
-function tradeMarkerForExit(openSide: 'long' | 'short', time: number): TradeMarker {
+export function tradeMarkerForExit(openSide: 'long' | 'short', time: number): TradeMarker {
   return tradeMarkerForSide(openSide === 'long' ? 'short' : 'long', time)
 }
 
@@ -247,7 +229,7 @@ function nextDrawingId(): string {
 
 function nextTradeId(): string {
   tradeSeq += 1
-  return `t-${tradeSeq}`
+  return `t-${Date.now().toString(36)}-${tradeSeq}`
 }
 
 function emptyDrawingState(): {
@@ -324,8 +306,6 @@ function remapOrderHistoryToInterval(
 const engine = createReplayEngine()
 const secondaryEngine = createReplayEngine()
 
-const BASE_TICK_MS = 500
-
 let clockTimer: ReturnType<typeof setInterval> | null = null
 let loadGeneration = 0
 let replayRequestId = 0
@@ -342,8 +322,7 @@ function clearClock(): void {
 }
 
 function tickMs(): number {
-  const speed = engine.getState().speed || 1
-  return Math.max(30, BASE_TICK_MS / speed)
+  return replayTickMs(engine.getState().speed || 1)
 }
 
 function intervalSecondsFor(timeframe: string): number {
@@ -544,7 +523,6 @@ type ReplayStore = {
   closedTrades: ClosedTrade[]
   /** Filled market/limit orders and canceled pending limits. */
   orderHistory: HistoricOrder[]
-  tradeMarkers: TradeMarker[]
   sessionReport: SessionReport | null
   /** Reward multiple of risk for linked SL/TP (default 2 → 1:2). */
   riskReward: number
@@ -558,6 +536,8 @@ type ReplayStore = {
   ticketOrderType: TicketOrderType
   /** Chart pick mode from the order-ticket TP/SL/limit handle. */
   pricePick: PricePickKind | null
+  /** Scissors pick mode: click a bar on the chart to rewind there. */
+  rewindPick: boolean
   chartSplit: boolean
   secondaryTimeframe: string
   driverPane: DriverPane
@@ -619,6 +599,7 @@ type ReplayStore = {
   setTicketLimitPrice: (price: number | null) => void
   setTicketOrderType: (type: TicketOrderType) => void
   setPricePick: (kind: PricePickKind | null) => void
+  setRewindPick: (active: boolean) => void
   applyPricePick: (price: number) => void
   dismissSessionReport: () => void
   /** Attach or clear a light journal note on a closed trade. */
@@ -662,9 +643,6 @@ type ReplayStore = {
   resetReplayState: (opts?: { keepImport?: boolean; keepDrawings?: boolean }) => void
   play: () => void
   pause: () => void
-  /** Pause playback after an open position is closed by TP or SL. */
-  pauseOnTpSl: boolean
-  setPauseOnTpSl: (value: boolean) => void
   stepForward: () => void
   stepBackward: () => void
   setSpeed: (speed: number) => void
@@ -794,20 +772,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
   }
 
   function applyRewindResult(rewound: TradeRewindResult): void {
-    const discardSet = new Set([
-      ...rewound.discardedEntryTimes,
-      ...rewound.discardedExitTimes
-    ])
-    const tradeMarkers =
-      discardSet.size === 0
-        ? get().tradeMarkers
-        : get().tradeMarkers.filter((marker) => !discardSet.has(marker.time))
     set({
       positions: rewound.positions,
       pendingOrders: rewound.pendingOrders,
       closedTrades: rewound.closedTrades,
       orderHistory: rewound.orderHistory,
-      tradeMarkers,
       selectedWorkingId: workingIdStillOpen(
         get().selectedWorkingId,
         rewound.positions,
@@ -1163,7 +1132,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     let pendingOrders = [...get().pendingOrders]
     let positions = [...get().positions]
     const orderHistory = [...get().orderHistory]
-    const tradeMarkers = [...get().tradeMarkers]
     const closedTrades = [...get().closedTrades]
     let selectedWorkingId = get().selectedWorkingId
     const filledThisBar = new Set<string>()
@@ -1179,7 +1147,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const filled = pendingToPosition(pending, candle.time)
       positions.push(filled)
       filledThisBar.add(filled.id)
-      tradeMarkers.push(tradeMarkerForSide(pending.side, candle.time))
       orderHistory.push(historicOrderFromPending(pending, 'filled', candle.time))
       event = 'fill'
     }
@@ -1206,7 +1173,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           currentTradeCosts()
         )
       )
-      tradeMarkers.push(tradeMarkerForExit(open.side, candle.time))
       if (selectedWorkingId === open.id) selectedWorkingId = null
       hitKind = hit.hit
       event = hit.hit
@@ -1216,23 +1182,16 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     if (event == null) return null
 
     selectedWorkingId = workingIdStillOpen(selectedWorkingId, positions, pendingOrders)
-    const pauseOnHit = Boolean(hitKind) && get().pauseOnTpSl
     set({
       pendingOrders,
       positions,
       orderHistory,
-      tradeMarkers,
       closedTrades,
       selectedWorkingId,
-      replayMessage: pauseOnHit
-        ? hitKind === 'tp'
-          ? 'Paused · Take profit hit'
-          : 'Paused · Stop loss hit'
-        : null,
+      replayMessage: null,
       ...(hitKind ? EMPTY_TICKET_LEVELS : {})
     })
 
-    if (pauseOnHit) pausePlayback()
     return event
   }
 
@@ -1687,10 +1646,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           : null,
       ...emptyDrawingState(),
       ...EMPTY_TICKET_LEVELS,
+      rewindPick: false,
       ...EMPTY_WORKING_TRADES,
       closedTrades: [],
       orderHistory: [],
-      tradeMarkers: [],
       chartSync: {
         kind: 'replace',
         fitContent: true,
@@ -1921,11 +1880,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       chartScrubbing: false,
       ...(opts.keepDrawings ? {} : emptyDrawingState()),
       ...EMPTY_TICKET_LEVELS,
+      rewindPick: false,
       ticketOrderType: 'market' as TicketOrderType,
       ...EMPTY_WORKING_TRADES,
       closedTrades: [],
       orderHistory: [],
-      tradeMarkers: [],
       driverPane: 'primary',
       ...(opts.keepImport
         ? {}
@@ -1976,11 +1935,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       return
     }
 
-    const marker = tradeMarkerForSide(side, candle.time)
-
     set((s) => ({
       positions: [...s.positions, result.position],
-      tradeMarkers: [...s.tradeMarkers, marker],
       orderHistory: [...s.orderHistory, historicOrderFromMarketFill(result.position)],
       replayMessage: null
     }))
@@ -2020,8 +1976,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       nextTradeId()
     )
 
-    const exitMarker = tradeMarkerForExit(open.side, candle.time)
-
     set((s) => ({
       positions: remaining
         ? s.positions.map((p) => (p.id === open.id ? remaining : p))
@@ -2029,7 +1983,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       selectedWorkingId:
         remaining == null && s.selectedWorkingId === open.id ? null : s.selectedWorkingId,
       closedTrades: [...s.closedTrades, closed],
-      tradeMarkers: [...s.tradeMarkers, exitMarker],
       replayMessage: null
     }))
   }
@@ -2556,10 +2509,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         return
       }
 
-      const remappedMarkers = get().tradeMarkers.map((marker) => ({
-        ...marker,
-        time: alignTimeToInterval(marker.time, nextIntervalSec)
-      }))
       const remappedDrawings = remapDrawingsToInterval(get().drawings, nextIntervalSec)
       const remappedPending = remapPendingTrendToInterval(get().pendingTrend, nextIntervalSec)
       const remappedPendingEnd = remapPendingTrendToInterval(get().pendingTrendEnd, nextIntervalSec)
@@ -2589,7 +2538,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         importedCandles: loaded.candles,
         importWindow: loaded.window,
         candles: loaded.candles,
-        tradeMarkers: remappedMarkers,
         drawings: remappedDrawings,
         pendingTrend: remappedPending,
         pendingTrendEnd: remappedPendingEnd,
@@ -2609,13 +2557,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       return
     }
 
-    // Keep the open position, session PnL, and drawings. Remap trade markers
-    // and trendline endpoints onto the new candle open grid so LWC can resolve
-    // their times after the series changes. Position TP/SL stay as absolute prices.
-    const remappedMarkers = get().tradeMarkers.map((marker) => ({
-      ...marker,
-      time: alignTimeToInterval(marker.time, nextIntervalSec)
-    }))
+    // Keep the open position, session PnL, and drawings. Remap trendline
+    // endpoints onto the new candle open grid so LWC can resolve their times
+    // after the series changes. Position TP/SL stay as absolute prices.
     const remappedDrawings = remapDrawingsToInterval(get().drawings, nextIntervalSec)
     const remappedPending = remapPendingTrendToInterval(get().pendingTrend, nextIntervalSec)
     const remappedPendingEnd = remapPendingTrendToInterval(get().pendingTrendEnd, nextIntervalSec)
@@ -2639,7 +2583,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       pendingTrend: remappedPending,
       pendingTrendEnd: remappedPendingEnd,
       pendingOrders: remappedPendingOrders,
-      tradeMarkers: remappedMarkers,
       positions: remappedPositions,
       closedTrades: remappedClosed,
       orderHistory: remappedOrderHistory
@@ -2682,7 +2625,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     isPrefetching: false,
     replayLoading: false,
     replayMessage: null,
-    pauseOnTpSl: loadPauseOnTpSl(),
     activeIndicators: [],
     chartType: 'candlestick',
     drawTool: 'select',
@@ -2693,12 +2635,12 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     ...EMPTY_WORKING_TRADES,
     closedTrades: [],
     orderHistory: [],
-    tradeMarkers: [],
     sessionReport: null,
     riskReward: DEFAULT_RISK_REWARD,
     tradeSize: DEFAULT_LOTS,
     ticketOrderType: 'market',
     ...EMPTY_TICKET_LEVELS,
+    rewindPick: false,
     chartSplit: false,
     secondaryTimeframe: defaultSecondaryTimeframe(DEFAULT_TIMEFRAME),
     driverPane: 'primary',
@@ -2742,7 +2684,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     setDrawTool(tool) {
       if (!isDrawTool(tool)) return
-      set({ drawTool: tool, pendingTrend: null, pendingTrendEnd: null, pricePick: null })
+      set({
+        drawTool: tool,
+        pendingTrend: null,
+        pendingTrendEnd: null,
+        pricePick: null,
+        rewindPick: false
+      })
     },
 
     addHorizontalLine(price) {
@@ -3108,9 +3056,31 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (get().mode !== 'replay') return
       if (get().replayStatus === 'ended') return
       const next = get().pricePick === kind ? null : kind
-      set({ pricePick: next, drawTool: 'select', pendingTrend: null, pendingTrendEnd: null })
+      set({
+        pricePick: next,
+        rewindPick: false,
+        drawTool: 'select',
+        pendingTrend: null,
+        pendingTrendEnd: null
+      })
     },
 
+    setRewindPick(active) {
+      const next = Boolean(active)
+      if (next === get().rewindPick) return
+      if (next && get().mode !== 'replay') return
+      set(
+        next
+          ? {
+              rewindPick: true,
+              drawTool: 'select',
+              pendingTrend: null,
+              pendingTrendEnd: null,
+              pricePick: null
+            }
+          : { rewindPick: false }
+      )
+    },
     applyPricePick(price) {
       const kind = get().pricePick
       if (!kind) return
@@ -3880,11 +3850,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     pause() {
       pausePlayback()
-    },
-
-    setPauseOnTpSl(value) {
-      persistPauseOnTpSl(value)
-      set({ pauseOnTpSl: value })
     },
 
     stepForward() {

@@ -95,8 +95,8 @@ export default function ChartContextMenu({
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
   const [orderOpen, setOrderOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
-  const setObjectTreeOpen = useDrawingUiStore((s) => s.setObjectTreeOpen)
-  const objectTreeOpen = useDrawingUiStore((s) => s.objectTreeOpen)
+  const rightDock = useUiLayoutStore((s) => s.rightDock)
+  const setRightDock = useUiLayoutStore((s) => s.setRightDock)
   const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
   const setTradeMarksVisible = useUiLayoutStore((s) => s.setTradeMarksVisible)
 
@@ -336,15 +336,15 @@ export default function ChartContextMenu({
       <MenuItem
         label={t('context.tableView')}
         onSelect={() => {
-          setObjectTreeOpen(true)
+          setRightDock('objects')
           onClose()
         }}
       />
       <MenuItem
         label={t('context.hideObjectTree')}
-        disabled={!objectTreeOpen}
+        disabled={rightDock !== 'objects'}
         onSelect={() => {
-          setObjectTreeOpen(false)
+          setRightDock(null)
           onClose()
         }}
       />

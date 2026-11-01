@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createReplayEngine, REPLAY_SPEEDS } from './replayEngine';
+import {
+  createReplayEngine,
+  REPLAY_SPEEDS,
+  replayCandlesPerSecond,
+  replayTickMs
+} from './replayEngine';
 
 /**
  * @param {number} time
@@ -159,14 +164,27 @@ describe("createReplayEngine", () => {
     expect(state.status).toBe("playing");
   });
 
-  it("setSpeed snaps to nearest known speed", () => {
+  it("setSpeed clamps to the 1x..16x slider range", () => {
     const engine = createReplayEngine();
     for (const speed of REPLAY_SPEEDS) {
       expect(engine.setSpeed(speed).speed).toBe(speed);
     }
-    expect(engine.setSpeed(3).speed).toBe(2);
-    expect(engine.setSpeed(12).speed).toBe(8);
+    expect(engine.setSpeed(3).speed).toBe(3);
+    expect(engine.setSpeed(12).speed).toBe(12);
+    expect(engine.setSpeed(0).speed).toBe(1);
+    expect(engine.setSpeed(99).speed).toBe(16);
     expect(engine.setSpeed(Number.NaN).speed).toBe(1);
+  });
+
+  it("replayTickMs runs 1x at one bar per second and clamps to 30ms", () => {
+    expect(replayTickMs(1)).toBe(1000);
+    expect(replayTickMs(2)).toBe(500);
+    expect(replayTickMs(4)).toBe(250);
+    expect(replayTickMs(16)).toBe(62.5);
+    expect(replayTickMs(100)).toBe(30);
+    expect(replayCandlesPerSecond(1)).toBe(1);
+    expect(replayCandlesPerSecond(4)).toBe(4);
+    expect(replayCandlesPerSecond(16)).toBe(16);
   });
 
   it("appendCandles extends buffer without resetting index", () => {

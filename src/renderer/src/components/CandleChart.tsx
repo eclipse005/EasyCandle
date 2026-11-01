@@ -21,6 +21,7 @@ import {
   type Time
 } from 'lightweight-charts'
 import DrawingOverlay from '@/components/DrawingOverlay'
+import BarRewindPickOverlay from '@/components/BarRewindPickOverlay'
 import DrawingSelectionBar from '@/components/DrawingSelectionBar'
 import ChartContextMenu from '@/components/ChartContextMenu'
 import PriceScaleMenu, { PriceScalePlus } from '@/components/PriceScaleMenu'
@@ -222,6 +223,7 @@ export default function CandleChart({
   // Focus is a pane-level command: each pane maps the same UTC time onto its
   // own series, so both scroll together in split view.
   const chartFocus = useReplayStore((s) => s.chartFocus)
+  const rewindPick = useReplayStore((s) => s.rewindPick)
   const theme = useThemeStore((s) => s.theme)
   const { t, locale } = useT()
   const chartSettings = useChartSettingsStore()
@@ -1155,6 +1157,16 @@ export default function CandleChart({
             paneCandles={seriesCandles}
             pricePrecision={pricePrecision}
           />
+          {rewindPick && mode === 'replay' ? (
+            <BarRewindPickOverlay
+              chart={chartReady.chart}
+              candles={seriesCandles}
+              onPick={(time) => {
+                useReplayStore.getState().setRewindPick(false)
+                void useReplayStore.getState().jumpToTime(time, { source: 'jump' })
+              }}
+            />
+          ) : null}
           {isPrimary ? <DrawingSelectionBar /> : null}
         </>
       )}

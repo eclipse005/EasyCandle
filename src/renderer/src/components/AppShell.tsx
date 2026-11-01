@@ -3,20 +3,18 @@ import { Minimize2 } from 'lucide-react'
 import AboutDialog from '@/components/AboutDialog'
 import AppTour from '@/components/AppTour'
 import ChartSettingsDialog from '@/components/ChartSettingsDialog'
-import ChartInstantTrade from '@/components/ChartInstantTrade'
 import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
-import DrawingToolbar from '@/components/DrawingToolbar'
+import DrawingToolbar, { DrawingFavoritesBar } from '@/components/DrawingToolbar'
 import DrawingSettingsDialog from '@/components/DrawingSettingsDialog'
 import DrawingObjectDialog from '@/components/DrawingObjectDialog'
-import DrawingObjectTreeDialog from '@/components/DrawingObjectTreeDialog'
+import RightDock from '@/components/RightDock'
 import FloatingReplayBar from '@/components/FloatingReplayBar'
 import FloatingTradeBar from '@/components/FloatingTradeBar'
 import IconButton from '@/components/IconButton'
 import KeyboardShortcutsDialog from '@/components/KeyboardShortcutsDialog'
 import MainToolbar from '@/components/MainToolbar'
 import SessionReportDialog from '@/components/SessionReportDialog'
-import OrderTicket from '@/components/OrderTicket'
-import TradePanel from '@/components/TradePanel'
+import TradePanel, { TradeDock } from '@/components/TradePanel'
 import { useReplayHotkeys } from '@/hooks/useReplayHotkeys'
 import { useUiHotkeys } from '@/hooks/useUiHotkeys'
 import { useReplayStore } from '@/store/replayStore'
@@ -44,10 +42,8 @@ export default function AppShell({
   const showDrawingToolbar = useUiLayoutStore((s) => s.showDrawingToolbar)
   const showReplayControls = useUiLayoutStore((s) => s.showReplayControls)
   const showPaperTrade = useUiLayoutStore((s) => s.showPaperTrade)
-  const tourPaperTradePreview = useUiLayoutStore((s) => s.tourPaperTradePreview)
 
   const inReplay = mode === 'replay'
-  const showOrderTicket = showPaperTrade && !chartFullscreen && (inReplay || tourPaperTradePreview)
   const mtFeed = isMetatraderImport(importMeta)
   const showEndedBanner = inReplay && replayStatus === 'ended' && !chartFullscreen
 
@@ -94,19 +90,19 @@ export default function AppShell({
       )}
 
       <main
-        className={`relative flex min-h-0 flex-1 flex-col ${
-          chartFullscreen ? 'p-0' : showDrawingToolbar ? 'py-2 px-2.5 sm:py-2.5' : 'p-2 sm:p-2.5'
+        className={`relative flex min-h-0 flex-1 ${
+          chartFullscreen ? 'p-0' : 'gap-1.5 py-2 px-2.5 sm:py-2.5'
         }`}
       >
-        <div
-          className={`relative flex gap-1.5 min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
-            chartFullscreen ? 'rounded-none border-0 shadow-none' : ''
-          }`}
-        >
-          {showDrawingToolbar && <DrawingToolbar />}
-          <div className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
+        {showDrawingToolbar && <DrawingToolbar />}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            className={`relative min-h-0 flex-1 overflow-hidden bg-zinc-950 ${
+              chartFullscreen ? 'rounded-none border-0 shadow-none' : 'rounded-2xl border border-white/10'
+            }`}
+          >
+            {showDrawingToolbar ? <DrawingFavoritesBar /> : null}
             {children}
-            {showPaperTrade && inReplay && !chartFullscreen && <ChartInstantTrade />}
             <div
               className="pointer-events-none absolute z-20"
               style={{
@@ -142,10 +138,11 @@ export default function AppShell({
               </div>
             )}
           </div>
-          {showOrderTicket && <OrderTicket />}
+          {showPaperTrade && !chartFullscreen && <TradePanel />}
         </div>
-        {showPaperTrade && !chartFullscreen && <TradePanel />}
+        <RightDock />
       </main>
+      {showPaperTrade && !chartFullscreen && <TradeDock />}
 
       <AppTour />
       <KeyboardShortcutsDialog />
@@ -153,7 +150,6 @@ export default function AppShell({
       <ChartSettingsDialog />
       <DrawingSettingsDialog />
       <DrawingObjectDialog />
-      <DrawingObjectTreeDialog />
       <SessionReportDialog />
     </div>
   )

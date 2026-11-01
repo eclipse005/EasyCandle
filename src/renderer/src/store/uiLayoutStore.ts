@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { IChartApi } from 'lightweight-charts'
 import type { SessionReport } from '@/store/replayStore'
 
-const STORAGE_KEY = 'bar-replay:ui-layout'
+const STORAGE_KEY = 'bar-replay:ui-layout:v2'
 
 /** Primary left-sidebar destinations (FX Replay–style). */
 export type SidebarNav = 'testing' | 'strategies' | 'datasets' | 'symbols' | 'settings'
@@ -18,9 +18,11 @@ export type PanelPos = { x: number; y: number }
 /** Chart settings pages, in TradingView order. */
 export type ChartSettingsTab = 'symbol' | 'canvas' | 'scales'
 
+/** Which side panel sits left of the right-hand icon rail. Null is collapsed. */
+export type RightDock = 'order' | 'objects' | 'journal' | null
+
 type PersistedLayout = {
-  replayControlsMinimized?: boolean
-  replayControlsPos?: PanelPos
+  replayControlsPos?: PanelPos | null
   tradePanelPos?: PanelPos
   drawingWidgetPos?: PanelPos
   showMainToolbar?: boolean
@@ -30,11 +32,11 @@ type PersistedLayout = {
   showPaperTrade?: boolean
   hasCompletedTour?: boolean
   tradeMarksVisible?: boolean
+  rightDock?: RightDock
 }
 
 type UiLayoutState = {
   chartFullscreen: boolean
-  replayControlsMinimized: boolean
   /** null means use default placement (bottom-center) on first layout */
   replayControlsPos: PanelPos | null
   tradePanelPos: PanelPos | null
@@ -47,6 +49,10 @@ type UiLayoutState = {
   showPaperTrade: boolean
   /** Trade entry/exit markers on the chart (FXR "Hide marks"). */
   tradeMarksVisible: boolean
+  /** Side panel left of the right icon rail. Null keeps only the icons. */
+  rightDock: RightDock
+  /** Session-only previous rail selection, restored when the tour preview ends. */
+  tourRightDockRestore: RightDock
   shortcutsDialogOpen: boolean
   aboutDialogOpen: boolean
   importDataDialogOpen: boolean
@@ -71,13 +77,23 @@ type UiLayoutState = {
   tourPaperTradePreview: boolean
   /** Session-only: `showPaperTrade` to restore after the tour preview. */
   tourPaperTradeRestore: boolean | null
+  /** Session-only: positions / orders book above the bottom trade bar. */
+  tradeBookOpen: boolean
+  /**
+   * Closed trades whose arrows are on the chart. Persisted with the session so
+   * reopening it restores the same annotations.
+   */
+  shownClosedTradeIds: string[]
+  /** Hide every open-position drawing on the chart. Persisted with the session. */
+  chartPositionsHidden: boolean
+  /** Open positions omitted from the chart. Persisted with the session. */
+  hiddenPositionIds: string[]
   /** Primary chart instance, used by chart snapshot actions. */
   primaryChart: IChartApi | null
   /** Preview session report shown in the session report dialog; null when closed. */
   previewSessionReport: SessionReport | null
   toggleChartFullscreen: () => void
   setChartFullscreen: (value: boolean) => void
-  setReplayControlsMinimized: (value: boolean) => void
   setReplayControlsPos: (pos: PanelPos) => void
   setTradePanelPos: (pos: PanelPos) => void
   setDrawingWidgetPos: (pos: PanelPos) => void
@@ -87,6 +103,7 @@ type UiLayoutState = {
   toggleReplayControls: () => void
   togglePaperTrade: () => void
   setTradeMarksVisible: (value: boolean) => void
+  setRightDock: (value: RightDock) => void
   setShortcutsDialogOpen: (value: boolean) => void
   setAboutDialogOpen: (value: boolean) => void
   setImportDataDialogOpen: (value: boolean) => void
@@ -100,6 +117,11 @@ type UiLayoutState = {
   skipTour: () => void
   beginPaperTradePreview: () => void
   endPaperTradePreview: () => void
+  setTradeBookOpen: (value: boolean) => void
+  setShownClosedTradeIds: (ids: string[]) => void
+  setChartPositionsHidden: (value: boolean) => void
+  setHiddenPositionIds: (ids: string[]) => void
+  toggleHiddenPosition: (id: string) => void
   setPrimaryChart: (chart: IChartApi | null) => void
   setPreviewSessionReport: (report: SessionReport | null) => void
 }
@@ -124,6 +146,11 @@ function persist(partial: PersistedLayout): void {
   }
 }
 
+function readRightDock(value: unknown): RightDock {
+  if (value === 'order' || value === 'objects' || value === 'journal' || value === null) return value
+  return 'order'
+}
+
 function isValidPos(value: unknown): value is PanelPos {
   if (!value || typeof value !== 'object') return false
   const pos = value as PanelPos
@@ -140,7 +167,6 @@ const initial = loadPersisted()
 export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   // Always launch in normal chrome; fullscreen is session-only.
   chartFullscreen: false,
-  replayControlsMinimized: Boolean(initial.replayControlsMinimized),
   replayControlsPos: isValidPos(initial.replayControlsPos) ? initial.replayControlsPos : null,
   tradePanelPos: isValidPos(initial.tradePanelPos) ? initial.tradePanelPos : null,
   drawingWidgetPos: isValidPos(initial.drawingWidgetPos) ? initial.drawingWidgetPos : null,
@@ -150,6 +176,8 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   showReplayControls: initial.showReplayControls !== false,
   showPaperTrade: initial.showPaperTrade !== false,
   tradeMarksVisible: initial.tradeMarksVisible !== false,
+  rightDock: readRightDock(initial.rightDock),
+  tourRightDockRestore: null,
   shortcutsDialogOpen: false,
   aboutDialogOpen: false,
   importDataDialogOpen: false,
@@ -165,6 +193,10 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   jumpMenuRequestId: 0,
   tourPaperTradePreview: false,
   tourPaperTradeRestore: null,
+  tradeBookOpen: false,
+  shownClosedTradeIds: [],
+  chartPositionsHidden: false,
+  hiddenPositionIds: [],
   primaryChart: null,
   previewSessionReport: null,
 
@@ -175,12 +207,6 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   setChartFullscreen: (value) => {
     if (value === get().chartFullscreen) return
     set({ chartFullscreen: value })
-  },
-
-  setReplayControlsMinimized: (value) => {
-    if (value === get().replayControlsMinimized) return
-    set({ replayControlsMinimized: value })
-    persist({ replayControlsMinimized: value })
   },
 
   setReplayControlsPos: (pos) => {
@@ -237,6 +263,12 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   setTradeMarksVisible: (value) => {
     set({ tradeMarksVisible: value })
     persist({ tradeMarksVisible: value })
+  },
+
+  setRightDock: (value) => {
+    if (value === get().rightDock) return
+    set({ rightDock: value })
+    persist({ rightDock: value })
   },
 
   setShortcutsDialogOpen: (value) => {
@@ -321,7 +353,35 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     set({
       tourPaperTradePreview: true,
       tourPaperTradeRestore: get().showPaperTrade,
-      showPaperTrade: true
+      tourRightDockRestore: get().rightDock,
+      showPaperTrade: true,
+      rightDock: get().rightDock ?? 'order'
+    })
+  },
+
+  setTradeBookOpen: (value) => {
+    set({ tradeBookOpen: value })
+  },
+
+  setShownClosedTradeIds: (ids) => {
+    const current = get().shownClosedTradeIds
+    if (current.length === ids.length && current.every((id, index) => id === ids[index])) return
+    set({ shownClosedTradeIds: ids })
+  },
+
+  setChartPositionsHidden: (value) => {
+    set({ chartPositionsHidden: value, ...(value ? {} : { hiddenPositionIds: [] }) })
+  },
+
+  setHiddenPositionIds: (ids) => {
+    set({ hiddenPositionIds: ids, chartPositionsHidden: false })
+  },
+
+  toggleHiddenPosition: (id) => {
+    const ids = get().hiddenPositionIds
+    set({
+      chartPositionsHidden: false,
+      hiddenPositionIds: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
     })
   },
 
@@ -331,7 +391,9 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     set({
       tourPaperTradePreview: false,
       tourPaperTradeRestore: null,
-      showPaperTrade: restore ?? get().showPaperTrade
+      showPaperTrade: restore ?? get().showPaperTrade,
+      rightDock: get().tourRightDockRestore,
+      tourRightDockRestore: null
     })
   },
 

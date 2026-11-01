@@ -17,7 +17,8 @@ import {
   type TicketOrderType
 } from '@/lib/paperTrade'
 import { usePricePrecision } from '@/hooks/usePricePrecision'
-import { formatPnlCcy, quoteCurrencyForSymbol } from '@shared/pnlCurrency'
+import { ACCOUNT_CURRENCY, accountPnlFromQuote } from '@shared/pnlCurrency'
+import { accountPnlValue, formatAccountValue } from '@/lib/accountPnl'
 import { contractSizeForSymbol, formatAssetPrice, tradeSizeKindForSymbol } from '@shared/pricePrecision'
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -96,10 +97,14 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
   const canPlace = side === 'long' ? canBuy : canSell
 
   const startingBalance = activeSession?.startingBalance ?? 100000
-  const realized = closedTrades.reduce((sum, t) => sum + t.pnl, 0)
-  const currentBalance = startingBalance + realized
-  const balanceForRisk = riskBasis === 'initial' ? startingBalance : currentBalance
-  const quoteCurrency = quoteCurrencyForSymbol(symbol)
+  const realizedUsd = closedTrades.reduce<number | null>((sum, trade) => {
+    if (sum == null) return null
+    const usd = accountPnlFromQuote(trade.pnl, symbol, trade.exitPrice)
+    return usd == null ? null : sum + usd
+  }, 0)
+  const currentBalance = realizedUsd == null ? null : startingBalance + realizedUsd
+  const balanceForRisk =
+    riskBasis === 'initial' || currentBalance == null ? startingBalance : currentBalance
 
   const entry = ticketEntryPrice(ticketLevels)
   const scale = pnlScaleForSymbol(symbol, sizeValue, importMeta?.contractSize)
@@ -111,6 +116,9 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
     entry != null && tpValue != null && Number.isFinite(tpValue)
       ? pnlForSide(side, entry, tpValue, scale)
       : null
+  const signedLoss = estLoss == null ? null : estLoss <= 0 ? estLoss : -Math.abs(estLoss)
+  const accountLoss = accountPnlValue(signedLoss, symbol, mark)
+  const accountProfit = accountPnlValue(estProfit, symbol, mark)
   const estRr =
     entry != null ? realizedRiskReward(side, entry, slValue, tpValue) : null
 
@@ -301,7 +309,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             })}{' '}
-            {quoteCurrency}
+            {ACCOUNT_CURRENCY}
           </span>
         </div>
         <div className="flex gap-1" role="group" aria-label="Risk percent">
@@ -342,9 +350,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
                 estLoss == null ? 'text-zinc-600' : 'text-red-400'
               }`}
             >
-              {estLoss == null
-                ? '—'
-                : formatPnlCcy(estLoss <= 0 ? estLoss : -Math.abs(estLoss), quoteCurrency)}
+              {estLoss == null ? '—' : formatAccountValue(accountLoss)}
             </div>
           </div>
           <div className="min-w-0">
@@ -354,7 +360,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
                 estProfit == null ? 'text-zinc-600' : 'text-primary-300'
               }`}
             >
-              {estProfit == null ? '—' : formatPnlCcy(estProfit, quoteCurrency)}
+              {estProfit == null ? '—' : formatAccountValue(accountProfit)}
             </div>
           </div>
           <div className="min-w-0">

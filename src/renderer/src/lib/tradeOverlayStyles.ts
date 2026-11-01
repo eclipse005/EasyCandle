@@ -20,9 +20,6 @@ export const TRADE_OVERLAY = {
   entryWidth: 1.5,
   levelWidth: 1.25,
   connectorDash: '4 4',
-  /** Closed trade history entry→exit arrow (MT-style dashed). */
-  historyDash: '5 3',
-  historyWidth: 1.75,
   font: 'system-ui, Segoe UI, Tahoma, sans-serif'
 } as const
 

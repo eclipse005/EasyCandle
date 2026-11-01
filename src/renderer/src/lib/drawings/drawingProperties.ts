@@ -5,6 +5,7 @@ import {
   type DrawingStyle,
   type LevelDef
 } from 'lightweight-charts-drawing'
+import { toolTitle } from '@/lib/drawings/toolGroups'
 
 /** Fib diagonal. Matches the library fallback (`gr`): on, gray, dashed. */
 export const DEFAULT_FIB_TREND: NonNullable<DrawingStyle['fibTrendLine']> = {
@@ -103,7 +104,7 @@ const KIND_LABELS: Record<string, { zh: string; en: string }> = {
 export function kindLabel(kind: string, locale: 'zh' | 'en'): string {
   const row = KIND_LABELS[kind]
   if (row) return locale === 'zh' ? row.zh : row.en
-  return kind.replace(/-/g, ' ')
+  return toolTitle(kind, locale)
 }
 
 export function tabsFor(kind: string): DrawTab[] {
@@ -169,9 +170,53 @@ export function sectionsFor(kind: string): DrawSection[] {
     case 'regression-trend':
     case 'anchored-vwap':
       return ['line', 'background', 'levels', 'oneColor']
+    case 'info-line':
+    case 'trend-angle':
+      return ['line', 'ends', 'extend', 'middle', 'priceLabels', 'stats']
+    case 'fib-time-zone':
+    case 'fib-circles':
+    case 'fib-speed-resistance-fan':
+    case 'fib-speed-resistance-arcs':
+    case 'fib-spiral':
+    case 'fib-wedge':
+    case 'pitchfan':
+    case 'gann-fan':
+      return ['fibTrend', 'levelsLine', 'extend', 'levels', 'oneColor', 'background', 'fibLabels']
+    case 'gann-box':
+    case 'gann-square':
+    case 'gann-square-fixed':
+    case 'schiff-pitchfork':
+    case 'modified-schiff-pitchfork':
+    case 'inside-pitchfork':
+      return ['line', 'levels', 'oneColor', 'extendLines', 'background']
+    case 'pin':
+    case 'comment':
+    case 'signpost':
+    case 'price-label':
+    case 'flag-mark':
+    case 'table':
+      return ['textBody']
     default:
-      return ['line']
+      return inferredSections(kind)
   }
+}
+
+/** Tools without a hand-written layout still expose the style the library draws. */
+function inferredSections(kind: string): DrawSection[] {
+  let style: DrawingStyle
+  try {
+    style = factoryStyleFor(kind as DrawingKind)
+  } catch {
+    return ['line']
+  }
+  if (style.levels && style.levels.length > 0) {
+    return ['levelsLine', 'levels', 'oneColor', 'background']
+  }
+  const sections: DrawSection[] = ['line']
+  if (style.fillBackground != null || style.backgroundColor) sections.push('background')
+  if (style.showPriceLabels) sections.push('priceLabels')
+  if (style.showStats) sections.push('stats')
+  return sections
 }
 
 export function cloneStyle(style: DrawingStyle): DrawingStyle {

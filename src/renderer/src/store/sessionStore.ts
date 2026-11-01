@@ -12,8 +12,9 @@ import type {
   PendingOrderKind,
   Position
 } from '@/lib/paperTrade'
-import { useReplayStore, type TradeMarker, type ViewMode } from '@/store/replayStore'
+import { useReplayStore, type ViewMode } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
+import { useUiLayoutStore } from '@/store/uiLayoutStore'
 
 const STORAGE_KEY = 'bar-replay:sessions'
 
@@ -48,7 +49,12 @@ export type Session = {
   pendingOrders: PendingOrder[]
   closedTrades: ClosedTrade[]
   orderHistory: HistoricOrder[]
-  tradeMarkers: TradeMarker[]
+  /** Closed trades whose arrows are drawn on the chart. */
+  shownClosedTradeIds: string[]
+  /** Hide every open-position drawing on the chart. */
+  chartPositionsHidden: boolean
+  /** Open positions omitted from the chart. */
+  hiddenPositionIds: string[]
   /** Live vs replay — the mode the chart was in when captured. */
   mode: ViewMode
   /** Playhead candle open time (unix seconds); null when not in replay. */
@@ -58,8 +64,8 @@ export type Session = {
   /** Imported dataset id to reload when resuming an imported replay. */
   importId: string | null
   /**
-   * Account balance for the session, denominated in the dataset's quote
-   * currency (issue: session-first model). Realized P/L adds to it directly.
+   * Account balance for the session, denominated in USD (the fixed account
+   * currency). Realized P/L is converted to USD before being added.
    */
   startingBalance: number
   /** Optional strategy this backtesting session belongs to. */
@@ -75,7 +81,9 @@ type SessionSnapshot = Pick<
   | 'pendingOrders'
   | 'closedTrades'
   | 'orderHistory'
-  | 'tradeMarkers'
+  | 'shownClosedTradeIds'
+  | 'chartPositionsHidden'
+  | 'hiddenPositionIds'
   | 'mode'
   | 'replayTime'
   | 'speed'
@@ -122,6 +130,7 @@ function cloneJson<T>(value: T): T {
 /** Capture the current chart drawings, orders, and replay position. */
 function chartSnapshot(): SessionSnapshot {
   const state = useReplayStore.getState()
+  const ui = useUiLayoutStore.getState()
   return {
     symbol: state.symbol,
     timeframe: state.timeframe,
@@ -130,7 +139,9 @@ function chartSnapshot(): SessionSnapshot {
     pendingOrders: cloneJson(state.pendingOrders),
     closedTrades: cloneJson(state.closedTrades),
     orderHistory: cloneJson(state.orderHistory),
-    tradeMarkers: cloneJson(state.tradeMarkers),
+    shownClosedTradeIds: [...ui.shownClosedTradeIds],
+    chartPositionsHidden: ui.chartPositionsHidden,
+    hiddenPositionIds: [...ui.hiddenPositionIds],
     mode: state.mode,
     replayTime: state.mode === 'replay' && state.currentCandle ? state.currentCandle.time : null,
     speed: state.speed,
@@ -434,27 +445,6 @@ function sanitizeHistoricOrder(raw: unknown): HistoricOrder | null {
   }
 }
 
-function sanitizeTradeMarker(raw: unknown): TradeMarker | null {
-  if (!raw || typeof raw !== 'object') return null
-  const rec = raw as Record<string, unknown>
-  if (
-    !isFiniteNumber(rec.time) ||
-    (rec.position !== 'aboveBar' && rec.position !== 'belowBar') ||
-    typeof rec.color !== 'string' ||
-    (rec.shape !== 'arrowUp' && rec.shape !== 'arrowDown') ||
-    typeof rec.text !== 'string'
-  ) {
-    return null
-  }
-  return {
-    time: rec.time,
-    position: rec.position,
-    color: rec.color,
-    shape: rec.shape,
-    text: rec.text
-  }
-}
-
 function sanitizeSession(raw: unknown): Session | null {
   if (!raw || typeof raw !== 'object') return null
   const rec = raw as Record<string, unknown>
@@ -497,13 +487,13 @@ function sanitizeSession(raw: unknown): Session | null {
     }
   }
 
-  const tradeMarkers: TradeMarker[] = []
-  if (Array.isArray(rec.tradeMarkers)) {
-    for (const item of rec.tradeMarkers) {
-      const marker = sanitizeTradeMarker(item)
-      if (marker) tradeMarkers.push(marker)
-    }
-  }
+  const shownClosedTradeIds = Array.isArray(rec.shownClosedTradeIds)
+    ? rec.shownClosedTradeIds.filter((id): id is string => typeof id === 'string')
+    : []
+  const chartPositionsHidden = rec.chartPositionsHidden === true
+  const hiddenPositionIds = Array.isArray(rec.hiddenPositionIds)
+    ? rec.hiddenPositionIds.filter((id): id is string => typeof id === 'string')
+    : []
 
   return {
     id,
@@ -518,7 +508,9 @@ function sanitizeSession(raw: unknown): Session | null {
     pendingOrders: sanitizePendingOrderList(rec.pendingOrders, rec.pendingOrder),
     closedTrades,
     orderHistory,
-    tradeMarkers,
+    shownClosedTradeIds,
+    chartPositionsHidden,
+    hiddenPositionIds,
     mode: rec.mode === 'replay' ? 'replay' : 'live',
     replayTime: isFiniteNumber(rec.replayTime) ? rec.replayTime : null,
     speed: isFiniteNumber(rec.speed) ? Math.min(1000, Math.max(0.1, rec.speed)) : 1,
@@ -702,11 +694,15 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         pendingOrders: cloneJson(session.pendingOrders),
         selectedWorkingId: null,
         closedTrades: cloneJson(session.closedTrades),
-        orderHistory: cloneJson(session.orderHistory ?? []),
-        tradeMarkers: cloneJson(session.tradeMarkers)
+        orderHistory: cloneJson(session.orderHistory ?? [])
       })
       // Sync-on: Timestep must match chart TF even if fields were restored/stale separately.
       useReplayStore.getState().ensureReplayTimestepAligned()
+      useUiLayoutStore.setState({
+        shownClosedTradeIds: [...session.shownClosedTradeIds],
+        chartPositionsHidden: session.chartPositionsHidden,
+        hiddenPositionIds: [...session.hiddenPositionIds]
+      })
       set({ activeSessionId: id })
       return true
     } finally {
@@ -718,6 +714,11 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     suppressAutoSave += 1
     try {
       useDrawingUiStore.getState().resetWorkspace()
+      useUiLayoutStore.setState({
+        shownClosedTradeIds: [],
+        chartPositionsHidden: false,
+        hiddenPositionIds: []
+      })
       const replay = useReplayStore.getState()
       if (replay.mode === 'replay') {
         useReplayStore.getState().resetReplayState()
@@ -831,7 +832,6 @@ useReplayStore.subscribe((state, prev) => {
     state.pendingOrders !== prev.pendingOrders ||
     state.closedTrades !== prev.closedTrades ||
     state.orderHistory !== prev.orderHistory ||
-    state.tradeMarkers !== prev.tradeMarkers ||
     state.symbol !== prev.symbol ||
     state.timeframe !== prev.timeframe ||
     state.currentCandle !== prev.currentCandle ||
@@ -844,4 +844,15 @@ useReplayStore.subscribe((state, prev) => {
 /** Drawing-canvas changes (lib change events bump the revision). */
 useDrawingUiStore.subscribe((state, prev) => {
   if (state.revision !== prev.revision) scheduleAutoSave()
+})
+
+/** Chart visibility choices belong to the session snapshot too. */
+useUiLayoutStore.subscribe((state, prev) => {
+  if (
+    state.shownClosedTradeIds !== prev.shownClosedTradeIds ||
+    state.chartPositionsHidden !== prev.chartPositionsHidden ||
+    state.hiddenPositionIds !== prev.hiddenPositionIds
+  ) {
+    scheduleAutoSave()
+  }
 })

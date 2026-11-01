@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode
 } from 'react'
+import { createPortal } from 'react-dom'
 import { GripVertical, Minus, X } from 'lucide-react'
 import { clampPanelPos, type PanelPos } from '@/store/uiLayoutStore'
 
@@ -29,6 +30,18 @@ type FloatingPanelProps = {
   headerActions?: ReactNode
   /** Prefer bottom-center when pos is null; otherwise top-left / top-right. */
   defaultPlacement?: 'bottom-center' | 'top-left' | 'top-right'
+  /** parent = stay inside the chart card. viewport = drag anywhere on the page. */
+  scope?: 'parent' | 'viewport'
+  /** header = title bar. inline = grip sits on the same row as the controls. */
+  chrome?: 'header' | 'inline'
+  /** Drag from anywhere on the panel, not only the grip. A click without movement still hits buttons. */
+  dragFromAnywhere?: boolean
+  /** Write the computed first-run position to storage (default true). */
+  persistDefault?: boolean
+  /** Top inset for top-left / top-right defaults. */
+  topInset?: number
+  /** Bottom inset for bottom-center defaults (leave room for a footer). */
+  bottomInset?: number
   className?: string
   children: ReactNode
 }
@@ -44,6 +57,12 @@ export default memo(function FloatingPanel({
   onClose,
   headerActions,
   defaultPlacement = 'bottom-center',
+  scope = 'parent',
+  chrome = 'header',
+  dragFromAnywhere = false,
+  persistDefault = true,
+  topInset = 48,
+  bottomInset = 16,
   className = '',
   children
 }: FloatingPanelProps) {
@@ -55,16 +74,16 @@ export default memo(function FloatingPanel({
   const expandOnClickRef = useRef(false)
   const [dragging, setDragging] = useState(false)
   const [dragPos, setDragPos] = useState<PanelPos | null>(null)
+  const [previewPos, setPreviewPos] = useState<PanelPos | null>(null)
 
   const resolveDefaultPos = useCallback(
     (container: DOMRect, panel: DOMRect): PanelPos => {
       if (defaultPlacement === 'top-left') {
-        return clampPanelPos({ x: 12, y: 12 }, container.width, container.height, panel.width, panel.height)
+        return clampPanelPos({ x: 12, y: topInset }, container.width, container.height, panel.width, panel.height)
       }
       if (defaultPlacement === 'top-right') {
-        // Leave room for the fullscreen exit control (top-right).
         return clampPanelPos(
-          { x: Math.round(container.width - panel.width - 12), y: 48 },
+          { x: Math.round(container.width - panel.width - 12), y: topInset },
           container.width,
           container.height,
           panel.width,
@@ -74,7 +93,7 @@ export default memo(function FloatingPanel({
       return clampPanelPos(
         {
           x: Math.round((container.width - panel.width) / 2),
-          y: Math.round(container.height - panel.height - 16)
+          y: Math.round(container.height - panel.height - bottomInset)
         },
         container.width,
         container.height,
@@ -82,66 +101,84 @@ export default memo(function FloatingPanel({
         panel.height
       )
     },
-    [defaultPlacement]
+    [defaultPlacement, topInset, bottomInset]
   )
+
+  const frame = useCallback((): { left: number; top: number; width: number; height: number } | null => {
+    if (scope === 'viewport') {
+      return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+    }
+    const parent = panelRef.current?.offsetParent as HTMLElement | null
+    if (!parent) return null
+    const rect = parent.getBoundingClientRect()
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+  }, [scope])
 
   const clampToParent = useCallback(
     (next: PanelPos): PanelPos | null => {
       const el = panelRef.current
-      const parent = el?.offsetParent as HTMLElement | null
-      if (!el || !parent) return null
-      const parentRect = parent.getBoundingClientRect()
+      const box = frame()
+      if (!el || !box || box.width <= 0 || box.height <= 0) return null
       const panelRect = el.getBoundingClientRect()
-      return clampPanelPos(next, parentRect.width, parentRect.height, panelRect.width, panelRect.height)
+      return clampPanelPos(next, box.width, box.height, panelRect.width, panelRect.height)
     },
-    []
+    [frame]
   )
 
   useLayoutEffect(() => {
     const el = panelRef.current
-    const parent = el?.offsetParent as HTMLElement | null
-    if (!el || !parent) return
+    const box = frame()
+    if (!el || !box || box.width <= 0) return
 
-    const parentRect = parent.getBoundingClientRect()
     const panelRect = el.getBoundingClientRect()
     if (panelRect.width <= 0 || panelRect.height <= 0) return
 
     const next =
       pos == null
-        ? resolveDefaultPos(parentRect, panelRect)
-        : clampPanelPos(pos, parentRect.width, parentRect.height, panelRect.width, panelRect.height)
+        ? resolveDefaultPos(
+            { width: box.width, height: box.height } as DOMRect,
+            panelRect
+          )
+        : clampPanelPos(pos, box.width, box.height, panelRect.width, panelRect.height)
 
-    if (pos == null || next.x !== pos.x || next.y !== pos.y) {
+    if (pos == null) {
+      if (persistDefault) onPosChange(next)
+      else setPreviewPos(next)
+      return
+    }
+    if (next.x !== pos.x || next.y !== pos.y) {
       onPosChange(next)
     }
-  }, [pos, minimized, resolveDefaultPos, onPosChange])
+  }, [pos, minimized, resolveDefaultPos, onPosChange, frame, persistDefault])
 
   useEffect(() => {
     const el = panelRef.current
-    const parent = el?.offsetParent as HTMLElement | null
-    if (!el || !parent) return
+    if (!el) return
 
     const reclamp = (): void => {
-      const current = pos
-      if (current == null) return
-      const parentRect = parent.getBoundingClientRect()
+      const current = pos ?? previewPos
+      const box = frame()
+      if (current == null || !box) return
       const panelRect = el.getBoundingClientRect()
       if (panelRect.width <= 0 || panelRect.height <= 0) return
-      const next = clampPanelPos(
-        current,
-        parentRect.width,
-        parentRect.height,
-        panelRect.width,
-        panelRect.height
-      )
-      if (next.x !== current.x || next.y !== current.y) onPosChange(next)
+      const next = clampPanelPos(current, box.width, box.height, panelRect.width, panelRect.height)
+      if (pos == null) {
+        setPreviewPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next))
+      } else if (next.x !== current.x || next.y !== current.y) {
+        onPosChange(next)
+      }
     }
 
     const observer = new ResizeObserver(reclamp)
-    observer.observe(parent)
     observer.observe(el)
-    return () => observer.disconnect()
-  }, [pos, onPosChange])
+    const parent = scope === 'parent' ? (el.offsetParent as HTMLElement | null) : null
+    if (parent) observer.observe(parent)
+    if (scope === 'viewport') window.addEventListener('resize', reclamp)
+    return () => {
+      observer.disconnect()
+      if (scope === 'viewport') window.removeEventListener('resize', reclamp)
+    }
+  }, [pos, previewPos, onPosChange, frame, scope])
 
   useEffect(() => {
     if (!dragging) return undefined
@@ -155,12 +192,11 @@ export default memo(function FloatingPanel({
         if (dx * dx + dy * dy > DRAG_CLICK_PX * DRAG_CLICK_PX) dragMoved.current = true
       }
       if (!dragMoved.current) return
-      const parent = panelRef.current?.offsetParent as HTMLElement | null
-      if (!parent) return
-      const parentRect = parent.getBoundingClientRect()
+      const box = frame()
+      if (!box) return
       const raw: PanelPos = {
-        x: event.clientX - parentRect.left - dragOffset.current.x,
-        y: event.clientY - parentRect.top - dragOffset.current.y
+        x: event.clientX - box.left - dragOffset.current.x,
+        y: event.clientY - box.top - dragOffset.current.y
       }
       const clamped = clampToParent(raw)
       if (clamped) {
@@ -171,7 +207,8 @@ export default memo(function FloatingPanel({
 
     function onPointerUp(): void {
       const final = dragPosRef.current
-      const shouldExpand = expandOnClickRef.current && !dragMoved.current
+      const moved = dragMoved.current
+      const shouldExpand = expandOnClickRef.current && !moved
       dragOffset.current = null
       dragPosRef.current = null
       pointerOrigin.current = null
@@ -179,6 +216,14 @@ export default memo(function FloatingPanel({
       dragMoved.current = false
       setDragPos(null)
       setDragging(false)
+      if (moved) {
+        const stopClick = (click: MouseEvent): void => {
+          click.preventDefault()
+          click.stopPropagation()
+          window.removeEventListener('click', stopClick, true)
+        }
+        window.addEventListener('click', stopClick, true)
+      }
       if (final) onPosChange(final)
       if (shouldExpand) onMinimizedChange?.(false)
     }
@@ -191,48 +236,65 @@ export default memo(function FloatingPanel({
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [dragging, clampToParent, onPosChange, onMinimizedChange])
+  }, [dragging, clampToParent, onPosChange, onMinimizedChange, frame])
 
-  function beginDrag(event: ReactPointerEvent<HTMLElement>, expandOnClick: boolean): void {
+  function beginDrag(
+    event: ReactPointerEvent<HTMLElement>,
+    expandOnClick: boolean,
+    keepClick = false
+  ): void {
     if (event.button !== 0) return
     const el = panelRef.current
-    const parent = el?.offsetParent as HTMLElement | null
-    if (!el || !parent) return
+    const box = frame()
+    if (!el || !box) return
     expandOnClickRef.current = expandOnClick
     dragMoved.current = false
     pointerOrigin.current = { x: event.clientX, y: event.clientY }
-    const parentRect = parent.getBoundingClientRect()
     const panelRect = el.getBoundingClientRect()
     dragOffset.current = {
       x: event.clientX - panelRect.left,
       y: event.clientY - panelRect.top
     }
-    // Ensure we have a concrete pos before drag
     if (pos == null) {
       onPosChange({
-        x: panelRect.left - parentRect.left,
-        y: panelRect.top - parentRect.top
+        x: panelRect.left - box.left,
+        y: panelRect.top - box.top
       })
     }
     setDragging(true)
-    event.preventDefault()
+    if (!keepClick) event.preventDefault()
   }
 
-  const displayPos = dragPos ?? pos
+  const displayPos = dragPos ?? pos ?? previewPos
   const style =
     displayPos != null
       ? { left: displayPos.x, top: displayPos.y }
       : defaultPlacement === 'bottom-center'
-        ? { left: '50%', bottom: 16, top: 'auto', transform: 'translateX(-50%)' }
+        ? { left: '50%', bottom: bottomInset, top: 'auto' as const, transform: 'translateX(-50%)' }
         : defaultPlacement === 'top-right'
-          ? { right: 12, top: 48, left: 'auto' }
-          : { left: 12, top: 12 }
+          ? { right: 12, top: topInset, left: 'auto' as const }
+          : { left: 12, top: topInset }
+  const placed = scope === 'viewport' ? 'fixed' : 'absolute'
+
+  const grip = (
+    <button
+      type="button"
+      aria-label="Drag panel"
+      title="Drag"
+      onPointerDown={(event) => beginDrag(event, false)}
+      className={`inline-flex h-7 w-6 shrink-0 cursor-grab items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300 active:cursor-grabbing ${
+        dragging ? 'cursor-grabbing text-zinc-300' : ''
+      }`}
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  )
 
   if (minimized) {
-    return (
+    const node = (
       <div
         ref={panelRef}
-        className={`pointer-events-auto absolute z-20 ${className}`}
+        className={`pointer-events-auto z-[60] ${placed} ${className}`}
         style={style}
       >
         <button
@@ -249,59 +311,70 @@ export default memo(function FloatingPanel({
         </button>
       </div>
     )
+    return scope === 'viewport' ? createPortal(node, document.body) : node
   }
 
-  return (
+  const minimizeButton = onMinimizedChange ? (
+    <button
+      type="button"
+      aria-label="Minimize panel"
+      title="Minimize"
+      onClick={() => onMinimizedChange(true)}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300"
+    >
+      <Minus className="h-3.5 w-3.5" />
+    </button>
+  ) : null
+
+  const closeButton = onClose ? (
+    <button
+      type="button"
+      aria-label="Close panel"
+      title="Close"
+      onClick={onClose}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300"
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
+  ) : null
+
+  const node = (
     <div
       ref={panelRef}
-      className={`pointer-events-auto absolute z-20 max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-zinc-900/95 shadow-lg shadow-black/30 backdrop-blur-sm ${className}`}
-      style={style}
+      className={`pointer-events-auto z-[80] max-w-[calc(100vw-1rem)] rounded-2xl border border-white/10 bg-zinc-900/95 shadow-lg shadow-black/30 backdrop-blur-sm ${placed} ${
+        dragFromAnywhere ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${className}`}
+      style={{ ...style, position: placed, zIndex: 80 }}
+      onPointerDown={dragFromAnywhere ? (event) => beginDrag(event, false, true) : undefined}
     >
-      <div className="flex items-center gap-1 border-b border-white/5 px-1.5 py-1">
-        <button
-          type="button"
-          aria-label="Drag panel"
-          title="Drag"
-          onPointerDown={(event) => beginDrag(event, false)}
-          className={`inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300 active:cursor-grabbing ${
-            dragging ? 'cursor-grabbing text-zinc-300' : ''
-          }`}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        {title && (
-          <span className="min-w-0 flex-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
-            {title}
-          </span>
-        )}
-        {!title && <span className="min-w-0 flex-1" />}
-        {headerActions && (
-          <div className="flex shrink-0 items-center gap-0.5">{headerActions}</div>
-        )}
-        {onMinimizedChange && (
-          <button
-            type="button"
-            aria-label="Minimize panel"
-            title="Minimize"
-            onClick={() => onMinimizedChange(true)}
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-        )}
-        {onClose && (
-          <button
-            type="button"
-            aria-label="Close panel"
-            title="Close"
-            onClick={onClose}
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-      <div className="px-2 py-2">{children}</div>
+      {chrome === 'inline' ? (
+        <div className="flex items-center gap-1 px-1 py-1">
+          {grip}
+          <div className="shrink-0">{children}</div>
+          {headerActions}
+          {minimizeButton}
+          {closeButton}
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-1 border-b border-white/5 px-1.5 py-1">
+            {grip}
+            {title ? (
+              <span className="min-w-0 flex-1 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+                {title}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1" />
+            )}
+            {headerActions}
+            {minimizeButton}
+            {closeButton}
+          </div>
+          <div className="px-2 py-2">{children}</div>
+        </>
+      )}
     </div>
   )
+
+  return scope === 'viewport' ? createPortal(node, document.body) : node
 })

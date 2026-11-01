@@ -41,7 +41,6 @@ function session(partial: Partial<Session> & Pick<Session, 'id' | 'closedTrades'
     positions: [],
     pendingOrders: [],
     orderHistory: [],
-    tradeMarkers: [],
     mode: 'replay',
     replayTime: null,
     speed: 1,

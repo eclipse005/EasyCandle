@@ -10,7 +10,26 @@ export type ReplayState = {
   status: ReplayStatus
 }
 
-export const REPLAY_SPEEDS = Object.freeze([0.5, 1, 2, 4, 8, 16] as const)
+export const MIN_REPLAY_SPEED = 1
+export const MAX_REPLAY_SPEED = 16
+
+/** Every whole speed from 1x to 16x, ascending. */
+export const REPLAY_SPEEDS: readonly number[] = Object.freeze(
+  Array.from({ length: MAX_REPLAY_SPEED - MIN_REPLAY_SPEED + 1 }, (_, i) => MIN_REPLAY_SPEED + i)
+)
+
+/** Auto-advance interval at 1x: one bar per second. Higher speeds divide it. */
+export const BASE_TICK_MS = 1000
+
+/** Wall-clock ms between two auto-advanced candles at `speed`. */
+export function replayTickMs(speed: number): number {
+  return Math.max(30, BASE_TICK_MS / (speed || MIN_REPLAY_SPEED))
+}
+
+/** Whole candles the engine can advance per wall-clock second at `speed`. */
+export function replayCandlesPerSecond(speed: number): number {
+  return Math.round(1000 / replayTickMs(speed))
+}
 
 export type ReplaySeekOptions = {
   /** When false, move the playhead without stopping playback. Default true. */
@@ -20,29 +39,16 @@ export type ReplaySeekOptions = {
 const DEFAULT_SPEED = 1
 const DEFAULT_PREFETCH_THRESHOLD = 50
 
-/** Snap to the nearest allowed replay speed (ties prefer the slower chip). */
+/** Clamp to the whole 1x..16x slider range. */
 export function normalizeSpeed(value: number): number {
   const n = Number(value)
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_SPEED
-  if ((REPLAY_SPEEDS as readonly number[]).includes(n)) return n
-  let best: number = DEFAULT_SPEED
-  let bestDist = Number.POSITIVE_INFINITY
-  for (const speed of REPLAY_SPEEDS) {
-    const dist = Math.abs(speed - n)
-    if (dist < bestDist) {
-      best = speed
-      bestDist = dist
-    }
-  }
-  return best
+  return Math.min(MAX_REPLAY_SPEED, Math.max(MIN_REPLAY_SPEED, Math.round(n)))
 }
 
-/** Step one chip up/down within REPLAY_SPEEDS. */
+/** Step one speed up/down within the 1x..16x range. */
 export function stepReplaySpeed(current: number, direction: 1 | -1): number {
-  const cur = normalizeSpeed(current)
-  const idx = (REPLAY_SPEEDS as readonly number[]).indexOf(cur)
-  const next = Math.min(REPLAY_SPEEDS.length - 1, Math.max(0, (idx < 0 ? 1 : idx) + direction))
-  return REPLAY_SPEEDS[next]!
+  return normalizeSpeed(normalizeSpeed(current) + direction)
 }
 
 function normalizeCandles(candles: unknown): Candle[] {

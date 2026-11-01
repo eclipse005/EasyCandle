@@ -29,8 +29,7 @@ function seedReplayIn(replayStore: typeof useReplayStore, closedTrades?: Session
     pendingOrders: [],
     selectedWorkingId: null,
     closedTrades: closedTrades ?? [],
-    orderHistory: [],
-    tradeMarkers: []
+    orderHistory: []
   })
 }
 
@@ -281,8 +280,7 @@ describe('legacy drawing migration', () => {
             position: null,
             pendingOrder: null,
             closedTrades: [],
-            orderHistory: [],
-            tradeMarkers: []
+            orderHistory: []
           },
           { id: 's-2', name: '', drawings: [] },
           'garbage'
@@ -317,8 +315,7 @@ describe('legacy drawing migration', () => {
               { id: 'd-2', type: 'trendline', t1: 1, p1: 2, t2: 3, p2: 4 }
             ],
             closedTrades: [],
-            orderHistory: [],
-            tradeMarkers: []
+            orderHistory: []
           }
         ]
       })
@@ -349,8 +346,7 @@ describe('legacy drawing migration', () => {
             updatedAt: 2,
             drawingsJSON: libJson,
             closedTrades: [],
-            orderHistory: [],
-            tradeMarkers: []
+            orderHistory: []
           }
         ]
       })

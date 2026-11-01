@@ -18,6 +18,7 @@ import {
 } from 'lightweight-charts'
 import { ViewportBumpPrimitive } from '@/lib/chart/viewportBumpPrimitive'
 import { readOverlayViewport, sameOverlayViewport } from '@/lib/chart/overlayViewport'
+import { accountPnlValue, formatAccountValue } from '@/lib/accountPnl'
 import DrawingStyleWidget from '@/components/DrawingStyleWidget'
 import Tooltip from '@/components/Tooltip'
 import {
@@ -282,7 +283,7 @@ function overlayHasViewportContent(): boolean {
     s.pendingTrend != null ||
     s.positions.length > 0 ||
     s.pendingOrders.length > 0 ||
-    s.closedTrades.length > 0 ||
+    useUiLayoutStore.getState().shownClosedTradeIds.length > 0 ||
     s.ticketTakeProfit != null ||
     s.ticketStopLoss != null ||
     s.ticketLimitPrice != null ||
@@ -317,10 +318,11 @@ function LivePnlText({
     markClose,
     pnlScaleForSymbol(symbol, working.lots, contractSizeOverride)
   )
+  const accountPnl = accountPnlValue(pnl, symbol, markClose)
   const color =
-    pnl == null
+    accountPnl.value == null
       ? TRADE_OVERLAY.handleTextMuted
-      : pnl >= 0
+      : accountPnl.value >= 0
         ? TRADE_OVERLAY.pnlProfit
         : TRADE_OVERLAY.pnlLoss
   return (
@@ -334,7 +336,7 @@ function LivePnlText({
       fontWeight={600}
       className="pointer-events-none select-none"
     >
-      {formatPnlCcy(pnl, quoteCurrencyForSymbol(symbol))}
+      {formatAccountValue(accountPnl)}
     </text>
   )
 }
@@ -422,19 +424,6 @@ function linkedLevelForDrag(
   }
 }
 
-function arrowHeadPoints(from: Point, to: Point, size = 7): string {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  const len = Math.hypot(dx, dy) || 1
-  const ux = dx / len
-  const uy = dy / len
-  const bx = to.x - ux * size
-  const by = to.y - uy * size
-  const px = -uy * (size * 0.55)
-  const py = ux * (size * 0.55)
-  return `${to.x},${to.y} ${bx + px},${by + py} ${bx - px},${by - py}`
-}
-
 function estimatePnlWidth(label: string): number {
   // Tabular-ish estimate for overlay labels; keeps SVG layout free of DOM measure.
   return Math.max(OVERLAY_LAYOUT.pnlMinW, 10 + label.length * 6.2)
@@ -502,9 +491,10 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
   const pendingTrend = useReplayStore((s) => s.pendingTrend)
   const pendingTrendEnd = useReplayStore((s) => s.pendingTrendEnd)
   const selectedDrawingId = useReplayStore((s) => s.selectedDrawingId)
-  const closedTrades = useReplayStore((s) => s.closedTrades)
   const positions = useReplayStore((s) => s.positions)
   const pendingOrders = useReplayStore((s) => s.pendingOrders)
+  const closedTrades = useReplayStore((s) => s.closedTrades)
+  const shownClosedTradeIds = useUiLayoutStore((s) => s.shownClosedTradeIds)
   const selectedWorkingId = useReplayStore((s) => s.selectedWorkingId)
   const selectWorking = useReplayStore((s) => s.selectWorking)
   const riskReward = useReplayStore((s) => s.riskReward)
@@ -1539,7 +1529,12 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
   const priceScaleW = chart?.priceScale('right').width() ?? 56
   const plotRight = plotRightX(width, priceScaleW, chart?.timeScale().width() ?? 0)
   const midX = plotRight / 2
-  const workingOverlays = workingItemsFrom(positions, pendingOrders)
+  const chartPositionsHidden = useUiLayoutStore((s) => s.chartPositionsHidden)
+  const hiddenPositionIds = useUiLayoutStore((s) => s.hiddenPositionIds)
+  const visiblePositions = chartPositionsHidden
+    ? []
+    : positions.filter((position) => !hiddenPositionIds.includes(position.id))
+  const workingOverlays = workingItemsFrom(visiblePositions, pendingOrders)
   const selectedItem = lookupWorking(positions, pendingOrders, selectedWorkingId)
   const working = selectedItem?.working ?? null
   const isPending = selectedItem?.isPending ?? false
@@ -1997,81 +1992,26 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
         }}
       >
         {closedTrades.map((trade) => {
+          if (!shownClosedTradeIds.includes(trade.id)) return null
           const from = toXY(trade.entryTime, trade.entryPrice)
           const to = toXY(trade.exitTime, trade.exitPrice)
           if (!from || !to) return null
-
-          const lineColor = trade.pnl >= 0 ? TRADE_OVERLAY.pnlProfit : TRADE_OVERLAY.pnlLoss
-          const entryLetter = trade.side === 'long' ? 'B' : 'S'
-          const exitLetter = trade.side === 'long' ? 'S' : 'B'
-          const entryColor =
-            trade.side === 'long' ? TRADE_OVERLAY.pnlProfit : TRADE_OVERLAY.shortLine
-          const exitColor =
-            trade.side === 'long' ? TRADE_OVERLAY.shortLine : TRADE_OVERLAY.pnlProfit
-          const samePoint = Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5
-          const badgeR = 8
-
-          function letterBadge(pt: { x: number; y: number }, letter: string, fill: string) {
-            return (
-              <g>
-                <circle
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={badgeR}
-                  fill={fill}
-                  stroke="#131415"
-                  strokeWidth={1.25}
-                />
-                <text
-                  x={pt.x}
-                  y={pt.y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="#FFFFFF"
-                  fontSize={10}
-                  fontWeight={700}
-                  fontFamily={TRADE_OVERLAY.font}
-                  className="pointer-events-none select-none"
-                >
-                  {letter}
-                </text>
-              </g>
-            )
-          }
-
+          if (Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5) return null
           return (
-            <g key={`trade-${trade.id}-${trade.exitTime}`} className="pointer-events-none">
-              {!samePoint && (
-                <>
-                  <line
-                    x1={from.x}
-                    y1={from.y}
-                    x2={to.x}
-                    y2={to.y}
-                    stroke={lineColor}
-                    strokeWidth={TRADE_OVERLAY.historyWidth}
-                    strokeOpacity={0.95}
-                    strokeDasharray={TRADE_OVERLAY.historyDash}
-                  />
-                  <polygon points={arrowHeadPoints(from, to)} fill={lineColor} stroke="none" />
-                </>
-              )}
-              {samePoint && (
-                <circle
-                  cx={to.x}
-                  cy={to.y}
-                  r={badgeR + 2.5}
-                  fill="none"
-                  stroke={lineColor}
-                  strokeWidth={1.5}
-                />
-              )}
-              {letterBadge(from, entryLetter, entryColor)}
-              {!samePoint && letterBadge(to, exitLetter, exitColor)}
-            </g>
+            <line
+              key={`link-${trade.id}-${trade.exitTime}`}
+              data-trade-link=""
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              stroke="#c4c4c4"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              className="pointer-events-none"
+            />
           )
         })}
-
         {showTicketDraft && (
           <MarkCloseSubscriber>
             {(markClose) => {
@@ -2170,8 +2110,12 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
           const sideColor = itemSideColor
           const openPnlLabel = itemOpenPnlLabel
           const openPnlColor = itemOpenPnlColor
-          const tpPnlLabel = formatPnlCcy(tpPnl, quoteCurrency)
-          const slPnlLabel = formatPnlCcy(slPnl, quoteCurrency)
+          const tpPnlLabel = formatAccountValue(
+            accountPnlValue(tpPnl, symbol, itemTpPrice)
+          )
+          const slPnlLabel = formatAccountValue(
+            accountPnlValue(slPnl, symbol, itemSlPrice)
+          )
           const itemRr =
             realizedRiskReward(working.side, working.entryPrice, working.stopLoss, working.takeProfit) ??
             riskReward
