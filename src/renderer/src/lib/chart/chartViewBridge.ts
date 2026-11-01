@@ -34,7 +34,9 @@ export function makeChartViewApi(
     fitContent() {
       const chart = getChart()
       if (!chart) return
-      chart.timeScale().fitContent()
+      // `fitContent` would include the future axis whitespace and zoom the
+      // candles away; frame the real candles with a normal right pad instead.
+      focusLatestCandle(chart, getCandleCount())
     },
     focusLatest() {
       const chart = getChart()
