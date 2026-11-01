@@ -131,7 +131,16 @@ export function sectionsFor(kind: string): DrawSection[] {
       return ['line', 'extend', 'background']
     case 'fib-retracement':
     case 'trend-based-fib-extension':
-      return ['fibTrend', 'levelsLine', 'extend', 'levels', 'oneColor', 'background', 'reverse']
+      return [
+        'fibTrend',
+        'levelsLine',
+        'extend',
+        'levels',
+        'oneColor',
+        'background',
+        'reverse',
+        'fibLabels'
+      ]
     case 'fib-channel':
       return ['levelsLine', 'extend', 'levels', 'oneColor', 'background', 'fibLabels']
     case 'pitchfork':

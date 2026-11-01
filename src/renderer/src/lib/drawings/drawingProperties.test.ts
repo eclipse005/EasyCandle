@@ -34,6 +34,8 @@ describe('drawing property profiles', () => {
   it('gives fib retracement levels without a text tab', () => {
     expect(sectionsFor('fib-retracement')).toContain('levels')
     expect(sectionsFor('fib-retracement')).toContain('fibTrend')
+    expect(sectionsFor('fib-retracement')).toContain('fibLabels')
+    expect(sectionsFor('trend-based-fib-extension')).toContain('fibLabels')
     expect(tabsFor('fib-retracement')).not.toContain('text')
   })
 })
@@ -65,8 +67,18 @@ describe('fib levels', () => {
 
   it('patches one level without dropping the others', () => {
     const levels = levelsOf(base, 'fib-retracement')
-    const next = patchLevel(levels, 1, { color: '#123456', visible: false })
-    expect(next?.[1]).toMatchObject({ color: '#123456', visible: false })
+    const next = patchLevel(levels, 1, {
+      color: '#123456',
+      visible: false,
+      style: 'dashed',
+      width: 3
+    })
+    expect(next?.[1]).toMatchObject({
+      color: '#123456',
+      visible: false,
+      style: 'dashed',
+      width: 3
+    })
     expect(next).toHaveLength(levels.length)
     expect(patchLevel(levels, 0, { coeff: Number.NaN })).toBeNull()
   })

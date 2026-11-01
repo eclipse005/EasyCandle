@@ -1,6 +1,11 @@
-import type { DrawingKind, DrawingStyle as LcdStyle } from 'lightweight-charts-drawing'
+import type { DrawingKind, DrawingStyle as LcdStyle, LevelDef } from 'lightweight-charts-drawing'
 import { LineStyle } from 'lightweight-charts'
-import type { DrawingStyle as LegacyStyle, DrawingToolType } from '@/lib/chart/drawingGeometry'
+import {
+  DEFAULT_FIB_LEVELS,
+  type DrawingStyle as LegacyStyle,
+  type DrawingToolType,
+  type FibLevelConfig
+} from '@/lib/chart/drawingGeometry'
 import { DEFAULT_TOOL_DEFAULTS, defaultStyleForTool, useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { TIMEFRAME_IDS } from '@shared/timeframes'
 
@@ -69,6 +74,77 @@ export function lcdStyleToLegacy(style: LcdStyle, fallback: LegacyStyle): Legacy
     fillColor: fallback.fillColor,
     tpColor: fallback.tpColor,
     slColor: fallback.slColor
+  }
+}
+
+const FIB_LEVEL_KINDS = new Set([
+  'fib-retracement',
+  'trend-based-fib-extension',
+  'fib-channel'
+])
+
+/** Stock left-bar fib list: ratios only, no color or line style.
+ *  Leaving it untouched keeps the library's TradingView ladder. */
+export function legacyFibLevelsUntouched(levels: readonly FibLevelConfig[]): boolean {
+  if (levels.length !== DEFAULT_FIB_LEVELS.length) return false
+  return levels.every((level, index) => {
+    const base = DEFAULT_FIB_LEVELS[index]
+    return (
+      base != null &&
+      level.ratio === base.ratio &&
+      level.color == null &&
+      level.lineStyle == null
+    )
+  })
+}
+
+/** Map a customized left-bar fib list onto LCD levels.
+ *  Color and line style come from the left bar. Visibility and width stay on
+ *  the factory level of the same coefficient. A ratio the factory does not
+ *  know is shown, and inherits the drawing width. */
+export function lcdLevelsFromLegacyFib(
+  legacy: readonly FibLevelConfig[],
+  factoryLevels: readonly LevelDef[],
+  fallbackColor: string
+): LevelDef[] {
+  return legacy.map((level) => {
+    const match = factoryLevels.find((item) => Math.abs(item.coeff - level.ratio) < 1e-6)
+    const next: LevelDef = {
+      coeff: level.ratio,
+      color: level.color ?? match?.color ?? fallbackColor,
+      visible: match?.visible ?? true
+    }
+    if (match?.width != null) next.width = match.width
+    const style = level.lineStyle != null ? lwcStyleToLcd(level.lineStyle) : match?.style
+    if (style) next.style = style
+    return next
+  })
+}
+
+/** Levels to write on a new fib drawing, or null to keep the library factory. */
+export function legacyFibLevelsForNewDrawing(
+  kind: string,
+  legacy: readonly FibLevelConfig[],
+  factoryLevels: readonly LevelDef[] | undefined,
+  fallbackColor: string
+): LevelDef[] | null {
+  if (!FIB_LEVEL_KINDS.has(kind) || legacyFibLevelsUntouched(legacy)) return null
+  return lcdLevelsFromLegacyFib(legacy, factoryLevels ?? [], fallbackColor)
+}
+
+/** Style fields copied onto a drawing the user just placed.
+ *  An LCD kind default is already baked in. Paste and clone keep their stroke. */
+export function stylePatchOnAdd(args: {
+  hasKindDefault: boolean
+  stillFactoryStroke: boolean
+  stroke: Partial<LcdStyle> | null
+  levels: LevelDef[] | null
+}): Partial<LcdStyle> | null {
+  if (args.hasKindDefault || !args.stillFactoryStroke) return null
+  if (!args.stroke && !args.levels) return null
+  return {
+    ...(args.stroke ?? {}),
+    ...(args.levels ? { levels: args.levels } : {})
   }
 }
 

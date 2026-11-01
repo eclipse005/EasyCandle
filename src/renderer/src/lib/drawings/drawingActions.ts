@@ -7,8 +7,14 @@ import {
 } from 'lightweight-charts-drawing'
 import * as bridge from '@/lib/drawings/drawingBridge'
 import { cloneStyle, type DrawingSnapshot } from '@/lib/drawings/drawingProperties'
-import { lcdDefaultsForKind, visibilityFromTimeframes } from '@/lib/drawings/drawingStyleBridge'
+import {
+  lcdDefaultsForKind,
+  legacyFibLevelsForNewDrawing,
+  stylePatchOnAdd,
+  visibilityFromTimeframes
+} from '@/lib/drawings/drawingStyleBridge'
 import { hasKindDefault, useDrawingTemplateStore } from '@/store/drawingTemplateStore'
+import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 
 /** In-memory clipboard for Copy / Paste of a single LCD drawing (JSON without id). */
@@ -160,22 +166,33 @@ function findDrawing(id: string): Drawing | undefined {
   return primary()?.get(id)
 }
 
-/** Apply the legacy per-tool color defaults onto a freshly placed LCD drawing.
+/** Apply left-bar defaults onto a freshly placed LCD drawing.
  *  A saved LCD kind default is already baked in by the library. Paste / clone
- *  keep their own style when it no longer matches the factory stroke. */
+ *  keep their own style when the stroke no longer matches the factory.
+ *  An untouched fib list leaves the library ladder in place. A customized
+ *  list replaces it. */
 export function applyToolDefaultsOnAdd(drawing: Drawing): void {
-  if (hasKindDefault(drawing.kind)) return
   const mgr = primary()
-  const patch = lcdDefaultsForKind(drawing.kind)
-  if (!mgr || !patch) return
+  if (!mgr) return
   try {
     const factory = defaultStyleFor(drawing.kind)
     const s = drawing.style
-    const stillFactory =
-      s.color === factory.color &&
-      s.width === factory.width &&
-      s.lineStyle === factory.lineStyle
-    if (!stillFactory) return
+    const stroke = lcdDefaultsForKind(drawing.kind)
+    const fallback = stroke?.color ?? s.color ?? factory.color ?? '#787b86'
+    const levels = legacyFibLevelsForNewDrawing(
+      drawing.kind,
+      useDrawingSettingsStore.getState().fibLevels,
+      factory.levels,
+      fallback
+    )
+    const patch = stylePatchOnAdd({
+      hasKindDefault: hasKindDefault(drawing.kind),
+      stillFactoryStroke:
+        s.color === factory.color && s.width === factory.width && s.lineStyle === factory.lineStyle,
+      stroke,
+      levels
+    })
+    if (!patch) return
     mgr.update({ ...drawing, style: { ...drawing.style, ...patch } })
   } catch {
     /* ignore */

@@ -461,6 +461,11 @@ function StylePane({
             t={t}
             onChange={(lineStyle) => onStyle({ fibTrendLine: { ...trend, style: lineStyle } })}
           />
+          <WidthSelect
+            value={trend.width}
+            t={t}
+            onChange={(width) => onStyle({ fibTrendLine: { ...trend, width } })}
+          />
         </Row>
       )}
 
@@ -476,15 +481,16 @@ function StylePane({
       )}
 
       {sections.has('levels') && (
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="flex flex-col gap-1.5">
           {levels.map((level, index) => (
-            <label
-              key={index}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50 px-1.5 py-1"
+            <div
+              key={`${level.coeff}-${index}`}
+              className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50 px-1.5 py-1"
             >
               <input
                 type="checkbox"
                 checked={level.visible}
+                aria-label={t('draw.levelsLine')}
                 onChange={(event) => editLevel(index, { visible: event.target.checked })}
                 className="h-3.5 w-3.5 accent-primary-500"
               />
@@ -492,6 +498,7 @@ function StylePane({
                 type="number"
                 step="0.001"
                 value={level.coeff}
+                aria-label={t('draw.levelsLine')}
                 onChange={(event) => editLevel(index, { coeff: Number(event.target.value) })}
                 className="h-7 w-16 rounded-md border border-zinc-800 bg-zinc-950 px-1.5 text-xs text-zinc-100"
               />
@@ -499,7 +506,17 @@ function StylePane({
                 value={level.color}
                 onChange={(color) => editLevel(index, { color })}
               />
-            </label>
+              <LineStyleSelect
+                value={level.style ?? style.lineStyle ?? 'solid'}
+                t={t}
+                onChange={(lineStyle) => editLevel(index, { style: lineStyle })}
+              />
+              <WidthSelect
+                value={level.width ?? style.width ?? 1}
+                t={t}
+                onChange={(width) => editLevel(index, { width })}
+              />
+            </div>
           ))}
         </div>
       )}
