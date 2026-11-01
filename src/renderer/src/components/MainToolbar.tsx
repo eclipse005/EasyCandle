@@ -1,5 +1,13 @@
 import { memo } from 'react'
-import { ArrowLeft, Maximize2, Moon, Settings2, SquareSplitVertical, Sun } from 'lucide-react'
+import {
+  ArrowLeft,
+  Keyboard,
+  Maximize2,
+  Moon,
+  Settings2,
+  SquareSplitVertical,
+  Sun
+} from 'lucide-react'
 import AppMenu from '@/components/AppMenu'
 import ChartSnapshotDropdown from '@/components/ChartSnapshotDropdown'
 import ChartTimezoneSelect from '@/components/ChartTimezoneSelect'
@@ -24,6 +32,7 @@ export default memo(function MainToolbar() {
   const toggleChartFullscreen = useUiLayoutStore((s) => s.toggleChartFullscreen)
   const showStatusBar = useUiLayoutStore((s) => s.showStatusBar)
   const setChartSettingsDialogOpen = useUiLayoutStore((s) => s.setChartSettingsDialogOpen)
+  const setShortcutsDialogOpen = useUiLayoutStore((s) => s.setShortcutsDialogOpen)
   const theme = useThemeStore((s) => s.theme)
   const toggleTheme = useThemeStore((s) => s.toggleTheme)
   const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
@@ -46,40 +55,50 @@ export default memo(function MainToolbar() {
           <IndicatorsDropdown />
           <div className="flex items-center gap-1 border-l border-zinc-800 pl-2">
             <IconButton
-              tooltip={chartSplit ? t('toolbar.singleChart') : t('toolbar.splitChart')}
-              dataTour="split"
-              active={chartSplit}
-              onClick={() => setChartSplit(!chartSplit)}
-            >
-              <SquareSplitVertical className="h-4 w-4" />
-            </IconButton>
-            <IconButton
               tooltip={t('toolbar.chartSettings')}
               dataTour="chart-settings"
               onClick={() => setChartSettingsDialogOpen(true)}
             >
               <Settings2 className="h-4 w-4" />
             </IconButton>
-            <ChartSnapshotDropdown />
             <SessionDropdown />
-            <IconButton
-              tooltip={t('toolbar.fullscreen')}
-              dataTour="fullscreen"
-              shortcut={['F']}
-              active={false}
-              onClick={toggleChartFullscreen}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </IconButton>
-            <IconButton
-              tooltip={theme === 'dark' ? t('toolbar.themeLight') : t('toolbar.themeDark')}
-              dataTour="theme"
-              onClick={toggleTheme}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </IconButton>
           </div>
-          {showStatusBar && <StatusBar />}
+          <div className="ml-auto flex min-w-0 items-center gap-2">
+            {showStatusBar && <StatusBar />}
+            <div className="flex items-center gap-1 border-l border-zinc-800 pl-2">
+              <IconButton
+                tooltip={chartSplit ? t('toolbar.singleChart') : t('toolbar.splitChart')}
+                dataTour="split"
+                active={chartSplit}
+                onClick={() => setChartSplit(!chartSplit)}
+              >
+                <SquareSplitVertical className="h-4 w-4" />
+              </IconButton>
+              <IconButton
+                tooltip={theme === 'dark' ? t('toolbar.themeLight') : t('toolbar.themeDark')}
+                dataTour="theme"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </IconButton>
+              <IconButton
+                tooltip={t('menu.shortcuts')}
+                onClick={() => setShortcutsDialogOpen(true)}
+              >
+                <Keyboard className="h-4 w-4" />
+              </IconButton>
+              <ChartSnapshotDropdown />
+              <IconButton
+                tooltip={t('toolbar.fullscreen')}
+                dataTour="fullscreen"
+                shortcut={['F']}
+                active={false}
+                onClick={toggleChartFullscreen}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </IconButton>
+            </div>
+          </div>
         </div>
       )}
     </>
