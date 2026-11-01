@@ -53,7 +53,7 @@ function JournalPanel(): ReactElement {
   return (
     <aside
       aria-label={t('rail.journal')}
-      className="flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950"
+      className="flex h-full w-[272px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950"
     >
       <header className="border-b border-white/10 px-3 py-2.5">
         <p className="text-sm font-medium text-zinc-100">{t('rail.journal')}</p>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { forexSessionDayOpen } from '@shared/forexSession'
+import { roundPriceToPrecision } from '@shared/pricePrecision'
 import { formatTradeSizeForSymbol, pendingKindForEntry } from '@/lib/paperTrade'
 import { useReplayStore } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
@@ -100,14 +101,17 @@ export default function ChartContextMenu({
   const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
   const setTradeMarksVisible = useUiLayoutStore((s) => s.setTradeMarksVisible)
 
-  const priceText = point.price.toFixed(pricePrecision)
+  // The crosshair price is derived from a pixel coordinate; snap it to the
+  // instrument precision before showing, copying, or placing an order with it.
+  const menuPrice = roundPriceToPrecision(point.price, pricePrecision)
+  const priceText = menuPrice.toFixed(pricePrecision)
   const sizeText = formatTradeSizeForSymbol(tradeSize, symbol)
   const currentPrice = useReplayStore.getState().currentCandle?.close ?? currentClose
-  const above = currentPrice != null && point.price > currentPrice
+  const above = currentPrice != null && menuPrice > currentPrice
   const atMarket =
     currentPrice != null &&
     Number.isFinite(currentPrice) &&
-    Math.abs(point.price - currentPrice) < Math.pow(10, -(pricePrecision + 1))
+    Math.abs(menuPrice - currentPrice) < Math.pow(10, -(pricePrecision + 1))
 
   const drawingId = point.drawingId ?? null
   const drawing = drawingId ? bridge.getPrimary()?.get(drawingId) : undefined
@@ -156,10 +160,10 @@ export default function ChartContextMenu({
       return
     }
     const marketSide = side === 'buy' ? 'long' : 'short'
-    const mark = currentPrice ?? point.price
-    const kind = pendingKindForEntry(marketSide, mark, point.price)
+    const mark = currentPrice ?? menuPrice
+    const kind = pendingKindForEntry(marketSide, mark, menuPrice)
     if (!kind) return
-    placeLimit(marketSide, point.price, kind)
+    placeLimit(marketSide, menuPrice, kind)
     onClose()
   }
 
@@ -319,7 +323,7 @@ export default function ChartContextMenu({
       <MenuItem
         label={t('context.copyPrice', { price: priceText })}
         onSelect={() => {
-          void navigator.clipboard.writeText(String(point.price)).catch(() => {})
+          void navigator.clipboard.writeText(priceText).catch(() => {})
           onClose()
         }}
       />

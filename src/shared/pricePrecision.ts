@@ -94,6 +94,14 @@ export function formatAssetPrice(value: number, precision: number): string {
   return value.toFixed(clampPricePrecision(precision))
 }
 
+/** Snap a chart-picked or typed price onto the instrument's tick precision. */
+export function roundPriceToPrecision(value: number, precision: number): number {
+  if (!Number.isFinite(value)) return value
+  const digits = clampPricePrecision(precision)
+  const factor = Math.pow(10, digits)
+  return Math.round(value * factor) / factor
+}
+
 /** Letters/digits only, uppercased — `EUR/USD`, `EURUSD.a`, `btcusdt`. */
 export function normalizeSymbolKey(symbol: string): string {
   return String(symbol || '')

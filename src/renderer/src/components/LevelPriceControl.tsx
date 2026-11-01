@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Crosshair } from 'lucide-react'
 import { useT } from '@/i18n/useT'
-import { formatAssetPrice } from '@shared/pricePrecision'
+import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
 
 export function parseLevelPrice(raw: string): number | null | undefined {
   const trimmed = String(raw).trim().replace(',', '.')
@@ -51,8 +51,9 @@ export default function LevelPriceControl({
       setDraft(display)
       return
     }
-    onChange(parsed)
-    setDraft(parsed == null ? '' : formatAssetPrice(parsed, precision))
+    const next = parsed == null ? null : roundPriceToPrecision(parsed, precision)
+    onChange(next)
+    setDraft(next == null ? '' : formatAssetPrice(next, precision))
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>): void {

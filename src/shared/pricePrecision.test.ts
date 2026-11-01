@@ -12,6 +12,7 @@ import {
   minMoveFromPrecision,
   precisionForSymbol,
   resolvePricePrecision,
+  roundPriceToPrecision,
   SILVER_CONTRACT_SIZE,
   toChartPriceFormat,
   tradeSizeKindForSymbol,
@@ -107,6 +108,15 @@ describe('formatAssetPrice', () => {
     expect(formatAssetPrice(1.16, 5)).toBe('1.16000')
     expect(formatAssetPrice(67432.1, 2)).toBe('67432.10')
     expect(formatAssetPrice(Number.NaN, 5)).toBe('—')
+  })
+})
+
+describe('roundPriceToPrecision', () => {
+  it('snaps chart-derived prices onto the tick grid', () => {
+    expect(roundPriceToPrecision(1.1723947470184315, 5)).toBe(1.17239)
+    expect(roundPriceToPrecision(1.172396, 5)).toBe(1.1724)
+    expect(roundPriceToPrecision(67432.126, 2)).toBe(67432.13)
+    expect(roundPriceToPrecision(Number.NaN, 5)).toBeNaN()
   })
 })
 

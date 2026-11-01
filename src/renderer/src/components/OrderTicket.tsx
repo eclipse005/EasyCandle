@@ -14,7 +14,7 @@ export default function OrderTicket() {
     <aside
       data-tour="paper-trade"
       inert={preview || undefined}
-      className={`flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/75 shadow-lg shadow-black/20 ${
+      className={`flex h-full w-[272px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/75 shadow-lg shadow-black/20 ${
         preview ? 'pointer-events-none' : ''
       }`}
     >

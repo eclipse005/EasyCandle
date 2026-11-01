@@ -101,7 +101,7 @@ import { OVERLAY_LAYOUT, TRADE_OVERLAY } from '@/lib/tradeOverlayStyles'
 import { CHART_PALETTES } from '@/lib/theme'
 import { alignTimeToInterval, DEFAULT_TIMEFRAME, TIMEFRAMES } from '@shared/timeframes'
 import type { Candle } from '@shared/candleUtils'
-import { DEFAULT_PRICE_PRECISION } from '@shared/pricePrecision'
+import { DEFAULT_PRICE_PRECISION, roundPriceToPrecision } from '@shared/pricePrecision'
 import { resolveChartPalette, useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { selectPriceFollowCandle, useReplayStore } from '@/store/replayStore'
@@ -1145,11 +1145,12 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
       if (drag && (drag.kind === 'tp' || drag.kind === 'sl') && drag.moved) {
         const preview = levelPreviewRef.current
         if (preview && preview.kind === drag.kind) {
+          const levelPrice = roundPriceToPrecision(preview.price, pricePrecision)
           if (drag.mode === 'place') {
             if (drag.kind === 'tp') {
-              setTakeProfit(preview.price, { linkRr: true, id: drag.workingId })
+              setTakeProfit(levelPrice, { linkRr: true, id: drag.workingId })
             } else {
-              setStopLoss(preview.price, { linkRr: true, id: drag.workingId })
+              setStopLoss(levelPrice, { linkRr: true, id: drag.workingId })
             }
           } else {
             const state = useReplayStore.getState()
@@ -1161,17 +1162,17 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
             const open = item && !item.isPending ? item.working : null
             if (working) {
               if (drag.kind === 'tp') {
-                if (isValidTakeProfit(working.side, working.entryPrice, preview.price)) {
-                  setTakeProfit(preview.price, { id: drag.workingId })
+                if (isValidTakeProfit(working.side, working.entryPrice, levelPrice)) {
+                  setTakeProfit(levelPrice, { id: drag.workingId })
                 }
               } else if (pending && !open) {
-                if (isValidPendingStopLoss(pending.side, pending.price, preview.price)) {
-                  setStopLoss(preview.price, { id: drag.workingId })
+                if (isValidPendingStopLoss(pending.side, pending.price, levelPrice)) {
+                  setStopLoss(levelPrice, { id: drag.workingId })
                 }
               } else {
                 const mark = state.currentCandle?.close
-                if (mark != null && isValidStopLoss(working.side, mark, preview.price)) {
-                  setStopLoss(preview.price, { id: drag.workingId })
+                if (mark != null && isValidStopLoss(working.side, mark, levelPrice)) {
+                  setStopLoss(levelPrice, { id: drag.workingId })
                 }
               }
             }
@@ -1183,12 +1184,16 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
         suppressClickRef.current = true
         const preview = posPreviewRef.current
         if (preview && preview.id === drag.id) {
-          updatePositionLevel(drag.id, drag.level, preview.price)
+          updatePositionLevel(
+            drag.id,
+            drag.level,
+            roundPriceToPrecision(preview.price, pricePrecision)
+          )
           if (preview.mirrorPrice != null) {
             updatePositionLevel(
               drag.id,
               drag.level === 'target' ? 'stop' : 'target',
-              preview.mirrorPrice
+              roundPriceToPrecision(preview.mirrorPrice, pricePrecision)
             )
           }
         }
@@ -1196,15 +1201,23 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
 
       if (drag?.kind === 'pending' && drag.moved) {
         const preview = pendingPreviewRef.current
-        if (preview && preview.id === drag.workingId) setPendingPrice(preview.price)
+        if (preview && preview.id === drag.workingId) {
+          setPendingPrice(roundPriceToPrecision(preview.price, pricePrecision))
+        }
       }
 
       if (drag?.kind === 'draft' && drag.moved) {
         const preview = ticketPreviewRef.current
         if (preview) {
-          if (preview.limit != null) setTicketLimitPrice(preview.limit)
-          if (preview.tp != null) setTicketTakeProfit(preview.tp)
-          if (preview.sl != null) setTicketStopLoss(preview.sl)
+          if (preview.limit != null) {
+            setTicketLimitPrice(roundPriceToPrecision(preview.limit, pricePrecision))
+          }
+          if (preview.tp != null) {
+            setTicketTakeProfit(roundPriceToPrecision(preview.tp, pricePrecision))
+          }
+          if (preview.sl != null) {
+            setTicketStopLoss(roundPriceToPrecision(preview.sl, pricePrecision))
+          }
         }
       }
 
@@ -1258,7 +1271,8 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     setTicketStopLoss,
     replaceDrawing,
     selectWorking,
-    intervalSeconds
+    intervalSeconds,
+    pricePrecision
   ])
 
   function onClick(event: ReactMouseEvent<SVGSVGElement>): void {
@@ -1276,7 +1290,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     if (price == null || !Number.isFinite(price)) return
 
     if (pricePick) {
-      applyPricePick(price)
+      applyPricePick(roundPriceToPrecision(price, pricePrecision))
       return
     }
 

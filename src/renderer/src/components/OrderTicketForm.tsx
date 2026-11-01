@@ -408,8 +408,8 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         </div>
       </div>
 
-      {/* 6. Size + entry price */}
-      <div className="grid grid-cols-2 gap-1.5">
+      {/* 6. Size, then entry price on its own row so 5-digit prices fit. */}
+      <div className="flex flex-col gap-1.5">
         <TradeSizeControl value={sizeValue} symbol={symbol} disabled={busy} onChange={setTradeSize} />
         {isPendingTicketType(orderType) ? (
           <LevelPriceControl
