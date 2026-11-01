@@ -273,32 +273,29 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
         </button>
       </div>
 
-      {/* 2. Risk basis */}
+      {/* 2. Risk basis — same framed row as the side toggle above it, split 50/50. */}
       <div
-        className="flex flex-wrap items-center gap-3 px-0.5"
         role="radiogroup"
         aria-label={t('ticket.riskBasis')}
+        className="grid grid-cols-2 rounded-xl border border-white/[0.08] bg-zinc-950/40"
       >
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
-          <input
-            type="radio"
-            name="risk-basis"
-            className="accent-primary-500"
-            checked={riskBasis === 'initial'}
-            onChange={() => setRiskBasis('initial')}
-          />
-          {t('ticket.initialBalance')}
-        </label>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
-          <input
-            type="radio"
-            name="risk-basis"
-            className="accent-primary-500"
-            checked={riskBasis === 'current'}
-            onChange={() => setRiskBasis('current')}
-          />
-          {t('ticket.currentBalance')}
-        </label>
+        {(['initial', 'current'] as const).map((basis, index) => (
+          <label
+            key={basis}
+            className={`flex cursor-pointer items-center justify-center gap-1.5 py-2 text-xs text-zinc-300 ${
+              index === 1 ? 'border-l border-white/[0.08]' : ''
+            }`}
+          >
+            <input
+              type="radio"
+              name="risk-basis"
+              className="h-3.5 w-3.5 shrink-0 accent-primary-500"
+              checked={riskBasis === basis}
+              onChange={() => setRiskBasis(basis)}
+            />
+            {basis === 'initial' ? t('ticket.initialBalance') : t('ticket.currentBalance')}
+          </label>
+        ))}
       </div>
 
       {/* 3. Risk % chips */}
