@@ -1201,8 +1201,8 @@ export default function CandleChart({
         const selected = useDrawingUiStore.getState().selectedIds
         const drawingId = hovered ?? (selected.length === 1 ? selected[0] : null)
         setContextMenu({
-          x: localX,
-          y: localY,
+          x: event.clientX,
+          y: event.clientY,
           price: Number(price),
           time: resolvedTime,
           drawingId

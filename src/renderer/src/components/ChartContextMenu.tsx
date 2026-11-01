@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { forexSessionDayOpen } from '@shared/forexSession'
 import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
 import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
@@ -97,6 +98,7 @@ export default function ChartContextMenu({
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
   const [orderOpen, setOrderOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [pos, setPos] = useState({ left: point.x, top: point.y })
   const rightDock = useUiLayoutStore((s) => s.rightDock)
   const setRightDock = useUiLayoutStore((s) => s.setRightDock)
   const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
@@ -133,6 +135,22 @@ export default function ChartContextMenu({
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [onClose])
+
+  // Keep the portaled menu inside the viewport (e.g. right-click near the
+  // order ticket): open to the left/up instead of sliding under other panels.
+  useLayoutEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const pad = 8
+    let left = point.x
+    let top = point.y
+    if (left + rect.width > window.innerWidth - pad) left = point.x - rect.width
+    if (left < pad) left = pad
+    if (top + rect.height > window.innerHeight - pad) top = window.innerHeight - rect.height - pad
+    if (top < pad) top = pad
+    setPos((prev) => (prev.left === left && prev.top === top ? prev : { left, top }))
+  }, [point.x, point.y, orderOpen, templatesOpen])
 
   function orderKind(side: 'buy' | 'sell'): 'market' | 'limit' | 'stop' {
     if (atMarket) return 'market'
@@ -173,12 +191,12 @@ export default function ChartContextMenu({
   const sessionDayOpen = point.time == null ? null : forexSessionDayOpen(point.time)
 
   if (drawing && drawingId) {
-    return (
+    return createPortal(
       <div
         ref={rootRef}
         role="menu"
-        style={{ left: point.x, top: point.y }}
-        className="absolute z-[60] min-w-[14rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
+        style={{ left: pos.left, top: pos.top }}
+        className="fixed z-[80] min-w-[14rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
       >
         <MenuItem
           label="Settings"
@@ -280,16 +298,17 @@ export default function ChartContextMenu({
             onClose()
           }}
         />
-      </div>
+      </div>,
+      document.body
     )
   }
 
-  return (
+  return createPortal(
     <div
       ref={rootRef}
       role="menu"
-      style={{ left: point.x, top: point.y }}
-      className="absolute z-[60] min-w-[15rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
+      style={{ left: pos.left, top: pos.top }}
+      className="fixed z-[80] min-w-[15rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
     >
       {mode === 'replay' ? (
         <MenuItem
@@ -388,6 +407,7 @@ export default function ChartContextMenu({
           onClose()
         }}
       />
-    </div>
+    </div>,
+    document.body
   )
 }
