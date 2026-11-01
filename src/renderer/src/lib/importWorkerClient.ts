@@ -119,6 +119,13 @@ export async function saveImportInWebWorker(
   return outbound.result
 }
 
+/** Start the worker during idle so the first dataset read skips startup cost. */
+export function warmImportWorker(): void {
+  void getWorker().catch(() => {
+    // The next real job retries and reports the failure to its caller.
+  })
+}
+
 /** Range/window read off the UI thread; the worker owns the series cache. */
 export async function loadImportInWebWorker(
   id: string,

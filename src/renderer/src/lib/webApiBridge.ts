@@ -28,12 +28,15 @@ import {
 const memoryMetas = new Map<string, ImportedDatasetMeta>()
 const memorySources = new Map<string, string>()
 let importListCache: ImportedDatasetMeta[] | null = null
+let importListRead: Promise<ImportListResult> | null = null
+let importListGeneration = 0
 
 // In-flight selected files cache for import modal
 const pendingFileCache = new Map<string, { content?: string; file?: File; fileName: string }>()
 
 function invalidateImportList(): void {
   importListCache = null
+  importListGeneration += 1
 }
 
 /** Keep the list entry in sync without re-reading IDB (lazy TF stats, timeframe). */
@@ -161,20 +164,30 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
   }
 }
 
-async function listImportDatasets(): Promise<ImportListResult> {
-  if (importListCache) return { ok: true, imports: importListCache }
-  try {
-    let imports = await idbGetAll<ImportedDatasetMeta>('metas')
-    if (!imports.length && memoryMetas.size > 0) {
-      imports = Array.from(memoryMetas.values())
+function listImportDatasets(): Promise<ImportListResult> {
+  if (importListCache) return Promise.resolve({ ok: true, imports: importListCache })
+  if (importListRead) return importListRead
+
+  const generation = importListGeneration
+  const read = (async (): Promise<ImportListResult> => {
+    try {
+      let imports = await idbGetAll<ImportedDatasetMeta>('metas')
+      if (!imports.length && memoryMetas.size > 0) {
+        imports = Array.from(memoryMetas.values())
+      }
+      imports.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      // A save/delete during the read must win over this snapshot.
+      if (generation === importListGeneration) importListCache = imports
+      return { ok: true, imports }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to list imports'
+      return { ok: false, error: message }
     }
-    imports.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    importListCache = imports
-    return { ok: true, imports }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to list imports'
-    return { ok: false, error: message }
-  }
+  })().finally(() => {
+    if (importListRead === read) importListRead = null
+  })
+  importListRead = read
+  return read
 }
 
 /**

@@ -331,6 +331,10 @@ let prefetchInFlight = false
 /** Guards `focusChartTime` so repeated clicks cannot stack history fetches. */
 let focusInFlight = false
 let sourceLoad: { id: string; promise: Promise<void> } | null = null
+/** In-flight 1m window for a CSV fine-Timestep overlay. */
+let sourceWindowLoad: { key: string; promise: Promise<void> } | null = null
+/** Coverage flag of the loaded 1m window (false at the dataset tail). */
+let sourceWindowState: { id: string; hasMoreAfter: boolean } | null = null
 
 function clearClock(): void {
   if (clockTimer != null) {
@@ -667,6 +671,8 @@ type ReplayStore = {
   setSyncTimestepWithChart: (sync: boolean) => void
   /** When Sync is on, snap Timestep to primary chart TF (hydrate / session load). */
   ensureReplayTimestepAligned: () => void
+  /** Restore a saved session's Timestep without publishing a chart update. */
+  restoreReplayTimestep: (timestep: string, sync: boolean) => void
   /** Load the 1m source only when a finer Timestep or MT aggregation needs it. */
   ensureReplaySource1m: () => Promise<void>
   loadCandles: () => Promise<void>
@@ -1313,30 +1319,87 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     await maybePrefetchImported()
   }
 
-  function needsImportedSource1m(): boolean {
+  /** Playhead time the forming overlay is built up to (bar open .. step cursor). */
+  function sourceCursor(): number | null {
     const s = get()
-    if (!s.importMeta || s.dataSource !== 'imported') return false
-    if (s.importedSourceCandles.length > 0) return false
-    if (isMetatraderImport(s.importMeta)) return true
-    return intervalSecondsFor(s.replayTimestep) < intervalSecondsFor(s.timeframe)
+    const anchor = engine.getCurrentCandle()?.time ?? s.currentCandle?.time ?? null
+    if (anchor == null) return null
+    return Math.max(stepCursor ?? anchor, anchor)
+  }
+
+  /**
+   * Whether the in-memory 1m bars still cover the playhead with enough bars
+   * ahead, so forming can continue without another worker read.
+   */
+  function sourceWindowCovers(cursor: number, chartSec: number): boolean {
+    const source = get().importedSourceCandles
+    const meta = get().importMeta
+    if (!source.length || !meta || sourceWindowState?.id !== meta.id) return false
+    const from = source[0].time
+    const to = source[source.length - 1].time
+    if (cursor < from) return false
+    // Refill before the window runs dry; 15 minutes of replay time ahead is
+    // plenty for a worker read to land, even at 16x.
+    const margin = Math.min(Math.max(60, chartSec), 900)
+    if (sourceWindowState.hasMoreAfter && to - cursor < margin) return false
+    return true
   }
 
   async function ensureReplaySource1mImpl(): Promise<void> {
-    if (!needsImportedSource1m()) return
-    const meta = get().importMeta
-    if (!meta) return
-    if (sourceLoad?.id === meta.id) return sourceLoad.promise
+    const s = get()
+    const meta = s.importMeta
+    if (!meta || s.dataSource !== 'imported') return
+
+    // MT datasets aggregate every higher TF from the whole 1m series.
+    if (isMetatraderImport(meta)) {
+      if (s.importedSourceCandles.length > 0) return
+      if (sourceLoad?.id === meta.id) return sourceLoad.promise
+      const promise = (async () => {
+        const source = await window.api.loadImport(meta.id, '1m')
+        if (!source.ok || !source.candles.length) return
+        if (get().importMeta?.id !== meta.id) return
+        set({ importedSourceCandles: source.candles })
+        if (get().mode === 'replay') publishReplay('append', { fitContent: false })
+      })().finally(() => {
+        if (sourceLoad?.promise === promise) sourceLoad = null
+      })
+      sourceLoad = { id: meta.id, promise }
+      return promise
+    }
+
+    const chartSec = intervalSecondsFor(s.timeframe)
+    const stepSec = intervalSecondsFor(s.replayTimestep)
+    if (stepSec >= chartSec) return
+
+    const cursor = sourceCursor()
+    if (cursor == null) return
+    if (sourceWindowCovers(cursor, chartSec)) return
+
+    const bucket = Math.max(60, chartSec)
+    const key = `${meta.id}:${chartSec}:${Math.floor(cursor / bucket)}`
+    if (sourceWindowLoad?.key === key) return sourceWindowLoad.promise
 
     const promise = (async () => {
-      const source = await window.api.loadImport(meta.id, '1m')
-      if (!source.ok || !source.candles.length) return
+      // One bucket back covers the current bar open; at least 240 bars ahead
+      // keep fast playback from re-reading the worker every few steps. Large
+      // timeframes need a full bucket of history to form the bar correctly.
+      const bucketBars = Math.ceil(bucket / 60)
+      const result = await window.api.loadImport(meta.id, '1m', {
+        startTime: cursor - bucket,
+        limit: bucketBars + Math.max(240, bucketBars) + 8
+      })
+      if (!result.ok || !result.candles.length) return
       if (get().importMeta?.id !== meta.id) return
-      set({ importedSourceCandles: source.candles })
+      sourceWindowState = {
+        id: meta.id,
+        hasMoreAfter: result.window?.hasMoreAfter ?? true
+      }
+      set({ importedSourceCandles: result.candles })
       if (get().mode === 'replay') publishReplay('append', { fitContent: false })
     })().finally(() => {
-      if (sourceLoad?.promise === promise) sourceLoad = null
+      if (sourceWindowLoad?.promise === promise) sourceWindowLoad = null
     })
-    sourceLoad = { id: meta.id, promise }
+    sourceWindowLoad = { key, promise }
     return promise
   }
 
@@ -1353,7 +1416,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     if (!loaded.ok) return null
     return {
       meta: loaded.meta,
-      candles: dedupeCandlesByTime(loaded.candles),
+      // Stored series are written sorted and unique by the import worker.
+      candles: loaded.candles,
       window: loaded.window ?? null
     }
   }
@@ -1682,8 +1746,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           syncSecondaryToCursor(targetCover)
         }
       }
-      if (stepSec < chartSec && get().importedSourceCandles.length > 0) {
-        publishReplay('append', { fitContent: false })
+      if (stepSec < chartSec) {
+        if (get().importedSourceCandles.length > 0) {
+          publishReplay('append', { fitContent: false })
+        }
+        void get().ensureReplaySource1m()
       }
       return true
     }
@@ -1719,6 +1786,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       scanFinerHits('secondary', followBefore + 1, secondaryEngine.getState().index)
     }
 
+    if (stepSec < chartSec) void get().ensureReplaySource1m()
     void maybePrefetch()
     void maybePrefetchSecondary()
     return true
@@ -1750,8 +1818,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       // Reset an ended engine so Play works again after stepping inside the last bar.
       engine.seekToIndex(before, { pause: true })
       if (split) syncSecondaryToCursor(targetCover)
-      if (stepSec < chartSec && get().importedSourceCandles.length > 0) {
-        publishReplay('append', { fitContent: false })
+      if (stepSec < chartSec) {
+        if (get().importedSourceCandles.length > 0) {
+          publishReplay('append', { fitContent: false })
+        }
+        void get().ensureReplaySource1m()
       }
       return
     }
@@ -1760,6 +1831,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     stepCursorIndex = target
     publishReplay('replace', { fitContent: false })
     if (split) syncSecondaryAfterStep(targetCover)
+    if (stepSec < chartSec) void get().ensureReplaySource1m()
   }
 
   function publishImportedPreview(
@@ -1986,6 +2058,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     })
     publishReplay('replace', { fitContent: true })
     alignSecondaryAfterPrimaryLoad()
+    void get().ensureReplaySource1m()
     return true
   }
 
@@ -3525,6 +3598,12 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       mirrorTimestepFromChart(get().timeframe)
     },
 
+    restoreReplayTimestep(timestep, sync) {
+      if (!TIMEFRAMES[timestep]) return
+      resetStepCursor()
+      set({ replayTimestep: timestep, syncTimestepWithChart: Boolean(sync) })
+    },
+
     ensureReplaySource1m() {
       return ensureReplaySource1mImpl()
     },
@@ -3656,7 +3735,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         return
       }
 
-      const candles = dedupeCandlesByTime(loaded.candles)
+      const candles = loaded.candles
       if (!candles.length) {
         set({ status: 'error', error: 'Imported file has no valid candles.' })
         return

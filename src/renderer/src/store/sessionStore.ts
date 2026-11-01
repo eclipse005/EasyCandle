@@ -15,6 +15,7 @@ import type {
 import { useReplayStore, type ViewMode } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { TIMEFRAMES } from '@shared/timeframes'
 
 const STORAGE_KEY = 'bar-replay:sessions'
 
@@ -60,6 +61,10 @@ export type Session = {
   /** Playhead candle open time (unix seconds); null when not in replay. */
   replayTime: number | null
   speed: number
+  /** Replay Timestep id shared by both panes (absent on older sessions). */
+  replayTimestep?: string
+  /** Whether the Timestep mirrored the chart timeframe (absent on older sessions). */
+  syncTimestepWithChart?: boolean
   dataSource: 'imported'
   /** Imported dataset id to reload when resuming an imported replay. */
   importId: string | null
@@ -87,6 +92,8 @@ type SessionSnapshot = Pick<
   | 'mode'
   | 'replayTime'
   | 'speed'
+  | 'replayTimestep'
+  | 'syncTimestepWithChart'
   | 'dataSource'
   | 'importId'
 >
@@ -145,6 +152,8 @@ function chartSnapshot(): SessionSnapshot {
     mode: state.mode,
     replayTime: state.mode === 'replay' && state.currentCandle ? state.currentCandle.time : null,
     speed: state.speed,
+    replayTimestep: state.replayTimestep,
+    syncTimestepWithChart: state.syncTimestepWithChart,
     dataSource: state.dataSource,
     importId: state.importMeta?.id ?? null
   }
@@ -514,6 +523,12 @@ function sanitizeSession(raw: unknown): Session | null {
     mode: rec.mode === 'replay' ? 'replay' : 'live',
     replayTime: isFiniteNumber(rec.replayTime) ? rec.replayTime : null,
     speed: isFiniteNumber(rec.speed) ? Math.min(1000, Math.max(0.1, rec.speed)) : 1,
+    replayTimestep:
+      typeof rec.replayTimestep === 'string' && TIMEFRAMES[rec.replayTimestep]
+        ? rec.replayTimestep
+        : undefined,
+    syncTimestepWithChart:
+      typeof rec.syncTimestepWithChart === 'boolean' ? rec.syncTimestepWithChart : undefined,
     // Older sessions may persist 'binance'/'mtbridge'; both normalize to imported.
     dataSource: 'imported',
     importId: typeof rec.importId === 'string' && rec.importId.length > 0 ? rec.importId : null,
@@ -660,9 +675,18 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             .getState()
             .selectImportedDataset(session.importId, session.timeframe)
         }
-        // Align before the first window load: a Timestep left over from the
-        // session we just left must not trigger a needless full 1m source load.
-        useReplayStore.getState().ensureReplayTimestepAligned()
+        // Restore the saved Timestep before the first window load; older
+        // sessions without one fall back to Sync-with-chart.
+        const replayStore = useReplayStore.getState()
+        const savedStep =
+          session.replayTimestep && TIMEFRAMES[session.replayTimestep]
+            ? session.replayTimestep
+            : null
+        if (savedStep) {
+          replayStore.restoreReplayTimestep(savedStep, session.syncTimestepWithChart !== false)
+        } else {
+          replayStore.restoreReplayTimestep(session.timeframe, true)
+        }
         const meta = useReplayStore.getState().importMeta
         const target =
           replayTime ??
@@ -738,8 +762,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         // Merges all CSVs under the symbol; importId on the session = primary file.
         await useReplayStore.getState().selectImportedSymbol(input.symbol, input.timeframe)
       }
-      // A leftover finer Timestep must not force a full 1m load for this window.
-      useReplayStore.getState().ensureReplayTimestepAligned()
+      // A new session starts with Sync on; never inherit the previous Timestep.
+      useReplayStore.getState().restoreReplayTimestep(input.timeframe, true)
       await useReplayStore.getState().startImportedReplayAtTime(input.startDate)
       useReplayStore.getState().setSpeed(1)
       // A stale report from a previously closed session must not pop here.
