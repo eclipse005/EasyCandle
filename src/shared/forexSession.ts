@@ -48,8 +48,8 @@ export function floorToInterval(
 }
 
 /**
- * Floor onto NY Monday 17:00 → next Monday 17:00 (forex week).
- * Uses the same NY-close offset as daily bars; session-calendar Monday is week open.
+ * Floor onto NY Sunday 17:00 → next Sunday 17:00 (forex week / TradingView coverage).
+ * Uses the same NY-close offset as daily bars; session-calendar Sunday is week open.
  */
 export function floorToForexWeekOpen(timeSeconds: number): number {
   const t = Math.floor(Number(timeSeconds))
@@ -59,8 +59,8 @@ export function floorToForexWeekOpen(timeSeconds: number): number {
   const dayIndex = Math.floor(shifted / DAY)
   // Epoch day 0 (1970-01-01) is Thursday → weekday 4 when Sun=0.
   const weekday = (((dayIndex % 7) + 7) % 7 + 4) % 7
-  const daysSinceMonday = (weekday + 6) % 7
-  const weekStartDay = dayIndex - daysSinceMonday
+  // Days since Sunday = weekday (Sun=0 … Sat=6).
+  const weekStartDay = dayIndex - weekday
   const approx = weekStartDay * DAY
   const startOffset = forexNyCloseOffsetSeconds(approx + 12 * HOUR)
   return approx + startOffset

@@ -56,17 +56,25 @@ describe('importedForexSessionOffset', () => {
 })
 
 describe('floorToForexWeekOpen', () => {
-  it('buckets Mon 17:00 NY → next Mon 17:00 (EDT Aug 2020)', () => {
-    // Monday 2020-08-24 17:00 NY = 21:00 UTC
-    const weekOpen = utcSeconds(2020, 7, 24, 21)
+  it('buckets Sun 17:00 NY → next Sun 17:00 (EDT Aug 2020 / TradingView)', () => {
+    // Sunday 2020-08-23 17:00 NY = 21:00 UTC
+    const weekOpen = utcSeconds(2020, 7, 23, 21)
     const midWeek = utcSeconds(2020, 7, 26, 15)
-    const almostNext = utcSeconds(2020, 7, 31, 20, 59)
-    const nextOpen = utcSeconds(2020, 7, 31, 21)
+    const almostNext = utcSeconds(2020, 7, 30, 20, 59)
+    const nextOpen = utcSeconds(2020, 7, 30, 21)
     expect(floorToForexWeekOpen(weekOpen)).toBe(weekOpen)
     expect(floorToForexWeekOpen(midWeek)).toBe(weekOpen)
     expect(floorToForexWeekOpen(almostNext)).toBe(weekOpen)
     expect(floorToForexWeekOpen(nextOpen)).toBe(nextOpen)
     expect(coverEndForTimeframe(weekOpen, '1w')).toBe(nextOpen - 1)
+  })
+
+  it('floors Mon after Sun open back to that Sunday (EDT Oct 2026 sample)', () => {
+    // Sunday 2026-10-25 17:00 NY = 21:00 UTC (EDT)
+    const weekOpen = utcSeconds(2026, 9, 25, 21)
+    const monEarly = utcSeconds(2026, 9, 26, 1)
+    expect(floorToForexWeekOpen(weekOpen)).toBe(weekOpen)
+    expect(floorToForexWeekOpen(monEarly)).toBe(weekOpen)
   })
 })
 

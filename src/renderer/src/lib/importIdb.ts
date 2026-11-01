@@ -3,7 +3,8 @@ import { IMPORT_CACHEABLE_TIMEFRAMES, IMPORT_STORED_TIMEFRAMES } from '@shared/c
 import type { ImportedDatasetMeta } from '@shared/importTypes'
 
 const DB_NAME = 'barreplay_db'
-const DB_VERSION = 1
+/** Bump: 2 = week open Sun NY17 — drop Monday-bucketed 1w caches so they re-aggregate. */
+const DB_VERSION = 2
 
 export type IdbWriteResult = { ok: true } | { ok: false; error: string }
 
@@ -26,8 +27,9 @@ export function openImportDb(): Promise<IDBDatabase> {
       return
     }
     const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result
+      const tx = request.transaction
       if (!db.objectStoreNames.contains('metas')) {
         db.createObjectStore('metas', { keyPath: 'id' })
       }
@@ -36,6 +38,35 @@ export function openImportDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('sources')) {
         db.createObjectStore('sources', { keyPath: 'id' })
+      }
+      // week open Sun NY17 — invalidate cached 1w series + meta stats
+      if (event.oldVersion < 2 && tx) {
+        if (db.objectStoreNames.contains('candles')) {
+          const candleStore = tx.objectStore('candles')
+          const cursorReq = candleStore.openCursor()
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result
+            if (!cursor) return
+            const key = String((cursor.value as { key?: string }).key ?? cursor.key)
+            if (key.endsWith(':1w')) cursor.delete()
+            cursor.continue()
+          }
+        }
+        if (db.objectStoreNames.contains('metas')) {
+          const metaStore = tx.objectStore('metas')
+          const cursorReq = metaStore.openCursor()
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result
+            if (!cursor) return
+            const meta = cursor.value as ImportedDatasetMeta
+            if (meta?.timeframes && Object.prototype.hasOwnProperty.call(meta.timeframes, '1w')) {
+              const nextTf = { ...meta.timeframes }
+              delete nextTf['1w']
+              cursor.update({ ...meta, timeframes: nextTf })
+            }
+            cursor.continue()
+          }
+        }
       }
     }
     request.onsuccess = () => resolve(request.result)

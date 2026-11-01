@@ -233,8 +233,8 @@ describe('overlayFormingHigherTf', () => {
 })
 
 describe('aggregateToTimeframe week/month', () => {
-  it('builds 1w on NY Monday close buckets', () => {
-    const weekOpen = Date.UTC(2020, 7, 24, 21) / 1000
+  it('builds 1w on NY Sunday close buckets', () => {
+    const weekOpen = Date.UTC(2020, 7, 23, 21) / 1000
     const candles = series(60 * 24 * 3, 60, weekOpen)
     const weeks = aggregateToTimeframe(candles, '1w')
     expect(weeks[0].time).toBe(floorToForexWeekOpen(weekOpen))
