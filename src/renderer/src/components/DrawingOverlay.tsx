@@ -102,6 +102,7 @@ import { CHART_PALETTES } from '@/lib/theme'
 import { alignTimeToInterval, DEFAULT_TIMEFRAME, TIMEFRAMES } from '@shared/timeframes'
 import type { Candle } from '@shared/candleUtils'
 import { DEFAULT_PRICE_PRECISION, roundPriceToPrecision } from '@shared/pricePrecision'
+import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
 import { resolveChartPalette, useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useDrawingSettingsStore } from '@/store/drawingSettingsStore'
 import { selectPriceFollowCandle, useReplayStore } from '@/store/replayStore'
@@ -532,6 +533,8 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
   const quoteCurrency = quoteCurrencyForSymbol(symbol)
   const { t } = useT()
   const theme = useThemeStore((s) => s.theme)
+  // Chart-derived levels snap to the imported quote grid, not display digits.
+  const marketPricePrecision = useMarketPricePrecision()
   const chrome = CHART_PALETTES[theme]
   const colorOverrides = useChartSettingsStore((s) => s.colors)
   const crosshairSettings = useChartSettingsStore((s) => s.crosshair)
@@ -1145,7 +1148,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
       if (drag && (drag.kind === 'tp' || drag.kind === 'sl') && drag.moved) {
         const preview = levelPreviewRef.current
         if (preview && preview.kind === drag.kind) {
-          const levelPrice = roundPriceToPrecision(preview.price, pricePrecision)
+          const levelPrice = roundPriceToPrecision(preview.price, marketPricePrecision)
           if (drag.mode === 'place') {
             if (drag.kind === 'tp') {
               setTakeProfit(levelPrice, { linkRr: true, id: drag.workingId })
@@ -1187,13 +1190,13 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
           updatePositionLevel(
             drag.id,
             drag.level,
-            roundPriceToPrecision(preview.price, pricePrecision)
+            roundPriceToPrecision(preview.price, marketPricePrecision)
           )
           if (preview.mirrorPrice != null) {
             updatePositionLevel(
               drag.id,
               drag.level === 'target' ? 'stop' : 'target',
-              roundPriceToPrecision(preview.mirrorPrice, pricePrecision)
+              roundPriceToPrecision(preview.mirrorPrice, marketPricePrecision)
             )
           }
         }
@@ -1202,7 +1205,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
       if (drag?.kind === 'pending' && drag.moved) {
         const preview = pendingPreviewRef.current
         if (preview && preview.id === drag.workingId) {
-          setPendingPrice(roundPriceToPrecision(preview.price, pricePrecision))
+          setPendingPrice(roundPriceToPrecision(preview.price, marketPricePrecision))
         }
       }
 
@@ -1210,13 +1213,13 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
         const preview = ticketPreviewRef.current
         if (preview) {
           if (preview.limit != null) {
-            setTicketLimitPrice(roundPriceToPrecision(preview.limit, pricePrecision))
+            setTicketLimitPrice(roundPriceToPrecision(preview.limit, marketPricePrecision))
           }
           if (preview.tp != null) {
-            setTicketTakeProfit(roundPriceToPrecision(preview.tp, pricePrecision))
+            setTicketTakeProfit(roundPriceToPrecision(preview.tp, marketPricePrecision))
           }
           if (preview.sl != null) {
-            setTicketStopLoss(roundPriceToPrecision(preview.sl, pricePrecision))
+            setTicketStopLoss(roundPriceToPrecision(preview.sl, marketPricePrecision))
           }
         }
       }
@@ -1272,7 +1275,8 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     replaceDrawing,
     selectWorking,
     intervalSeconds,
-    pricePrecision
+    pricePrecision,
+    marketPricePrecision
   ])
 
   function onClick(event: ReactMouseEvent<SVGSVGElement>): void {
@@ -1290,7 +1294,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     if (price == null || !Number.isFinite(price)) return
 
     if (pricePick) {
-      applyPricePick(roundPriceToPrecision(price, pricePrecision))
+      applyPricePick(roundPriceToPrecision(price, marketPricePrecision))
       return
     }
 
@@ -1381,7 +1385,7 @@ const DrawingOverlayInner = memo(function DrawingOverlayInner({
     const price = series.coordinateToPrice(y)
     const time = xToUnixTime(chart, clampXToPlot(x, plotRight), paneCandlesRef.current ?? EMPTY_CANDLES, intervalSeconds)
     if (price == null || !Number.isFinite(price) || time == null) return null
-    return { time, price }
+    return { time, price: roundPriceToPrecision(price, marketPricePrecision) }
   }
 
   function startDrag(event: ReactMouseEvent, next: DragState): void {

@@ -70,7 +70,8 @@ import {
 } from '@/lib/chart/visibleRange'
 import { currentFocusBars, focusRangeForTime } from '@/lib/chart/focusRange'
 import type { Candle } from '@shared/candleUtils'
-import { resolvePricePrecision, toChartPriceFormat } from '@shared/pricePrecision'
+import { toChartPriceFormat } from '@shared/pricePrecision'
+import { usePricePrecision } from '@/hooks/usePricePrecision'
 import { TIMEFRAMES } from '@shared/timeframes'
 import {
   formatChartCrosshairTime,
@@ -294,10 +295,8 @@ export default function CandleChart({
   const futureSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const futureAxisEndRef = useRef<number | null>(null)
   const realCandleCountRef = useRef(0)
-  const pricePrecision = useMemo(
-    () => resolvePricePrecision(symbol, candles ?? visibleCandles),
-    [symbol, candles, visibleCandles]
-  )
+  // Symbol precision overrides apply to the axis, legend and price format.
+  const pricePrecision = usePricePrecision()
   const pricePrecisionRef = useRef(pricePrecision)
   pricePrecisionRef.current = pricePrecision
   const [chartReady, setChartReady] = useState<{

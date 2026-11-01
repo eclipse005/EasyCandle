@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 
 import { Crosshair } from 'lucide-react'
 import { useT } from '@/i18n/useT'
 import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
+import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
 
 export function parseLevelPrice(raw: string): number | null | undefined {
   const trimmed = String(raw).trim().replace(',', '.')
@@ -37,7 +38,11 @@ export default function LevelPriceControl({
   onPickClick
 }: LevelPriceControlProps) {
   const { t } = useT()
-  const display = value != null ? formatAssetPrice(value, precision) : ''
+  // Levels are market prices: snap to the imported quote precision, then pad
+  // to the configured display digits.
+  const marketPrecision = useMarketPricePrecision()
+  const display =
+    value != null ? formatAssetPrice(roundPriceToPrecision(value, marketPrecision), precision) : ''
   const [draft, setDraft] = useState(display)
   const focusedRef = useRef(false)
 
@@ -51,7 +56,7 @@ export default function LevelPriceControl({
       setDraft(display)
       return
     }
-    const next = parsed == null ? null : roundPriceToPrecision(parsed, precision)
+    const next = parsed == null ? null : roundPriceToPrecision(parsed, marketPrecision)
     onChange(next)
     setDraft(next == null ? '' : formatAssetPrice(next, precision))
   }

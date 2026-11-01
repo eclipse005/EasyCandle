@@ -49,6 +49,7 @@ import { useT } from '@/i18n/useT'
 import type { MessageKey } from '@/i18n/messages'
 import { TIMEFRAME_IDS } from '@shared/timeframes'
 import { usePricePrecision } from '@/hooks/usePricePrecision'
+import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
 import {
@@ -846,13 +847,20 @@ function pointWallClock(
 function PointPriceInput({
   value,
   precision,
+  snapPrecision,
   onChange
 }: {
   value: number
   precision: number
+  snapPrecision: number
   onChange: (value: number) => void
 }): ReactElement {
-  const formatted = formatAssetPrice(value, precision)
+  // Display pads zeros to the configured digits; the stored quote keeps only
+  // the decimals present in the imported data.
+  const formatted = formatAssetPrice(
+    roundPriceToPrecision(value, snapPrecision),
+    precision
+  )
   const [draft, setDraft] = useState(formatted)
   const focusedRef = useRef(false)
 
@@ -863,7 +871,7 @@ function PointPriceInput({
   function commitPrice(raw: string): number | null {
     const parsed = Number(String(raw).trim().replace(',', '.'))
     if (!Number.isFinite(parsed)) return null
-    const next = roundPriceToPrecision(parsed, precision)
+    const next = roundPriceToPrecision(parsed, snapPrecision)
     onChange(next)
     return next
   }
@@ -896,6 +904,7 @@ function PointCoordinatesCard({
   index,
   timezone,
   precision,
+  snapPrecision,
   t,
   onChange
 }: {
@@ -903,6 +912,7 @@ function PointCoordinatesCard({
   index: number
   timezone: string
   precision: number
+  snapPrecision: number
   t: (key: MessageKey, vars?: Record<string, string | number>) => string
   onChange: (point: DrawingSnapshot['points'][number]) => void
 }): ReactElement {
@@ -971,6 +981,7 @@ function PointCoordinatesCard({
           <PointPriceInput
             value={point.price}
             precision={precision}
+            snapPrecision={snapPrecision}
             onChange={(price) => onChange({ ...point, price })}
           />
         </Field>
@@ -990,6 +1001,7 @@ function CoordinatesPane({
 }): ReactElement {
   const timezone = useChartSettingsStore((state) => state.timezone)
   const pricePrecision = usePricePrecision()
+  const marketPrecision = useMarketPricePrecision()
   const zone = chartTimezoneById(timezone)
 
   if (points.length === 0) {
@@ -1007,6 +1019,7 @@ function CoordinatesPane({
           index={index}
           timezone={timezone}
           precision={pricePrecision}
+          snapPrecision={marketPrecision}
           t={t}
           onChange={(nextPoint) =>
             onChange(points.map((item, i) => (i === index ? nextPoint : item)))

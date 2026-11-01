@@ -26,6 +26,11 @@ export type ImportedDatasetMeta = {
   timeframes: Record<string, ImportedTimeframeStats>
   createdAt: string
   updatedAt: string
+  /**
+   * Decimal digits present in the imported quotes (e.g. 5 for EURUSD).
+   * Market prices snap to this; the display precision may only pad zeros.
+   */
+  pricePrecision?: number
   /** Absent on older CSV imports — treat as csv. */
   origin?: ImportOrigin
   /**

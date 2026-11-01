@@ -4,7 +4,8 @@ import { ArrowDownRight, ArrowUpRight, Minus, Plus } from 'lucide-react'
 import { PriceScaleMode } from 'lightweight-charts'
 import { formatTradeSizeForSymbol, pendingKindForEntry } from '@/lib/paperTrade'
 import { formatPriceBarRatio } from '@/lib/priceScale'
-import { roundPriceToPrecision } from '@shared/pricePrecision'
+import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
+import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
 import { useT } from '@/i18n/useT'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
@@ -248,14 +249,15 @@ export function PriceScalePlus({
   const paperBuy = useReplayStore((s) => s.paperBuy)
   const paperSell = useReplayStore((s) => s.paperSell)
   const addHorizontalLine = useReplayStore((s) => s.addHorizontalLine)
-  const quotePrice = roundPriceToPrecision(price, pricePrecision)
-  const priceText = quotePrice.toFixed(pricePrecision)
+  const marketPrecision = useMarketPricePrecision()
+  const quotePrice = roundPriceToPrecision(price, marketPrecision)
+  const priceText = formatAssetPrice(quotePrice, pricePrecision)
   const sizeText = formatTradeSizeForSymbol(tradeSize, symbol)
   const mark = currentClose
   const atMarket =
     mark != null &&
     Number.isFinite(mark) &&
-    Math.abs(quotePrice - mark) < Math.pow(10, -(pricePrecision + 1))
+    Math.abs(quotePrice - mark) < Math.pow(10, -marketPrecision) / 2
 
   useEffect(() => {
     if (!open) return

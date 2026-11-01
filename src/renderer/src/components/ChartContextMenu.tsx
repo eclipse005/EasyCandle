@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { forexSessionDayOpen } from '@shared/forexSession'
-import { roundPriceToPrecision } from '@shared/pricePrecision'
+import { formatAssetPrice, roundPriceToPrecision } from '@shared/pricePrecision'
+import { useMarketPricePrecision } from '@/hooks/useMarketPricePrecision'
 import { formatTradeSizeForSymbol, pendingKindForEntry } from '@/lib/paperTrade'
 import { useReplayStore } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
@@ -102,16 +103,18 @@ export default function ChartContextMenu({
   const setTradeMarksVisible = useUiLayoutStore((s) => s.setTradeMarksVisible)
 
   // The crosshair price is derived from a pixel coordinate; snap it to the
-  // instrument precision before showing, copying, or placing an order with it.
-  const menuPrice = roundPriceToPrecision(point.price, pricePrecision)
-  const priceText = menuPrice.toFixed(pricePrecision)
+  // imported quote precision before showing, copying, or placing an order.
+  // Display digits may pad zeros beyond that.
+  const marketPrecision = useMarketPricePrecision()
+  const menuPrice = roundPriceToPrecision(point.price, marketPrecision)
+  const priceText = formatAssetPrice(menuPrice, pricePrecision)
   const sizeText = formatTradeSizeForSymbol(tradeSize, symbol)
   const currentPrice = useReplayStore.getState().currentCandle?.close ?? currentClose
   const above = currentPrice != null && menuPrice > currentPrice
   const atMarket =
     currentPrice != null &&
     Number.isFinite(currentPrice) &&
-    Math.abs(menuPrice - currentPrice) < Math.pow(10, -(pricePrecision + 1))
+    Math.abs(menuPrice - currentPrice) < Math.pow(10, -marketPrecision) / 2
 
   const drawingId = point.drawingId ?? null
   const drawing = drawingId ? bridge.getPrimary()?.get(drawingId) : undefined

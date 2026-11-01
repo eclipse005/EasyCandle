@@ -1,7 +1,21 @@
 import type { Candle } from './candleUtils'
 import { IMPORT_STORED_TIMEFRAMES } from './candleAggregate'
 import type { ImportedDatasetMeta, ImportedTimeframeStats, ImportOrigin } from './importTypes'
+import { clampPricePrecision, inferPrecisionFromPrices, precisionForSymbol } from './pricePrecision'
 import { DEFAULT_TIMEFRAME } from './timeframes'
+
+/** Quote decimals of the stored series, sampled across the whole import. */
+export function importedPricePrecision(symbol: string, candles1m: readonly Candle[]): number {
+  const step = Math.max(1, Math.floor(candles1m.length / 1000))
+  const prices: number[] = []
+  for (let i = 0; i < candles1m.length; i += step) {
+    const candle = candles1m[i]
+    prices.push(candle.open, candle.high, candle.low, candle.close)
+  }
+  const inferred = inferPrecisionFromPrices(prices)
+  const convention = precisionForSymbol(symbol) ?? 0
+  return clampPricePrecision(Math.max(inferred, convention))
+}
 
 export function statsForImportedSeries(candles: Candle[]): ImportedTimeframeStats {
   const first = candles[0]
@@ -51,6 +65,7 @@ export function buildImportedDatasetMeta(params: {
     firstTime: primary.firstTime,
     lastTime: primary.lastTime,
     timeframes,
+    pricePrecision: importedPricePrecision(params.symbol, candles1m),
     createdAt: params.createdAt ?? now,
     updatedAt: now,
     ...(params.origin ? { origin: params.origin } : {}),
