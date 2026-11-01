@@ -1,5 +1,11 @@
 import type { ImportJobProgress } from '@shared/importJobProgress'
-import type { ImportParseResult, ImportSaveParams, ImportSaveResult } from '@shared/importTypes'
+import type {
+  ImportLoadRange,
+  ImportLoadResult,
+  ImportParseResult,
+  ImportSaveParams,
+  ImportSaveResult
+} from '@shared/importTypes'
 import type {
   ImportWorkerInbound,
   ImportWorkerJob,
@@ -111,6 +117,34 @@ export async function saveImportInWebWorker(
     return { ok: false, error: 'Import worker returned an unexpected save result.' }
   }
   return outbound.result
+}
+
+/** Range/window read off the UI thread; the worker owns the series cache. */
+export async function loadImportInWebWorker(
+  id: string,
+  timeframe?: string,
+  range?: ImportLoadRange
+): Promise<ImportLoadResult> {
+  try {
+    const instance = await getWorker()
+    const outbound = await postJob(instance, { type: 'load', id, timeframe, range })
+    if (outbound.type === 'error') return { ok: false, error: outbound.error }
+    if (outbound.type !== 'loadResult') {
+      return { ok: false, error: 'Import worker returned an unexpected load result.' }
+    }
+    return outbound.result
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to load import'
+    }
+  }
+}
+
+/** Forget cached series after a delete/replace/clear (no response needed). */
+export function dropImportCachesInWebWorker(id?: string): void {
+  if (!worker) return
+  worker.postMessage({ type: 'dropCache', requestId: nextRequestId(), id })
 }
 
 export async function discardWebImportParse(token: string): Promise<void> {

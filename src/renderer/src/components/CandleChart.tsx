@@ -909,7 +909,9 @@ export default function CandleChart({
 
   useEffect(() => {
     if (mode !== 'live') return
-    if (chartSync?.kind === 'append' && currentCandle) {
+    // An append snapshot can arrive before the chart mounts; with no series
+    // history there is no point to update, so seed the whole series instead.
+    if (chartSync?.kind === 'append' && currentCandle && seriesLastTimeRef.current != null) {
       append(currentCandle)
       return
     }
@@ -919,7 +921,7 @@ export default function CandleChart({
   useEffect(() => {
     if (mode !== 'replay' || !chartSync) return
 
-    if (chartSync.kind === 'append' && currentCandle) {
+    if (chartSync.kind === 'append' && currentCandle && seriesLastTimeRef.current != null) {
       append(currentCandle)
       return
     }

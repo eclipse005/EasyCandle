@@ -12,7 +12,6 @@ import {
 } from '@/lib/importWindow'
 import { aggregateToTimeframe, overlayFormingHigherTf } from '@shared/candleAggregate'
 import { floorOpenForTimeframe, importedForexSessionOffset } from '@shared/forexSession'
-import { backfillMissingDerivedTimeframes } from '@/lib/webApiBridge'
 import { dedupeCandlesByTime, findIndexAtOrBefore, mergeCandlesByTime, type Candle } from '@shared/candleUtils'
 import { normalizeSymbolKey } from '@shared/pricePrecision'
 import {
@@ -331,6 +330,7 @@ let secondaryLoadGeneration = 0
 let prefetchInFlight = false
 /** Guards `focusChartTime` so repeated clicks cannot stack history fetches. */
 let focusInFlight = false
+let sourceLoad: { id: string; promise: Promise<void> } | null = null
 
 function clearClock(): void {
   if (clockTimer != null) {
@@ -667,6 +667,8 @@ type ReplayStore = {
   setSyncTimestepWithChart: (sync: boolean) => void
   /** When Sync is on, snap Timestep to primary chart TF (hydrate / session load). */
   ensureReplayTimestepAligned: () => void
+  /** Load the 1m source only when a finer Timestep or MT aggregation needs it. */
+  ensureReplaySource1m: () => Promise<void>
   loadCandles: () => Promise<void>
   activateImportedDataset: (candles: Candle[], meta: ImportedDatasetMeta) => void
   clearImportedDataset: () => void
@@ -1311,6 +1313,33 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     await maybePrefetchImported()
   }
 
+  function needsImportedSource1m(): boolean {
+    const s = get()
+    if (!s.importMeta || s.dataSource !== 'imported') return false
+    if (s.importedSourceCandles.length > 0) return false
+    if (isMetatraderImport(s.importMeta)) return true
+    return intervalSecondsFor(s.replayTimestep) < intervalSecondsFor(s.timeframe)
+  }
+
+  async function ensureReplaySource1mImpl(): Promise<void> {
+    if (!needsImportedSource1m()) return
+    const meta = get().importMeta
+    if (!meta) return
+    if (sourceLoad?.id === meta.id) return sourceLoad.promise
+
+    const promise = (async () => {
+      const source = await window.api.loadImport(meta.id, '1m')
+      if (!source.ok || !source.candles.length) return
+      if (get().importMeta?.id !== meta.id) return
+      set({ importedSourceCandles: source.candles })
+      if (get().mode === 'replay') publishReplay('append', { fitContent: false })
+    })().finally(() => {
+      if (sourceLoad?.promise === promise) sourceLoad = null
+    })
+    sourceLoad = { id: meta.id, promise }
+    return promise
+  }
+
   async function loadImportedSeries(
     id: string,
     timeframe: string,
@@ -1888,6 +1917,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     startBufferReplay(loaded.candles, idx + Math.max(0, opts.startOffsetBars ?? 0), {
       message: opts.message
     })
+    void get().ensureReplaySource1m()
   }
 
   /**
@@ -2678,6 +2708,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       publishReplay('replace', { fitContent: true })
       alignSecondaryAfterPrimaryLoad()
       mirrorTimestepFromChart(nextTimeframe)
+      void get().ensureReplaySource1m()
       return
     }
 
@@ -3469,7 +3500,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (timeframe === get().replayTimestep) return
       resetStepCursor()
       set({ replayTimestep: timeframe })
-      if (get().mode === 'replay') publishReplay('append', { fitContent: false })
+      if (get().mode === 'replay') {
+        publishReplay('append', { fitContent: false })
+        void ensureReplaySource1mImpl()
+      }
     },
 
     setSyncTimestepWithChart(sync) {
@@ -3489,6 +3523,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     ensureReplayTimestepAligned() {
       mirrorTimestepFromChart(get().timeframe)
+    },
+
+    ensureReplaySource1m() {
+      return ensureReplaySource1mImpl()
     },
 
     async loadCandles() {
@@ -3565,12 +3603,15 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       publishImportedPreview(normalized, meta)
       if (meta.timeframe === '1m') {
         set({ importedSourceCandles: normalized })
-      } else if (importHasTimeframe(meta, '1m')) {
-        void window.api.loadImport(meta.id, '1m').then((source) => {
-          if (!source.ok) return
-          set({ importedSourceCandles: dedupeCandlesByTime(source.candles) })
-          if (get().mode === 'replay') publishReplay('append', { fitContent: false })
-        })
+      } else {
+        set({ importedSourceCandles: [] })
+        if (isMetatraderImport(meta) && importHasTimeframe(meta, '1m')) {
+          void window.api.loadImport(meta.id, '1m').then((source) => {
+            if (!source.ok) return
+            set({ importedSourceCandles: source.candles })
+            if (get().mode === 'replay') publishReplay('append', { fitContent: false })
+          })
+        }
       }
       void get().refreshImportedList()
       if (get().chartSplit) {
@@ -3604,6 +3645,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (!id) return
       if (get().mode === 'replay') return
 
+      if (get().importMeta?.id !== id) {
+        set({ importedSourceCandles: [] })
+      }
       set({ status: 'loading', error: null })
       // Newest window only — `loadImportedHistory` pages older bars on demand.
       const loaded = await window.api.loadImport(id, timeframe, tailRange())
@@ -3621,7 +3665,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const loadedWindow = loaded.window ?? null
       publishImportedPreview(candles, loaded.meta, loadedWindow)
       set({ replayMessage: importedLoadMessage(loaded.meta, loadedWindow) })
-      void backfillMissingDerivedTimeframes(id)
 
       if (isMetatraderImport(loaded.meta)) {
         // MT datasets aggregate higher TFs from 1m, so that series stays whole.
@@ -3634,17 +3677,14 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           const source = await window.api.loadImport(id, '1m')
           if (source.ok) {
             set({
-              importedSourceCandles: dedupeCandlesByTime(source.candles),
+              importedSourceCandles: source.candles,
               replayMessage: importedLoadMessage(loaded.meta, loadedWindow, 'MetaTrader')
             })
           }
         }
-      } else if (importHasTimeframe(loaded.meta, '1m')) {
-        const source = await window.api.loadImport(id, '1m')
-        if (source.ok) {
-          set({ importedSourceCandles: dedupeCandlesByTime(source.candles) })
-        }
       }
+      // CSV imports get their 1m source lazily (see ensureReplaySource1m):
+      // a 15m/1h session with a matching Timestep never needs it.
       if (get().chartSplit) {
         void loadSecondaryLiveCandles()
       }

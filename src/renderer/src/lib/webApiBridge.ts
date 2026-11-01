@@ -1,13 +1,4 @@
-import type { Candle } from '@shared/candleUtils'
-import {
-  aggregateToTimeframe,
-  buildImportTimeframes,
-  IMPORT_CACHEABLE_TIMEFRAMES,
-  IMPORT_DERIVED_TIMEFRAMES
-} from '@shared/candleAggregate'
-import { forexNyCloseOffsetSeconds, omitForexWeekendCandles } from '@shared/forexSession'
-import { buildImportedDatasetMeta, statsForImportedSeries } from '@shared/importMeta'
-import { TIMEFRAMES } from '@shared/timeframes'
+import { buildImportedDatasetMeta } from '@shared/importMeta'
 import { decodeMtTextBuffer } from '@shared/mtTextDecode'
 import type { BarReplayApi } from '@shared/appApi'
 import type {
@@ -23,35 +14,46 @@ import type {
   ImportedDatasetMeta
 } from '@shared/importTypes'
 import type { ImportJobProgress } from '@shared/importJobProgress'
-import { sliceCandleRange } from '@shared/importRange'
-import {
-  idbDeleteImportDataset,
-  idbGet,
-  idbGetAll,
-  idbPut,
-  idbWriteImportDataset
-} from './importIdb'
+import { idbDeleteImportDataset, idbGet, idbGetAll, idbWriteImportDataset } from './importIdb'
 import { isCsvDataTimezone, remapCandlesCsvTimezone } from '@shared/csvDataTimezone'
 import {
   discardWebImportParse,
+  dropImportCachesInWebWorker,
+  loadImportInWebWorker,
   onWebImportProgress,
   parseCsvInWebWorker,
   saveImportInWebWorker
 } from './importWorkerClient'
 
 const memoryMetas = new Map<string, ImportedDatasetMeta>()
-const memoryCandles = new Map<string, Candle[]>()
 const memorySources = new Map<string, string>()
+let importListCache: ImportedDatasetMeta[] | null = null
 
 // In-flight selected files cache for import modal
 const pendingFileCache = new Map<string, { content?: string; file?: File; fileName: string }>()
 
+function invalidateImportList(): void {
+  importListCache = null
+}
+
+/** Keep the list entry in sync without re-reading IDB (lazy TF stats, timeframe). */
+function cacheMeta(meta: ImportedDatasetMeta): void {
+  memoryMetas.set(meta.id, meta)
+  if (!importListCache) return
+  const idx = importListCache.findIndex((item) => item.id === meta.id)
+  if (idx < 0) return
+  importListCache = importListCache
+    .map((item) => (item.id === meta.id ? meta : item))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
 /** Drop in-memory import fallbacks (Settings graded clear). */
 export function clearImportMemoryCaches(): void {
   memoryMetas.clear()
-  memoryCandles.clear()
   memorySources.clear()
   pendingFileCache.clear()
+  invalidateImportList()
+  dropImportCachesInWebWorker()
 }
 
 function generateId(): string {
@@ -61,17 +63,10 @@ function generateId(): string {
   return 'imp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9)
 }
 
-function rememberDataset(
-  meta: ImportedDatasetMeta,
-  content: string,
-  candlesByTimeframe?: Record<string, Candle[]>
-): void {
+function rememberDataset(meta: ImportedDatasetMeta, content: string): void {
   memoryMetas.set(meta.id, meta)
   memorySources.set(meta.id, content)
-  if (!candlesByTimeframe) return
-  for (const [tf, series] of Object.entries(candlesByTimeframe)) {
-    if (series?.length) memoryCandles.set(`${meta.id}:${tf}`, series)
-  }
+  invalidateImportList()
 }
 
 async function parseImportFile(path: string): Promise<ImportParseResult> {
@@ -106,6 +101,7 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
       const saved = await saveImportInWebWorker({ ...params, parseToken: params.parseToken })
       if (saved.ok) {
         memoryMetas.set(saved.meta.id, saved.meta)
+        invalidateImportList()
       }
       return saved
     }
@@ -151,11 +147,12 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
     })
 
     const content = params.content ?? ''
-    rememberDataset(meta, content, candlesByTimeframe)
+    rememberDataset(meta, content)
     const wrote = await idbWriteImportDataset({ meta, content, candlesByTimeframe })
     if (!wrote.ok) {
       return { ok: false, error: wrote.error }
     }
+    dropImportCachesInWebWorker(meta.id)
 
     return { ok: true, meta, updated }
   } catch (err) {
@@ -165,12 +162,14 @@ async function saveImportDataset(params: ImportSaveParams): Promise<ImportSaveRe
 }
 
 async function listImportDatasets(): Promise<ImportListResult> {
+  if (importListCache) return { ok: true, imports: importListCache }
   try {
     let imports = await idbGetAll<ImportedDatasetMeta>('metas')
     if (!imports.length && memoryMetas.size > 0) {
       imports = Array.from(memoryMetas.values())
     }
     imports.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    importListCache = imports
     return { ok: true, imports }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to list imports'
@@ -178,143 +177,28 @@ async function listImportDatasets(): Promise<ImportListResult> {
   }
 }
 
-async function loadCandleSeries(id: string, tf: string): Promise<Candle[] | null> {
-  const key = `${id}:${tf}`
-  const storedCandles = await idbGet<{ key: string; candles: Candle[] }>('candles', key)
-  const candles = storedCandles?.candles || memoryCandles.get(key) || null
-  if (!candles?.length) return candles
-  // Already-saved Dukascopy files still contain the flat weekend fill.
-  return omitForexWeekendCandles(candles)
-}
-
-async function persistTimeframeSeries(
-  meta: ImportedDatasetMeta,
-  timeframe: string,
-  series: Candle[]
-): Promise<ImportedDatasetMeta> {
-  if (!series.length) return meta
-  const key = `${meta.id}:${timeframe}`
-  memoryCandles.set(key, series)
-  await idbPut('candles', { key, candles: series })
-  const nextMeta: ImportedDatasetMeta = {
-    ...meta,
-    timeframes: {
-      ...meta.timeframes,
-      [timeframe]: statsForImportedSeries(series)
-    },
-    updatedAt: new Date().toISOString()
-  }
-  memoryMetas.set(meta.id, nextMeta)
-  await idbPut('metas', nextMeta)
-  return nextMeta
-}
-
-/** Build + cache a missing TF from stored 1m (lazy TFs and migration gaps). */
-async function ensureTimeframeSeries(
-  meta: ImportedDatasetMeta,
-  timeframe: string
-): Promise<{ meta: ImportedDatasetMeta; candles: Candle[] } | null> {
-  if (!TIMEFRAMES[timeframe]) return null
-  const existing = await loadCandleSeries(meta.id, timeframe)
-  if (existing?.length) {
-    let nextMeta = meta
-    if (meta.timeframes[timeframe] == null) {
-      nextMeta = await persistTimeframeSeries(meta, timeframe, existing)
-    }
-    return { meta: nextMeta, candles: existing }
-  }
-  if (timeframe === '1m') return null
-  const source1m = await loadCandleSeries(meta.id, '1m')
-  if (!source1m?.length) return null
-  const built = aggregateToTimeframe(source1m, timeframe)
-  if (!built.length) return null
-  const nextMeta = await persistTimeframeSeries(meta, timeframe, built)
-  return { meta: nextMeta, candles: built }
-}
-
-/** Backfill missing precompute TFs (e.g. 30m) on old datasets in the background. */
-export async function backfillMissingDerivedTimeframes(id: string): Promise<void> {
-  try {
-    const meta = (await idbGet<ImportedDatasetMeta>('metas', id)) || memoryMetas.get(id)
-    if (!meta?.timeframes?.['1m']) return
-    const missing = IMPORT_DERIVED_TIMEFRAMES.filter((tf) => meta.timeframes[tf] == null)
-    if (!missing.length) return
-    const source1m = await loadCandleSeries(id, '1m')
-    if (!source1m?.length) return
-    const built = buildImportTimeframes(source1m, forexNyCloseOffsetSeconds)
-    let nextMeta = meta
-    for (const tf of missing) {
-      const series = built[tf]
-      if (!series?.length) continue
-      nextMeta = await persistTimeframeSeries(nextMeta, tf, series)
-    }
-  } catch {
-    // Best-effort migration; switch path can still lazy-build.
-  }
-}
-
+/**
+ * Reads run in the import worker: it owns the series cache and materializes
+ * only the requested window, so IDB deserialization never blocks the chart.
+ */
 async function loadImportDataset(
   id: string,
   timeframe?: string,
   range?: ImportLoadRange
 ): Promise<ImportLoadResult> {
-  try {
-    let meta = (await idbGet<ImportedDatasetMeta>('metas', id)) || memoryMetas.get(id)
-    if (!meta) return { ok: false, error: 'Saved import not found.' }
-
-    const requested = String(timeframe || meta.timeframe || '1m')
-    let tf = requested
-    let stored = await loadCandleSeries(id, tf)
-
-    if (!stored?.length && TIMEFRAMES[requested] && requested !== '1m' && meta.timeframes['1m']) {
-      const ensured = await ensureTimeframeSeries(meta, requested)
-      if (ensured) {
-        meta = ensured.meta
-        stored = ensured.candles
-        tf = requested
-      }
-    }
-
-    if (!stored?.length) {
-      tf =
-        meta.timeframes[requested] != null
-          ? requested
-          : meta.timeframes['1m'] != null
-            ? '1m'
-            : Object.keys(meta.timeframes)[0]
-      if (!tf) return { ok: false, error: 'Imported dataset has no candle series.' }
-      stored = await loadCandleSeries(id, tf)
-    }
-
-    if (!stored?.length) {
-      return { ok: false, error: `No candles found for timeframe ${tf}.` }
-    }
-
-    // Same range contract as the desktop IPC handler used to provide, so the
-    // store can page windows without knowing which backend it talks to.
-    const sliced = sliceCandleRange(stored, range)
-
-    const nextMeta: ImportedDatasetMeta = { ...meta, timeframe: tf }
-    if (meta.timeframe !== tf) {
-      memoryMetas.set(id, nextMeta)
-      await idbPut('metas', nextMeta)
-    }
-
-    return { ok: true, meta: nextMeta, candles: sliced.candles, window: sliced.window }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to load import'
-    return { ok: false, error: message }
-  }
+  const result = await loadImportInWebWorker(id, timeframe, range)
+  if (result.ok) cacheMeta(result.meta)
+  return result
 }
 
 async function deleteImportDataset(id: string): Promise<ImportDeleteResult> {
   try {
+    invalidateImportList()
     memoryMetas.delete(id)
     memorySources.delete(id)
-    for (const tf of IMPORT_CACHEABLE_TIMEFRAMES) {
-      memoryCandles.delete(`${id}:${tf}`)
-    }
     await idbDeleteImportDataset(id)
+    // After the delete, so an in-flight load cannot repopulate a stale series.
+    dropImportCachesInWebWorker(id)
     return { ok: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete import'

@@ -72,8 +72,11 @@ export function sliceCandleRange(
     }
   }
 
+  const coversAll = lo === 0 && hi === total - 1
   return {
-    candles: candles.slice(lo, hi + 1),
+    // Callers treat loaded series as read-only; avoid copying a full dataset
+    // when the request has no range bounds.
+    candles: coversAll ? candles : candles.slice(lo, hi + 1),
     window: {
       loadedFrom: candles[lo].time,
       loadedTo: candles[hi].time,

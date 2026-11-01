@@ -1,6 +1,12 @@
 import type { Candle } from './candleUtils'
 import type { ImportJobProgress } from './importJobProgress'
-import type { ImportOrigin, ImportParseResult, ImportSaveResult } from './importTypes'
+import type {
+  ImportLoadRange,
+  ImportLoadResult,
+  ImportOrigin,
+  ImportParseResult,
+  ImportSaveResult
+} from './importTypes'
 
 export type ImportWorkerParseRequest = {
   type: 'parse'
@@ -29,8 +35,27 @@ export type ImportWorkerSaveRequest = {
   contractSize?: number
 }
 
+export type ImportWorkerLoadRequest = {
+  type: 'load'
+  requestId: number
+  id: string
+  timeframe?: string
+  range?: ImportLoadRange
+}
+
+/** Drop the worker's in-memory series/meta cache (delete, replace, clear). */
+export type ImportWorkerDropCacheMessage = {
+  type: 'dropCache'
+  requestId: number
+  id?: string
+}
+
 export type ImportWorkerInbound =
-  ImportWorkerParseRequest | ImportWorkerBuildRequest | ImportWorkerSaveRequest
+  | ImportWorkerParseRequest
+  | ImportWorkerBuildRequest
+  | ImportWorkerSaveRequest
+  | ImportWorkerLoadRequest
+  | ImportWorkerDropCacheMessage
 
 export type ImportWorkerJob = ImportWorkerInbound extends infer T
   ? T extends { requestId: number }
@@ -64,6 +89,12 @@ export type ImportWorkerSaveMessage = {
   result: ImportSaveResult
 }
 
+export type ImportWorkerLoadMessage = {
+  type: 'loadResult'
+  requestId: number
+  result: ImportLoadResult
+}
+
 export type ImportWorkerErrorMessage = {
   type: 'error'
   requestId: number
@@ -75,4 +106,5 @@ export type ImportWorkerOutbound =
   | ImportWorkerParseMessage
   | ImportWorkerBuildMessage
   | ImportWorkerSaveMessage
+  | ImportWorkerLoadMessage
   | ImportWorkerErrorMessage

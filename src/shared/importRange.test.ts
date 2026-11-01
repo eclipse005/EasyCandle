@@ -16,6 +16,7 @@ describe('sliceCandleRange', () => {
   it('returns the whole series when no range is given', () => {
     const candles = series(5)
     const result = sliceCandleRange(candles)
+    expect(result.candles).toBe(candles)
     expect(result.candles).toHaveLength(5)
     expect(result.window).toEqual({
       loadedFrom: candles[0].time,

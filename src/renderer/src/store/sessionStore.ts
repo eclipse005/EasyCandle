@@ -660,6 +660,9 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             .getState()
             .selectImportedDataset(session.importId, session.timeframe)
         }
+        // Align before the first window load: a Timestep left over from the
+        // session we just left must not trigger a needless full 1m source load.
+        useReplayStore.getState().ensureReplayTimestepAligned()
         const meta = useReplayStore.getState().importMeta
         const target =
           replayTime ??
@@ -700,8 +703,6 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         closedTrades: cloneJson(session.closedTrades),
         orderHistory: cloneJson(session.orderHistory ?? [])
       })
-      // Sync-on: Timestep must match chart TF even if fields were restored/stale separately.
-      useReplayStore.getState().ensureReplayTimestepAligned()
       useUiLayoutStore.setState({
         shownClosedTradeIds: [...session.shownClosedTradeIds],
         chartPositionsHidden: session.chartPositionsHidden,
@@ -737,11 +738,12 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         // Merges all CSVs under the symbol; importId on the session = primary file.
         await useReplayStore.getState().selectImportedSymbol(input.symbol, input.timeframe)
       }
+      // A leftover finer Timestep must not force a full 1m load for this window.
+      useReplayStore.getState().ensureReplayTimestepAligned()
       await useReplayStore.getState().startImportedReplayAtTime(input.startDate)
       useReplayStore.getState().setSpeed(1)
       // A stale report from a previously closed session must not pop here.
       useReplayStore.setState({ sessionReport: null })
-      useReplayStore.getState().ensureReplayTimestepAligned()
 
       const snap = chartSnapshot()
       const symbol = snap.symbol || 'Session'
