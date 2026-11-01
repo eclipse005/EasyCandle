@@ -705,6 +705,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         orderHistory: cloneJson(session.orderHistory ?? []),
         tradeMarkers: cloneJson(session.tradeMarkers)
       })
+      // Sync-on: Timestep must match chart TF even if fields were restored/stale separately.
+      useReplayStore.getState().ensureReplayTimestepAligned()
       set({ activeSessionId: id })
       return true
     } finally {
@@ -734,6 +736,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       useReplayStore.getState().setSpeed(1)
       // A stale report from a previously closed session must not pop here.
       useReplayStore.setState({ sessionReport: null })
+      useReplayStore.getState().ensureReplayTimestepAligned()
 
       const snap = chartSnapshot()
       const symbol = snap.symbol || 'Session'

@@ -50,3 +50,29 @@ describe('replayTimestep sync setters', () => {
     expect(useReplayStore.getState().replayTimestep).toBe('1h')
   })
 })
+
+describe('replayTimestep hydrate / session restore', () => {
+  it('snaps Timestep to chart TF when Sync is on and fields disagree', () => {
+    resetTimestepState()
+    // Simulate persisted/restored mismatch: chart 1h, Timestep still 15m, Sync ON.
+    useReplayStore.setState({
+      timeframe: '1h',
+      replayTimestep: '15m',
+      syncTimestepWithChart: true
+    })
+    useReplayStore.getState().ensureReplayTimestepAligned()
+    expect(useReplayStore.getState().replayTimestep).toBe('1h')
+    expect(useReplayStore.getState().syncTimestepWithChart).toBe(true)
+  })
+
+  it('leaves Timestep alone on hydrate when Sync is off', () => {
+    resetTimestepState()
+    useReplayStore.setState({
+      timeframe: '1h',
+      replayTimestep: '15m',
+      syncTimestepWithChart: false
+    })
+    useReplayStore.getState().ensureReplayTimestepAligned()
+    expect(useReplayStore.getState().replayTimestep).toBe('15m')
+  })
+})

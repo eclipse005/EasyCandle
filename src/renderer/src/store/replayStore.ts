@@ -630,6 +630,8 @@ type ReplayStore = {
   setDriverPane: (pane: DriverPane) => void
   setReplayTimestep: (timeframe: string) => void
   setSyncTimestepWithChart: (sync: boolean) => void
+  /** When Sync is on, snap Timestep to primary chart TF (hydrate / session load). */
+  ensureReplayTimestepAligned: () => void
   loadCandles: () => Promise<void>
   activateImportedDataset: (candles: Candle[], meta: ImportedDatasetMeta) => void
   clearImportedDataset: () => void
@@ -1695,6 +1697,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         revision: s.chartSync.revision + 1
       }
     }))
+    // Sync-on sessions must open with Timestep == chart TF (not stale default).
+    mirrorTimestepFromChart(meta.timeframe)
   }
 
   function startBufferReplay(
@@ -2601,6 +2605,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       })
       publishReplay('replace', { fitContent: true })
       alignSecondaryAfterPrimaryLoad()
+      mirrorTimestepFromChart(nextTimeframe)
       return
     }
 
@@ -2647,7 +2652,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     if (!ok && get().timeframe === nextTimeframe && get().mode === 'replay') {
       set({ timeframe: previousTimeframe })
+      return
     }
+    if (ok) mirrorTimestepFromChart(nextTimeframe)
   }
 
   return {
@@ -3382,6 +3389,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       set({ syncTimestepWithChart: false })
     },
 
+    ensureReplayTimestepAligned() {
+      mirrorTimestepFromChart(get().timeframe)
+    },
+
     async loadCandles() {
       const generation = (loadGeneration += 1)
 
@@ -3431,6 +3442,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           tradeSize: clampTradeSizeForSymbol(get().tradeSize, loaded.meta.symbol),
           replayMessage: importedLoadMessage(loaded.meta, loaded.window)
         })
+        mirrorTimestepFromChart(get().timeframe)
         if (get().chartSplit) {
           void loadSecondaryLiveCandles()
         }
@@ -3481,6 +3493,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         importedCandles: [],
         importWindow: null
       })
+      mirrorTimestepFromChart(DEFAULT_TIMEFRAME)
     },
 
     async refreshImportedList() {
