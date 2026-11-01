@@ -97,6 +97,8 @@ type SessionStoreState = {
   activeSessionId: string | null
   createSession: (name: string) => string | null
   renameSession: (id: string, name: string) => void
+  /** Local copy of a session (new id, “(copy)” name). */
+  duplicateSession: (id: string) => string | null
   deleteSession: (id: string) => void
   setActiveSession: (id: string | null) => void
   /** Restore a session's drawings, orders, and replay position onto the chart. */
@@ -597,6 +599,24 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     )
     set({ sessions })
     persistLive()
+  },
+
+  duplicateSession(id) {
+    const src = get().sessions.find((session) => session.id === id)
+    if (!src) return null
+    const base = src.name.trim() || 'Session'
+    const suffix = ' (copy)'
+    const name = `${base}${suffix}`.slice(0, SESSION_NAME_MAX_LENGTH)
+    const session: Session = {
+      ...cloneJson(src),
+      id: crypto.randomUUID(),
+      name,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+    set((state) => ({ sessions: [...state.sessions, session] }))
+    persistLive()
+    return session.id
   },
 
   deleteSession(id) {

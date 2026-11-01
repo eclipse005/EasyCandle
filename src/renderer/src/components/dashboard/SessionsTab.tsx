@@ -3,6 +3,7 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  Copy,
   FileText,
   Info,
   Pencil,
@@ -51,6 +52,7 @@ export default function SessionsTab({
   const sessions = useSessionStore((s) => s.sessions)
   const loadSession = useSessionStore((s) => s.loadSession)
   const deleteSession = useSessionStore((s) => s.deleteSession)
+  const duplicateSession = useSessionStore((s) => s.duplicateSession)
   const renameSession = useSessionStore((s) => s.renameSession)
   const strategies = useStrategiesStore((s) => s.strategies)
   const setTestingTab = useUiLayoutStore((s) => s.setTestingTab)
@@ -188,6 +190,10 @@ export default function SessionsTab({
                 })
               }}
               onAnalytics={() => setTestingTab('analytics')}
+              onDuplicate={() => {
+                const id = duplicateSession(session.id)
+                if (id) setExpandedId(id)
+              }}
               onDelete={() => setPendingDelete(session)}
             />
           ))}
@@ -230,6 +236,7 @@ function SessionCard({
   onGoChart,
   onSummary,
   onAnalytics,
+  onDuplicate,
   onDelete
 }: {
   session: Session
@@ -247,6 +254,7 @@ function SessionCard({
   onGoChart: () => void
   onSummary: () => void
   onAnalytics: () => void
+  onDuplicate: () => void
   onDelete: () => void
 }): ReactNode {
   const { t, locale } = useT()
@@ -431,6 +439,14 @@ function SessionCard({
               aria-label={t('sessions.notesAria')}
             >
               {t('sessions.notes')}
+            </SoftButton>
+            <SoftButton
+              size="sm"
+              variant="secondary"
+              onClick={onDuplicate}
+              aria-label={t('sessions.duplicateAria')}
+            >
+              <Copy className="h-4 w-4" aria-hidden />
             </SoftButton>
             <SoftButton
               size="sm"
