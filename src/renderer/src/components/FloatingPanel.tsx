@@ -11,6 +11,9 @@ import {
 import { GripVertical, Minus, X } from 'lucide-react'
 import { clampPanelPos, type PanelPos } from '@/store/uiLayoutStore'
 
+/** Pointer travel below this is a click, not a drag. */
+const DRAG_CLICK_PX = 4
+
 type FloatingPanelProps = {
   title?: string
   minimized?: boolean
@@ -18,6 +21,8 @@ type FloatingPanelProps = {
   pos: PanelPos | null
   onPosChange: (pos: PanelPos) => void
   onMinimizedChange?: (minimized: boolean) => void
+  /** Shown on the minimized pill. A click expands; a drag moves. */
+  minimizedTitle?: string
   /** When set, show a close control that calls this (e.g. exit fullscreen-only panels). */
   onClose?: () => void
   /** Extra actions rendered in the header (e.g. custom icon buttons). */
@@ -32,6 +37,7 @@ export default memo(function FloatingPanel({
   title,
   minimized = false,
   minimizedLabel,
+  minimizedTitle,
   pos,
   onPosChange,
   onMinimizedChange,
@@ -44,6 +50,9 @@ export default memo(function FloatingPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   const dragOffset = useRef<{ x: number; y: number } | null>(null)
   const dragPosRef = useRef<PanelPos | null>(null)
+  const pointerOrigin = useRef<{ x: number; y: number } | null>(null)
+  const dragMoved = useRef(false)
+  const expandOnClickRef = useRef(false)
   const [dragging, setDragging] = useState(false)
   const [dragPos, setDragPos] = useState<PanelPos | null>(null)
 
@@ -139,6 +148,13 @@ export default memo(function FloatingPanel({
 
     function onPointerMove(event: PointerEvent): void {
       if (!dragOffset.current) return
+      const origin = pointerOrigin.current
+      if (origin) {
+        const dx = event.clientX - origin.x
+        const dy = event.clientY - origin.y
+        if (dx * dx + dy * dy > DRAG_CLICK_PX * DRAG_CLICK_PX) dragMoved.current = true
+      }
+      if (!dragMoved.current) return
       const parent = panelRef.current?.offsetParent as HTMLElement | null
       if (!parent) return
       const parentRect = parent.getBoundingClientRect()
@@ -155,11 +171,16 @@ export default memo(function FloatingPanel({
 
     function onPointerUp(): void {
       const final = dragPosRef.current
+      const shouldExpand = expandOnClickRef.current && !dragMoved.current
       dragOffset.current = null
       dragPosRef.current = null
+      pointerOrigin.current = null
+      expandOnClickRef.current = false
+      dragMoved.current = false
       setDragPos(null)
       setDragging(false)
       if (final) onPosChange(final)
+      if (shouldExpand) onMinimizedChange?.(false)
     }
 
     window.addEventListener('pointermove', onPointerMove)
@@ -170,13 +191,16 @@ export default memo(function FloatingPanel({
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [dragging, clampToParent, onPosChange])
+  }, [dragging, clampToParent, onPosChange, onMinimizedChange])
 
-  function onDragHandlePointerDown(event: ReactPointerEvent<HTMLButtonElement>): void {
+  function beginDrag(event: ReactPointerEvent<HTMLElement>, expandOnClick: boolean): void {
     if (event.button !== 0) return
     const el = panelRef.current
     const parent = el?.offsetParent as HTMLElement | null
     if (!el || !parent) return
+    expandOnClickRef.current = expandOnClick
+    dragMoved.current = false
+    pointerOrigin.current = { x: event.clientX, y: event.clientY }
     const parentRect = parent.getBoundingClientRect()
     const panelRect = el.getBoundingClientRect()
     dragOffset.current = {
@@ -213,8 +237,12 @@ export default memo(function FloatingPanel({
       >
         <button
           type="button"
-          onClick={() => onMinimizedChange?.(false)}
-          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-primary-500/50 bg-zinc-900/95 px-2.5 text-xs font-medium text-primary-300 shadow-lg shadow-black/40 hover:border-primary-400 hover:text-primary-200"
+          title={minimizedTitle}
+          aria-label={minimizedTitle ?? minimizedLabel ?? title ?? 'Controls'}
+          onPointerDown={(event) => beginDrag(event, true)}
+          className={`inline-flex h-8 cursor-grab items-center gap-1.5 rounded-full border border-primary-500/50 bg-zinc-900/95 px-2.5 text-xs font-medium text-primary-300 shadow-lg shadow-black/40 hover:border-primary-400 hover:text-primary-200 active:cursor-grabbing ${
+            dragging ? 'cursor-grabbing' : ''
+          }`}
         >
           <GripVertical className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
           {minimizedLabel ?? title ?? 'Controls'}
@@ -234,7 +262,7 @@ export default memo(function FloatingPanel({
           type="button"
           aria-label="Drag panel"
           title="Drag"
-          onPointerDown={onDragHandlePointerDown}
+          onPointerDown={(event) => beginDrag(event, false)}
           className={`inline-flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300 active:cursor-grabbing ${
             dragging ? 'cursor-grabbing text-zinc-300' : ''
           }`}

@@ -12,10 +12,21 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ['-', '_'], description: 'Slower playback' },
   { keys: ['Tab'], description: 'Toggle next-candle pane (split view)' },
   { keys: ['Alt+I'], description: 'Invert price scale' },
+  { keys: ['Alt+P'], description: 'Percent price scale' },
+  { keys: ['Alt+L'], description: 'Logarithmic price scale' },
+  { keys: ['Alt+R'], description: 'Reset price scale' },
+  { keys: ['Alt+P'], description: 'Percent price scale' },
+  { keys: ['Alt+L'], description: 'Logarithmic price scale' },
+  { keys: ['Alt+R'], description: 'Reset price scale' },
   { keys: ['Escape'], description: 'Disarm tool / close dialog (never leaves session)' },
   { keys: ['Delete', 'Backspace'], description: 'Delete selected drawing' },
   { keys: ['Ctrl+Drag'], description: 'Duplicate drawing' },
-  { keys: ['F'], description: 'Toggle chart fullscreen' }
+  { keys: ['F'], description: 'Toggle chart fullscreen' },
+  { keys: ['Y'], description: 'Next day open (17:00 New York)' },
+  { keys: ['Z'], description: 'Next session (Asian, London, or New York)' },
+  { keys: ['N'], description: 'Start of New York session (07:00)' },
+  { keys: ['I'], description: 'Start of Asian session (19:00)' },
+  { keys: ['L'], description: 'Start of London session (02:00)' }
 ]
 
 function Kbd({ children }: { children: string }) {

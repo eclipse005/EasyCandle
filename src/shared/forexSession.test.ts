@@ -6,8 +6,12 @@ import {
   floorToForexWeekOpen,
   floorToInterval,
   forexNyCloseOffsetSeconds,
+  forexSessionDayOpen,
   importedForexSessionOffset,
-  nextForexMonthOpen
+  isForexWeekSessionOpen,
+  nextForexGoTo,
+  nextForexMonthOpen,
+  omitForexWeekendCandles
 } from './forexSession'
 
 function utcSeconds(year: number, month: number, day: number, hour: number, minute = 0): number {
@@ -52,6 +56,82 @@ describe('importedForexSessionOffset', () => {
     expect(importedForexSessionOffset('1h')).toBeUndefined()
     expect(importedForexSessionOffset('1w')).toBeUndefined()
     expect(importedForexSessionOffset('1M')).toBeUndefined()
+  })
+})
+
+describe('isForexWeekSessionOpen', () => {
+  it('closes Friday 17:00 NY and reopens Sunday 17:00 NY (EST, Jan 2026 Dukascopy)', () => {
+    expect(isForexWeekSessionOpen(utcSeconds(2026, 0, 2, 21, 59))).toBe(true)
+    expect(isForexWeekSessionOpen(utcSeconds(2026, 0, 2, 22, 0))).toBe(false)
+    expect(isForexWeekSessionOpen(utcSeconds(2026, 0, 3, 12, 0))).toBe(false)
+    expect(isForexWeekSessionOpen(utcSeconds(2026, 0, 4, 21, 59))).toBe(false)
+    expect(isForexWeekSessionOpen(utcSeconds(2026, 0, 4, 22, 0))).toBe(true)
+  })
+
+  it('uses the 21:00 UTC close while New York is on EDT', () => {
+    expect(isForexWeekSessionOpen(utcSeconds(2020, 7, 28, 20, 59))).toBe(true)
+    expect(isForexWeekSessionOpen(utcSeconds(2020, 7, 28, 21, 0))).toBe(false)
+    expect(isForexWeekSessionOpen(utcSeconds(2020, 7, 23, 20, 59))).toBe(false)
+    expect(isForexWeekSessionOpen(utcSeconds(2020, 7, 23, 21, 0))).toBe(true)
+  })
+
+  it('drops only the closed gap and keeps in-session flat bars', () => {
+    const insideFlat = { time: utcSeconds(2026, 0, 1, 22, 0), volume: 0 }
+    const fridayClose = { time: utcSeconds(2026, 0, 2, 22, 0), volume: 0 }
+    const sundayOpen = { time: utcSeconds(2026, 0, 4, 22, 0), volume: 12 }
+    const cleaned = omitForexWeekendCandles([insideFlat, fridayClose, sundayOpen])
+    expect(cleaned).toEqual([insideFlat, sundayOpen])
+    const open = [insideFlat, sundayOpen]
+    expect(omitForexWeekendCandles(open)).toBe(open)
+  })
+})
+
+describe('nextForexGoTo', () => {
+  it('skips the Friday New York close and lands on Sunday 17:00 (EST)', () => {
+    const fridayAfternoon = utcSeconds(2026, 0, 2, 21, 59)
+    expect(nextForexGoTo(fridayAfternoon, 'dayOpen')).toBe(utcSeconds(2026, 0, 4, 22, 0))
+    expect(nextForexGoTo(fridayAfternoon, 'asian')).toBe(utcSeconds(2026, 0, 5, 0, 0))
+    expect(nextForexGoTo(fridayAfternoon, 'london')).toBe(utcSeconds(2026, 0, 5, 7, 0))
+    expect(nextForexGoTo(fridayAfternoon, 'newYork')).toBe(utcSeconds(2026, 0, 5, 12, 0))
+    expect(nextForexGoTo(fridayAfternoon, 'nextSession')).toBe(utcSeconds(2026, 0, 5, 0, 0))
+  })
+
+  it('picks the soonest of 19:00, 02:00, and 07:00 after a Monday morning (EST)', () => {
+    const mondayMorning = utcSeconds(2026, 0, 5, 13, 0)
+    expect(nextForexGoTo(mondayMorning, 'nextSession')).toBe(utcSeconds(2026, 0, 6, 0, 0))
+    expect(nextForexGoTo(mondayMorning, 'dayOpen')).toBe(utcSeconds(2026, 0, 5, 22, 0))
+    expect(nextForexGoTo(mondayMorning, 'newYork')).toBe(utcSeconds(2026, 0, 6, 12, 0))
+  })
+
+  it('steps past an exact session clock to the following one', () => {
+    const mondayAsian = utcSeconds(2026, 0, 6, 0, 0)
+    expect(nextForexGoTo(mondayAsian, 'nextSession')).toBe(utcSeconds(2026, 0, 6, 7, 0))
+    expect(nextForexGoTo(mondayAsian, 'asian')).toBe(utcSeconds(2026, 0, 7, 0, 0))
+  })
+
+  it('uses the 21:00 UTC close while New York is on EDT', () => {
+    const fridayAfternoon = utcSeconds(2020, 7, 28, 20, 59)
+    expect(nextForexGoTo(fridayAfternoon, 'dayOpen')).toBe(utcSeconds(2020, 7, 30, 21, 0))
+  })
+
+  it('crosses the March DST change onto Sunday 17:00 EDT', () => {
+    const fridayBeforeDst = utcSeconds(2026, 2, 6, 21, 0)
+    expect(nextForexGoTo(fridayBeforeDst, 'dayOpen')).toBe(utcSeconds(2026, 2, 8, 21, 0))
+    const sundayAsian = utcSeconds(2026, 2, 8, 23, 0)
+    expect(nextForexGoTo(sundayAsian, 'london')).toBe(utcSeconds(2026, 2, 9, 6, 0))
+  })
+})
+
+describe('forexSessionDayOpen', () => {
+  it('returns the NY 17:00 that opened the session day', () => {
+    expect(forexSessionDayOpen(utcSeconds(2026, 0, 5, 13, 0))).toBe(utcSeconds(2026, 0, 4, 22, 0))
+    expect(forexSessionDayOpen(utcSeconds(2026, 0, 2, 21, 0))).toBe(utcSeconds(2026, 0, 1, 22, 0))
+    expect(forexSessionDayOpen(utcSeconds(2026, 0, 4, 22, 0))).toBe(utcSeconds(2026, 0, 4, 22, 0))
+  })
+
+  it('returns null on the closed weekend', () => {
+    expect(forexSessionDayOpen(utcSeconds(2026, 0, 3, 17, 0))).toBeNull()
+    expect(forexSessionDayOpen(utcSeconds(2026, 0, 2, 22, 0))).toBeNull()
   })
 })
 

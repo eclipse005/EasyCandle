@@ -7,6 +7,7 @@ import {
 } from '@shared/importWorkerJob'
 import type { Candle } from '@shared/candleUtils'
 import { isCsvDataTimezone, remapCandlesCsvTimezone } from '@shared/csvDataTimezone'
+import { omitForexWeekendCandles } from '@shared/forexSession'
 import type { ImportWorkerInbound, ImportWorkerOutbound } from '@shared/importWorkerProtocol'
 import { idbGet, idbWriteImportDataset } from '../lib/importIdb'
 import type { ImportedDatasetMeta } from '@shared/importTypes'
@@ -95,7 +96,9 @@ async function handle(
         return
       }
 
-      const candles1m = remapCandlesCsvTimezone(stored.candles, message.dataTimezone)
+      const candles1m = omitForexWeekendCandles(
+        remapCandlesCsvTimezone(stored.candles, message.dataTimezone)
+      )
       const candlesByTimeframe = buildImportTimeframesJob(candles1m, (progress) => {
         post({ type: 'progress', requestId, progress })
       })

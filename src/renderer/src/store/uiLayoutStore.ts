@@ -15,6 +15,9 @@ export type DashboardTab = TestingTab | 'datasets' | 'symbols' | 'strategies' | 
 
 export type PanelPos = { x: number; y: number }
 
+/** Chart settings pages, in TradingView order. */
+export type ChartSettingsTab = 'symbol' | 'canvas' | 'scales'
+
 type PersistedLayout = {
   replayControlsMinimized?: boolean
   replayControlsPos?: PanelPos
@@ -48,6 +51,8 @@ type UiLayoutState = {
   aboutDialogOpen: boolean
   importDataDialogOpen: boolean
   chartSettingsDialogOpen: boolean
+  /** Which page the chart settings dialog opens on. */
+  chartSettingsTab: ChartSettingsTab
   /** Active left-sidebar destination. */
   sidebarNav: SidebarNav
   /** Active Testing sub-tab (only meaningful when sidebarNav === 'testing'). */
@@ -85,7 +90,7 @@ type UiLayoutState = {
   setShortcutsDialogOpen: (value: boolean) => void
   setAboutDialogOpen: (value: boolean) => void
   setImportDataDialogOpen: (value: boolean) => void
-  setChartSettingsDialogOpen: (value: boolean) => void
+  setChartSettingsDialogOpen: (value: boolean, tab?: ChartSettingsTab) => void
   setSidebarNav: (nav: SidebarNav) => void
   setTestingTab: (tab: TestingTab) => void
   setDashboardTab: (tab: DashboardTab) => void
@@ -149,6 +154,7 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   aboutDialogOpen: false,
   importDataDialogOpen: false,
   chartSettingsDialogOpen: false,
+  chartSettingsTab: 'symbol',
   symbolManagerDialogOpen: false,
   sessionManagerDialogOpen: false,
   sidebarNav: 'testing',
@@ -245,8 +251,12 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     set({ importDataDialogOpen: value })
   },
 
-  setChartSettingsDialogOpen: (value) => {
-    set({ chartSettingsDialogOpen: value })
+  setChartSettingsDialogOpen: (value, tab) => {
+    if (!value) {
+      set({ chartSettingsDialogOpen: false })
+      return
+    }
+    set({ chartSettingsDialogOpen: true, chartSettingsTab: tab ?? 'symbol' })
   },
 
   setSidebarNav: (nav) => {

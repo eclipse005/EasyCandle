@@ -5,7 +5,7 @@ import {
   IMPORT_CACHEABLE_TIMEFRAMES,
   IMPORT_DERIVED_TIMEFRAMES
 } from '@shared/candleAggregate'
-import { forexNyCloseOffsetSeconds } from '@shared/forexSession'
+import { forexNyCloseOffsetSeconds, omitForexWeekendCandles } from '@shared/forexSession'
 import { buildImportedDatasetMeta, statsForImportedSeries } from '@shared/importMeta'
 import { TIMEFRAMES } from '@shared/timeframes'
 import { decodeMtTextBuffer } from '@shared/mtTextDecode'
@@ -181,7 +181,10 @@ async function listImportDatasets(): Promise<ImportListResult> {
 async function loadCandleSeries(id: string, tf: string): Promise<Candle[] | null> {
   const key = `${id}:${tf}`
   const storedCandles = await idbGet<{ key: string; candles: Candle[] }>('candles', key)
-  return storedCandles?.candles || memoryCandles.get(key) || null
+  const candles = storedCandles?.candles || memoryCandles.get(key) || null
+  if (!candles?.length) return candles
+  // Already-saved Dukascopy files still contain the flat weekend fill.
+  return omitForexWeekendCandles(candles)
 }
 
 async function persistTimeframeSeries(

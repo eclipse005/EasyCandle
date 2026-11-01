@@ -24,6 +24,7 @@ export default function FloatingReplayBar() {
       title={`Replay · ${t('replay.next')}`}
       minimized={minimized}
       minimizedLabel={minimizedLabel}
+      minimizedTitle={t('replay.pillHint')}
       pos={pos}
       onPosChange={setReplayControlsPos}
       onMinimizedChange={setReplayControlsMinimized}

@@ -118,6 +118,110 @@ export function coverEndForTimeframe(openTime: number, timeframe: string): numbe
   return open + intervalSeconds(timeframe) - 1
 }
 
+/**
+ * True when `timeSeconds` sits in the forex week: Sunday 17:00 New York
+ * inclusive through Friday 17:00 New York exclusive.
+ * Dukascopy fills the closed gap with flat volume-0 bars; those are outside.
+ */
+export function isForexWeekSessionOpen(timeSeconds: number): boolean {
+  const t = Math.floor(Number(timeSeconds))
+  if (!Number.isFinite(t)) return false
+  const weekOpen = floorToForexWeekOpen(t)
+  return t >= weekOpen && t < weekOpen + 5 * DAY
+}
+
+/**
+ * FX Replay Custom Settings defaults, New York wall clock.
+ * Asian 19:00, London 02:00, New York 07:00, day open 17:00.
+ * Friday 17:00 is the week close, so the next day open is Sunday 17:00.
+ */
+export const FXR_DAY_OPEN_NY_HOUR = 17
+export const FXR_ASIAN_NY_HOUR = 19
+export const FXR_LONDON_NY_HOUR = 2
+export const FXR_NEW_YORK_NY_HOUR = 7
+
+export type ForexGoToKind = 'dayOpen' | 'nextSession' | 'newYork' | 'asian' | 'london'
+
+const GO_TO_SEARCH_DAYS = 8
+
+/** Seconds to add to a New York civil timestamp (encoded with Date.UTC) to get UTC. */
+function nyUtcOffsetSeconds(timeSeconds: number): number {
+  return forexNyCloseOffsetSeconds(timeSeconds) - 17 * HOUR
+}
+
+function nyCivilToUtc(civilUtc: number): number {
+  const offset = nyUtcOffsetSeconds(civilUtc)
+  const utc = civilUtc + offset
+  const corrected = nyUtcOffsetSeconds(utc)
+  return corrected === offset ? utc : civilUtc + corrected
+}
+
+function nyCivilYmd(timeSeconds: number): { year: number; month: number; day: number } {
+  const ny = new Date((timeSeconds - nyUtcOffsetSeconds(timeSeconds)) * 1000)
+  return { year: ny.getUTCFullYear(), month: ny.getUTCMonth(), day: ny.getUTCDate() }
+}
+
+/**
+ * Next New York wall-clock `hour:minute` strictly after `afterSeconds`
+ * that `accept` allows. Defaults to an open forex-week instant, so Friday
+ * 17:00 / 19:00 and the closed weekend are skipped.
+ */
+export function nextNyWallClock(
+  afterSeconds: number,
+  hour: number,
+  minute = 0,
+  accept: (timeSeconds: number) => boolean = isForexWeekSessionOpen
+): number | null {
+  const after = Math.floor(Number(afterSeconds))
+  if (!Number.isFinite(after)) return null
+  const start = nyCivilYmd(after)
+  for (let day = 0; day <= GO_TO_SEARCH_DAYS; day++) {
+    const civil = Date.UTC(start.year, start.month, start.day + day, hour, minute, 0) / 1000
+    const utc = nyCivilToUtc(civil)
+    if (utc > after && accept(utc)) return utc
+  }
+  return null
+}
+
+/** Next FX Replay go-to instant. Next Session is the soonest of Asian, London, and New York. */
+export function nextForexGoTo(afterSeconds: number, kind: ForexGoToKind): number | null {
+  if (kind === 'dayOpen') return nextNyWallClock(afterSeconds, FXR_DAY_OPEN_NY_HOUR)
+  if (kind === 'asian') return nextNyWallClock(afterSeconds, FXR_ASIAN_NY_HOUR)
+  if (kind === 'london') return nextNyWallClock(afterSeconds, FXR_LONDON_NY_HOUR)
+  if (kind === 'newYork') return nextNyWallClock(afterSeconds, FXR_NEW_YORK_NY_HOUR)
+  const candidates = [
+    nextNyWallClock(afterSeconds, FXR_ASIAN_NY_HOUR),
+    nextNyWallClock(afterSeconds, FXR_LONDON_NY_HOUR),
+    nextNyWallClock(afterSeconds, FXR_NEW_YORK_NY_HOUR)
+  ].filter((time): time is number => time != null)
+  if (candidates.length === 0) return null
+  return Math.min(...candidates)
+}
+
+/**
+ * NY 17:00 open of the forex session day that contains `timeSeconds`.
+ * Null on the closed weekend (Friday 17:00 New York through Sunday 17:00).
+ */
+export function forexSessionDayOpen(timeSeconds: number): number | null {
+  const t = Math.floor(Number(timeSeconds))
+  if (!Number.isFinite(t)) return null
+  const open = floorToInterval(t, DAY, forexNyCloseOffsetSeconds(t))
+  return isForexWeekSessionOpen(open) ? open : null
+}
+
+/** Drop bars outside the forex week. In-session flat bars (volume 0) stay. */
+export function omitForexWeekendCandles<T extends { time: number }>(candles: readonly T[]): T[] {
+  let closed = false
+  for (const candle of candles) {
+    if (!isForexWeekSessionOpen(candle.time)) {
+      closed = true
+      break
+    }
+  }
+  if (!closed) return candles as T[]
+  return candles.filter((candle) => isForexWeekSessionOpen(candle.time))
+}
+
 /** NY-close offset function for imported 4h/6h/1d; `undefined` for UTC / week / month. */
 export function importedForexSessionOffset(timeframe: string): ((t: number) => number) | undefined {
   return (FOREX_SESSION_TIMEFRAMES as readonly string[]).includes(timeframe)

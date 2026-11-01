@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { PriceScaleMode } from 'lightweight-charts'
 import { useReplayStore } from '@/store/replayStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
@@ -24,6 +25,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * UI keyboard shortcuts (live + replay):
  * - F → toggle chart fullscreen
  * - Alt+I → toggle invert price scale
+ * - Alt+P → percent scale, Alt+L → logarithmic scale, Alt+R → reset price scale
  * - Escape → disarm tool / close object dialog / exit chart fullscreen ONLY.
  *   NEVER leaves or closes the trading session (no closeActiveSession / exitReplay).
  * - Delete / Backspace → delete the selected LCD (or legacy) drawing
@@ -33,6 +35,8 @@ export function useUiHotkeys(): void {
   const toggleChartFullscreen = useUiLayoutStore((s) => s.toggleChartFullscreen)
   const setChartFullscreen = useUiLayoutStore((s) => s.setChartFullscreen)
   const toggleInvertScale = useChartSettingsStore((s) => s.toggleInvertScale)
+  const setPriceScale = useChartSettingsStore((s) => s.setPriceScale)
+  const resetPriceScale = useChartSettingsStore((s) => s.resetPriceScale)
   const setDrawTool = useReplayStore((s) => s.setDrawTool)
   const deleteDrawing = useReplayStore((s) => s.deleteDrawing)
 
@@ -40,11 +44,34 @@ export function useUiHotkeys(): void {
     function onKeyDown(event: KeyboardEvent): void {
       if (isEditableTarget(event.target)) return
 
-      if (event.altKey && (event.key === 'i' || event.key === 'I')) {
-        event.preventDefault()
-        if (event.repeat) return
-        toggleInvertScale()
-        return
+      if (event.altKey && !event.ctrlKey && !event.metaKey && !event.repeat) {
+        const key = event.key.toLowerCase()
+        if (key === 'i') {
+          event.preventDefault()
+          toggleInvertScale()
+          return
+        }
+        if (key === 'p') {
+          event.preventDefault()
+          const mode = useChartSettingsStore.getState().priceScale.mode
+          setPriceScale({
+            mode: mode === PriceScaleMode.Percentage ? PriceScaleMode.Normal : PriceScaleMode.Percentage
+          })
+          return
+        }
+        if (key === 'l') {
+          event.preventDefault()
+          const mode = useChartSettingsStore.getState().priceScale.mode
+          setPriceScale({
+            mode: mode === PriceScaleMode.Logarithmic ? PriceScaleMode.Normal : PriceScaleMode.Logarithmic
+          })
+          return
+        }
+        if (key === 'r') {
+          event.preventDefault()
+          resetPriceScale()
+          return
+        }
       }
 
       const mod = event.ctrlKey || event.metaKey
@@ -141,5 +168,5 @@ export function useUiHotkeys(): void {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [toggleChartFullscreen, setChartFullscreen, toggleInvertScale, setDrawTool, deleteDrawing])
+  }, [toggleChartFullscreen, setChartFullscreen, toggleInvertScale, setPriceScale, resetPriceScale, setDrawTool, deleteDrawing])
 }

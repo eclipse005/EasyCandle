@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { FOREX_GO_TO_SHORTCUTS, jumpToForexGoTo } from '@/lib/forexGoTo'
 import { stepReplaySpeed } from '@/lib/replayEngine'
 import { useReplayStore } from '@/store/replayStore'
 
@@ -19,6 +20,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * - ArrowLeft → step backward by shared Timestep
  * - + / = → faster playback
  * - - / _ → slower playback
+ * - Y / Z / N / I / L → FX Replay go-to (day open, next session, New York, Asian, London)
  */
 export function useReplayHotkeys(): void {
   const mode = useReplayStore((s) => s.mode)
@@ -84,6 +86,17 @@ export function useReplayHotkeys(): void {
         event.preventDefault()
         setSpeed(stepReplaySpeed(state.speed, -1))
         return
+      }
+
+      if (!event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && !event.isComposing) {
+        const goTo = FOREX_GO_TO_SHORTCUTS[event.key.toLowerCase()]
+        if (goTo) {
+          if (document.querySelector('[role="dialog"]')) return
+          if (state.replayLoading || state.secondaryLoading) return
+          event.preventDefault()
+          void jumpToForexGoTo(goTo)
+          return
+        }
       }
 
       if (event.code !== 'Space' && event.key !== ' ') return

@@ -39,15 +39,17 @@ export function openImportDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('sources')) {
         db.createObjectStore('sources', { keyPath: 'id' })
       }
-      // week open Sun NY17 — invalidate cached 1w series + meta stats
+      // week open Sun NY17 — invalidate cached 1w series + meta stats.
+      // Key cursor only. A value cursor structured-clones every series, including
+      // the 1m blob, and that upgrade transaction blocks every later open.
       if (event.oldVersion < 2 && tx) {
         if (db.objectStoreNames.contains('candles')) {
           const candleStore = tx.objectStore('candles')
-          const cursorReq = candleStore.openCursor()
+          const cursorReq = candleStore.openKeyCursor()
           cursorReq.onsuccess = () => {
             const cursor = cursorReq.result
             if (!cursor) return
-            const key = String((cursor.value as { key?: string }).key ?? cursor.key)
+            const key = String(cursor.key)
             if (key.endsWith(':1w')) cursor.delete()
             cursor.continue()
           }

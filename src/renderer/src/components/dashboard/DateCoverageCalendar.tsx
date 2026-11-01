@@ -4,6 +4,7 @@ import { cn } from '@/components/ui/cn'
 import SoftButton from '@/components/ui/SoftButton'
 import { softType } from '@/components/ui/softTokens'
 import { useT } from '@/i18n/useT'
+import { coveragePeriodIndex } from '@shared/dateCoverage'
 
 type CalendarView = 'days' | 'months' | 'years'
 
@@ -82,6 +83,8 @@ export default function DateCoverageCalendar({
   const [view, setView] = useState<CalendarView>('days')
   /** Decade start for the year-picker grid (12 years: decadeStart … decadeStart+11). */
   const [yearGridStart, setYearGridStart] = useState(() => Math.floor(seed.year / 12) * 12)
+
+  const periods = useMemo(() => coveragePeriodIndex(coverageDays), [coverageDays])
 
   const cells = useMemo(() => {
     const total = daysInMonth(year, month)
@@ -246,41 +249,45 @@ export default function DateCoverageCalendar({
         <div className="grid grid-cols-3 gap-1.5">
           {Array.from({ length: 12 }, (_, i) => yearGridStart + i).map((y) => {
             const selected = y === year
+            const lit = periods.years.has(y)
             return (
               <button
                 key={y}
                 type="button"
                 onClick={() => pickYear(y)}
+                aria-pressed={selected}
+                aria-label={`${y} — ${lit ? t('cal.hasData') : t('cal.noData')}`}
                 className={cn(
-                  'h-9 rounded-xl text-[12px] tabular-nums transition-colors',
-                  selected
-                    ? 'bg-primary-500/90 font-semibold text-white'
-                    : 'text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-100'
+                  'flex h-9 flex-col items-center justify-center rounded-xl text-[12px] tabular-nums transition-colors',
+                  periodClass(selected, lit)
                 )}
               >
-                {y}
+                <span className="leading-none">{y}</span>
+                <CoverageDot lit={lit} />
               </button>
             )
           })}
         </div>
       ) : view === 'months' ? (
         <div className="grid grid-cols-3 gap-1.5">
-          {([0,1,2,3,4,5,6,7,8,9,10,11] as const).map((idx) => {
+          {([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const).map((idx) => {
             const label = t(`cal.month.${idx}` as 'cal.month.0')
             const selected = idx === month
+            const lit = periods.months.has(`${year}-${pad2(idx + 1)}`)
             return (
               <button
                 key={idx}
                 type="button"
                 onClick={() => pickMonth(idx)}
+                aria-pressed={selected}
+                aria-label={`${year}-${pad2(idx + 1)} ${label} — ${lit ? t('cal.hasData') : t('cal.noData')}`}
                 className={cn(
-                  'h-9 rounded-xl text-[12px] transition-colors',
-                  selected
-                    ? 'bg-primary-500/90 font-semibold text-white'
-                    : 'text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-100'
+                  'flex h-9 flex-col items-center justify-center rounded-xl text-[12px] transition-colors',
+                  periodClass(selected, lit)
                 )}
               >
-                {label}
+                <span className="leading-none">{label}</span>
+                <CoverageDot lit={lit} />
               </button>
             )
           })}
@@ -307,8 +314,8 @@ export default function DateCoverageCalendar({
                   disabled={!canClick}
                   aria-label={
                     lit
-                      ? `${cell.key}${selected ? ' selected' : ''} — has data`
-                      : `${cell.key} — no data`
+                      ? `${cell.key}${selected ? ' selected' : ''} — ${t('cal.hasData')}`
+                      : `${cell.key} — ${t('cal.noData')}`
                   }
                   aria-pressed={selected}
                   onClick={() => {
@@ -331,18 +338,43 @@ export default function DateCoverageCalendar({
             })}
           </div>
 
-          <p className={cn('mt-2', softType.micro)}>
-            <span className="mr-3 inline-flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-sm bg-emerald-500/50" aria-hidden />
-              Has data
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-sm bg-zinc-700" aria-hidden />
-              No data
-            </span>
-          </p>
         </>
       )}
+
+      <CoverageLegend />
     </div>
+  )
+}
+
+/** Same lit / empty language as the day grid. Selection stays blue. */
+function periodClass(selected: boolean, lit: boolean): string {
+  if (selected) return 'bg-primary-500/90 font-semibold text-white'
+  if (lit) return 'bg-emerald-500/20 font-medium text-emerald-200 hover:bg-emerald-500/35'
+  return 'text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-300'
+}
+
+/** Stays visible on the blue selected cell, where the fill can no longer say "has data". */
+function CoverageDot({ lit }: { lit: boolean }): ReactNode {
+  return (
+    <span
+      className={cn('mt-1 h-1 w-1 rounded-full', lit ? 'bg-emerald-300' : 'bg-zinc-700')}
+      aria-hidden
+    />
+  )
+}
+
+function CoverageLegend(): ReactNode {
+  const { t } = useT()
+  return (
+    <p className={cn('mt-2', softType.micro)}>
+      <span className="mr-3 inline-flex items-center gap-1.5">
+        <span className="inline-block h-2 w-2 rounded-sm bg-emerald-500/50" aria-hidden />
+        {t('cal.hasData')}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="inline-block h-2 w-2 rounded-sm bg-zinc-700" aria-hidden />
+        {t('cal.noData')}
+      </span>
+    </p>
   )
 }

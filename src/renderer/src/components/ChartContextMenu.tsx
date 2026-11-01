@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { forexSessionDayOpen } from '@shared/forexSession'
 import { formatTradeSizeForSymbol, pendingKindForEntry } from '@/lib/paperTrade'
 import { useReplayStore } from '@/store/replayStore'
 import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { useUiLayoutStore } from '@/store/uiLayoutStore'
+import { useT } from '@/i18n/useT'
+import type { MessageKey } from '@/i18n/messages'
 import * as bridge from '@/lib/drawings/drawingBridge'
 import {
   applySavedTemplate,
   bringDrawingToFront,
-  clearAllDrawings,
   cloneDrawing,
   copyDrawing,
   hasDrawingClipboard,
@@ -76,25 +78,25 @@ export default function ChartContextMenu({
   pricePrecision,
   onClose
 }: ChartContextMenuProps): ReactNode {
+  const { t } = useT()
   const rootRef = useRef<HTMLDivElement>(null)
   const mode = useReplayStore((s) => s.mode)
   const currentClose = useReplayStore((s) => s.currentCandle?.close ?? null)
   const tradeSize = useReplayStore((s) => s.tradeSize)
   const symbol = useReplayStore((s) => s.symbol)
-  const setTicketOrderType = useReplayStore((s) => s.setTicketOrderType)
-  const setTicketLimitPrice = useReplayStore((s) => s.setTicketLimitPrice)
-  const jumpToTime = useReplayStore((s) => s.jumpToTime)
+  const indicatorCount = useReplayStore((s) => s.activeIndicators.length)
   const placeLimit = useReplayStore((s) => s.placeLimit)
   const paperBuy = useReplayStore((s) => s.paperBuy)
   const paperSell = useReplayStore((s) => s.paperSell)
+  const jumpToTime = useReplayStore((s) => s.jumpToTime)
   const setChartSettingsDialogOpen = useUiLayoutStore((s) => s.setChartSettingsDialogOpen)
-  const requestJumpMenu = useUiLayoutStore((s) => s.requestJumpMenu)
   const openObjectDialog = useDrawingUiStore((s) => s.openObjectDialog)
   const setDrawingsVisible = useDrawingUiStore((s) => s.setDrawingsVisible)
   const drawingsVisible = useDrawingUiStore((s) => s.drawingsVisible)
   const [orderOpen, setOrderOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const setObjectTreeOpen = useDrawingUiStore((s) => s.setObjectTreeOpen)
+  const objectTreeOpen = useDrawingUiStore((s) => s.objectTreeOpen)
   const tradeMarksVisible = useUiLayoutStore((s) => s.tradeMarksVisible)
   const setTradeMarksVisible = useUiLayoutStore((s) => s.setTradeMarksVisible)
 
@@ -125,13 +127,27 @@ export default function ChartContextMenu({
     }
   }, [onClose])
 
-  function kindLabel(side: 'buy' | 'sell'): string {
+  function orderKind(side: 'buy' | 'sell'): 'market' | 'limit' | 'stop' {
     if (atMarket) return 'market'
     const stop = above ? side === 'buy' : side !== 'buy'
     return stop ? 'stop' : 'limit'
   }
 
-  function placeInstant(side: 'buy' | 'sell'): void {
+  function orderLabel(side: 'buy' | 'sell'): string {
+    const kind = orderKind(side)
+    const kindKey: Record<typeof kind, MessageKey> = {
+      market: 'context.orderKind.market',
+      limit: 'context.orderKind.limit',
+      stop: 'context.orderKind.stop'
+    }
+    return t(side === 'buy' ? 'context.orderBuy' : 'context.orderSell', {
+      size: sizeText,
+      price: priceText,
+      kind: t(kindKey[kind])
+    })
+  }
+
+  function placeFromMenu(side: 'buy' | 'sell'): void {
     if (mode !== 'replay') return
     if (atMarket) {
       if (side === 'buy') paperBuy()
@@ -141,17 +157,13 @@ export default function ChartContextMenu({
     }
     const marketSide = side === 'buy' ? 'long' : 'short'
     const mark = currentPrice ?? point.price
-    const kind = pendingKindForEntry(marketSide, mark, point.price) ?? undefined
+    const kind = pendingKindForEntry(marketSide, mark, point.price)
+    if (!kind) return
     placeLimit(marketSide, point.price, kind)
     onClose()
   }
 
-  function prefill(side: 'buy' | 'sell'): void {
-    const stop = above ? side === 'buy' : side !== 'buy'
-    setTicketOrderType(stop ? 'stopLimit' : 'limit')
-    setTicketLimitPrice(point.price)
-    onClose()
-  }
+  const sessionDayOpen = point.time == null ? null : forexSessionDayOpen(point.time)
 
   if (drawing && drawingId) {
     return (
@@ -272,70 +284,47 @@ export default function ChartContextMenu({
       style={{ left: point.x, top: point.y }}
       className="absolute z-[60] min-w-[15rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"
     >
-      {mode === 'replay' && point.time != null ? (
-        <MenuItem
-          label="Replay to this candle"
-          onSelect={() => {
-            void jumpToTime(point.time ?? 0, { source: 'replay-to' })
-            onClose()
-          }}
-        />
-      ) : null}
       {mode === 'replay' ? (
         <MenuItem
-          label="Replay to this date…"
+          label={t('context.replayToDate')}
+          disabled={sessionDayOpen == null}
           onSelect={() => {
-            requestJumpMenu()
+            if (sessionDayOpen == null) return
+            void jumpToTime(sessionDayOpen, { source: 'replay-to' })
             onClose()
           }}
         />
       ) : null}
       {mode === 'replay' ? (
         <>
-          <MenuItem
-            label={`Buy ${sizeText} @ ${priceText} ${kindLabel('buy')}`}
-            hint="Instant"
-            onSelect={() => placeInstant('buy')}
-          />
-          <MenuItem
-            label={`Sell ${sizeText} @ ${priceText} ${kindLabel('sell')}`}
-            hint="Instant"
-            onSelect={() => placeInstant('sell')}
-          />
-          <MenuItem
-            label={`Prefill Buy ticket @ ${priceText}`}
-            onSelect={() => prefill('buy')}
-          />
-          <MenuItem
-            label={`Prefill Sell ticket @ ${priceText}`}
-            onSelect={() => prefill('sell')}
-          />
+          <MenuItem label={orderLabel('buy')} onSelect={() => placeFromMenu('buy')} />
+          <MenuItem label={orderLabel('sell')} onSelect={() => placeFromMenu('sell')} />
         </>
       ) : null}
       <Divider />
       <MenuItem
-        label="Reset view"
+        label={t('context.resetChartView')}
         onSelect={() => {
           fitPrimaryChart()
           onClose()
         }}
       />
       <MenuItem
-        label="Move to last candle"
+        label={t('context.moveToLastCandle')}
         onSelect={() => {
           focusPrimaryLatest()
           onClose()
         }}
       />
       <MenuItem
-        label={`Copy price ${priceText}`}
+        label={t('context.copyPrice', { price: priceText })}
         onSelect={() => {
           void navigator.clipboard.writeText(String(point.price)).catch(() => {})
           onClose()
         }}
       />
       <MenuItem
-        label="Paste drawing"
+        label={t('context.paste')}
         hint="Ctrl+V"
         disabled={!hasDrawingClipboard()}
         onSelect={() => {
@@ -345,21 +334,40 @@ export default function ChartContextMenu({
       />
       <Divider />
       <MenuItem
-        label={drawingsVisible ? 'Hide drawings' : 'Show drawings'}
+        label={t('context.tableView')}
+        onSelect={() => {
+          setObjectTreeOpen(true)
+          onClose()
+        }}
+      />
+      <MenuItem
+        label={t('context.hideObjectTree')}
+        disabled={!objectTreeOpen}
+        onSelect={() => {
+          setObjectTreeOpen(false)
+          onClose()
+        }}
+      />
+      <MenuItem
+        label={tradeMarksVisible ? t('context.hideMarks') : t('context.showMarks')}
+        onSelect={() => {
+          setTradeMarksVisible(!tradeMarksVisible)
+          onClose()
+        }}
+      />
+      <MenuItem
+        label={drawingsVisible ? t('context.hideAllDrawings') : t('context.showAllDrawings')}
         onSelect={() => {
           setDrawingsVisible(!drawingsVisible)
           onClose()
         }}
       />
       <MenuItem
-        label="Remove drawings"
-        onSelect={() => {
-          clearAllDrawings()
-          onClose()
-        }}
-      />
-      <MenuItem
-        label="Remove indicators"
+        label={t('context.removeIndicators', {
+          count: indicatorCount,
+          suffix: indicatorCount === 1 ? '' : 's'
+        })}
+        disabled={indicatorCount === 0}
         onSelect={() => {
           useReplayStore.setState({ activeIndicators: [] })
           onClose()
@@ -367,30 +375,7 @@ export default function ChartContextMenu({
       />
       <Divider />
       <MenuItem
-        label="Object tree…"
-        onSelect={() => {
-          setObjectTreeOpen(true)
-          onClose()
-        }}
-      />
-      <MenuItem
-        label="Table view…"
-        onSelect={() => {
-          // Same panel — table layout of drawings (FXR empty-RMB parity).
-          setObjectTreeOpen(true)
-          onClose()
-        }}
-      />
-      <MenuItem
-        label={tradeMarksVisible ? 'Hide marks' : 'Show marks'}
-        onSelect={() => {
-          setTradeMarksVisible(!tradeMarksVisible)
-          onClose()
-        }}
-      />
-      <Divider />
-      <MenuItem
-        label="Settings…"
+        label={t('context.settings')}
         onSelect={() => {
           setChartSettingsDialogOpen(true)
           onClose()

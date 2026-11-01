@@ -134,6 +134,8 @@ const MONTH_SHORT = [
   'Dec'
 ] as const
 
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
 /** Matches lightweight-charts `TickMarkType`. */
 export const ChartTickMarkType = {
   Year: 0,
@@ -337,6 +339,39 @@ export function formatSessionCandleTime(
   }`
   if (!showOffset) return wall
   return `${wall} ${sessionUtcOffsetLabel(timeZone, unixSeconds)}`
+}
+
+export type ChartCrosshairTimeOptions = {
+  /** Intraday crosshair appends HH:MM. Daily and higher omit the clock. */
+  withTime?: boolean
+  /** Append :SS. Used when the time scale shows seconds. */
+  withSeconds?: boolean
+}
+
+/**
+ * Time-scale crosshair label, TradingView style.
+ * Daily: `Tue 20 Oct '26`. Intraday: `Fri 30 Oct '26 06:45`.
+ * Wall clock is the chart timezone. Weekday and month stay English abbreviations.
+ */
+export function formatChartCrosshairTime(
+  unixSeconds: number | null | undefined,
+  timeZone: string,
+  options: ChartCrosshairTimeOptions = {}
+): string {
+  if (unixSeconds == null || !Number.isFinite(unixSeconds)) return '—'
+  const parts = sessionDateTimeParts(unixSeconds, timeZone)
+  if (!parts) return '—'
+
+  const weekday =
+    WEEKDAY_SHORT[new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay()] ?? ''
+  const month = MONTH_SHORT[parts.month - 1] ?? pad2(parts.month)
+  const year = String(parts.year % 100).padStart(2, '0')
+  let label = `${weekday} ${parts.day} ${month} '${year}`
+  if (options.withTime) {
+    label += ` ${pad2(parts.hour)}:${pad2(parts.minute)}`
+    if (options.withSeconds) label += `:${pad2(parts.second)}`
+  }
+  return label
 }
 
 export function tickMarkLabel(unixSeconds: number, tickMarkType: number, timeZone: string): string {

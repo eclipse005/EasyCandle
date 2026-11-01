@@ -3,6 +3,7 @@ import {
   CHART_TIMEZONES,
   ChartTickMarkType,
   DEFAULT_CHART_TIMEZONE,
+  formatChartCrosshairTime,
   formatSessionCandleTime,
   listAccountTimezones,
   parseSessionParts,
@@ -145,6 +146,33 @@ describe('parseSessionParts / toSessionParts', () => {
   it('treats UTC parse as identity', () => {
     const utc = utcSeconds(2024, 6, 25, 4, 30, 0)
     expect(parseSessionParts('2024-06-25', '04:30', 'UTC')).toBe(utc)
+  })
+})
+
+describe('formatChartCrosshairTime', () => {
+  it('formats a daily bar as weekday, day, month, and short year', () => {
+    const time = utcSeconds(2026, 10, 20)
+    expect(formatChartCrosshairTime(time, 'UTC')).toBe("Tue 20 Oct '26")
+    expect(formatChartCrosshairTime(time, 'America/New_York')).toBe("Mon 19 Oct '26")
+  })
+
+  it('appends 24-hour minutes on intraday bars in the chart timezone', () => {
+    const time = utcSeconds(2026, 10, 30, 10, 45)
+    expect(formatChartCrosshairTime(time, 'America/New_York', { withTime: true })).toBe(
+      "Fri 30 Oct '26 06:45"
+    )
+    expect(formatChartCrosshairTime(time, 'UTC', { withTime: true })).toBe("Fri 30 Oct '26 10:45")
+  })
+
+  it('leaves the day unpadded and can append seconds', () => {
+    const time = utcSeconds(2026, 10, 5, 14, 7, 9)
+    expect(formatChartCrosshairTime(time, 'UTC', { withTime: true, withSeconds: true })).toBe(
+      "Mon 5 Oct '26 14:07:09"
+    )
+  })
+
+  it('returns a dash for a missing time', () => {
+    expect(formatChartCrosshairTime(null, 'UTC', { withTime: true })).toBe('—')
   })
 })
 

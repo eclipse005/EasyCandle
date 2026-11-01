@@ -402,21 +402,6 @@ export default function TradePanel() {
     positionHistory: closedTrades.length
   }
 
-  const howTo = (
-    <EmptyRow>
-      Use the order ticket to Buy or Sell at market, or place a Limit or Stop Limit. Size is lots
-      for FX/metals and coin amount for crypto. Ticket TP/SL apply to the next order, then the form
-      resets. Drag a position's levels on the chart to edit them. First SL/TP placement seeds the
-      other at {rrLabel} as a guide — then move either level freely.
-    </EmptyRow>
-  )
-
-  const neverTraded =
-    positions.length === 0 &&
-    pendingOrders.length === 0 &&
-    orderHistory.length === 0 &&
-    closedTrades.length === 0
-
   let body: ReactNode
   if (tab === 'positions') {
     body =
@@ -442,8 +427,6 @@ export default function TradePanel() {
             />
           ))}
         </HistoryList>
-      ) : neverTraded ? (
-        howTo
       ) : (
         <EmptyRow>{t('blotter.emptyPositions')}</EmptyRow>
       )
@@ -515,7 +498,7 @@ export default function TradePanel() {
         <div className="ml-auto flex flex-wrap items-center gap-3 text-caption tabular-nums">
           {activeSession ? (
             <span className="text-zinc-500">
-              Balance{' '}
+              {t('blotter.balance')}{' '}
               <span
                 className={
                   activeSession.startingBalance + perf.realized >= 0
@@ -528,13 +511,13 @@ export default function TradePanel() {
             </span>
           ) : null}
           <span className="text-zinc-500">
-            Realized{' '}
+            {t('blotter.realized')}{' '}
             <span className={perf.realized >= 0 ? 'text-emerald-400' : 'text-red-400'}>
               {formatPnlCcy(perf.realized, quoteCurrency)}
             </span>
           </span>
           <span className="text-zinc-500">
-            Open{' '}
+            {t('blotter.openPnl')}{' '}
             <span
               className={
                 openPnl == null
@@ -548,7 +531,7 @@ export default function TradePanel() {
             </span>
           </span>
           <span className="font-medium text-zinc-300">
-            Session{' '}
+            {t('blotter.session')}{' '}
             <span className={perf.total >= 0 ? 'text-emerald-400' : 'text-red-400'}>
               {formatPnlCcy(perf.total, quoteCurrency)}
             </span>

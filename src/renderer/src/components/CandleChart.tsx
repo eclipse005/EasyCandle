@@ -7,7 +7,10 @@ import {
   createSeriesMarkers,
   createTextWatermark,
   LineSeries,
+  LineStyle,
+  PriceScaleMode,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type ITextWatermarkPluginApi,
@@ -20,6 +23,7 @@ import {
 import DrawingOverlay from '@/components/DrawingOverlay'
 import DrawingSelectionBar from '@/components/DrawingSelectionBar'
 import ChartContextMenu from '@/components/ChartContextMenu'
+import PriceScaleMenu, { PriceScalePlus } from '@/components/PriceScaleMenu'
 import ActiveIndicatorsLegend from '@/components/ActiveIndicatorsLegend'
 import OhlcLegend from '@/components/OhlcLegend'
 import SmcOverlay from '@/components/SmcOverlay'
@@ -38,6 +42,16 @@ import { useDrawingUiStore } from '@/store/drawingUiStore'
 import { applyToolDefaultsOnAdd } from '@/lib/drawings/drawingActions'
 import { toLcdInterval } from '@/lib/drawings/drawingStyleBridge'
 import { useChartPaneModel } from '@/hooks/useChartPaneModel'
+import { useT } from '@/i18n/useT'
+import {
+  barRemainingSeconds,
+  formatBarCountdown,
+  lockedPriceRange,
+  pricePerBar,
+  priceScaleHit,
+  priceScaleWidth,
+  sessionScaleLevels
+} from '@/lib/priceScale'
 import { themedWordmarkUrl } from '@/lib/chartWordmark'
 import type { ChartOverlay } from '@/lib/indicators'
 import {
@@ -57,7 +71,7 @@ import type { Candle } from '@shared/candleUtils'
 import { resolvePricePrecision, toChartPriceFormat } from '@shared/pricePrecision'
 import { TIMEFRAMES } from '@shared/timeframes'
 import {
-  formatSessionCandleTime,
+  formatChartCrosshairTime,
   tickMarkLabel,
   unixSecondsFromChartTime
 } from '@/lib/chartTimezone'
@@ -71,16 +85,20 @@ const DEFAULT_VISIBLE_BARS = 50
 
 function chartLocalization(
   timezone: string,
+  timeframe: string,
   secondsVisible: boolean
 ): {
   timeFormatter: (time: Time) => string
   tickMarkFormatter: (time: Time, tickMarkType: TickMarkType) => string
 } {
+  const step = TIMEFRAMES[timeframe]?.seconds ?? 60
+  // Daily, weekly, and monthly bars match TradingView: date only, no clock.
+  const withTime = step < 86_400
   return {
     timeFormatter: (time) =>
-      formatSessionCandleTime(unixSecondsFromChartTime(time), timezone, {
-        seconds: secondsVisible,
-        offset: false
+      formatChartCrosshairTime(unixSecondsFromChartTime(time), timezone, {
+        withTime,
+        withSeconds: withTime && secondsVisible
       }),
     tickMarkFormatter: (time, tickMarkType) => {
       const seconds = unixSecondsFromChartTime(time)
@@ -205,7 +223,9 @@ export default function CandleChart({
   // own series, so both scroll together in split view.
   const chartFocus = useReplayStore((s) => s.chartFocus)
   const theme = useThemeStore((s) => s.theme)
+  const { t, locale } = useT()
   const chartSettings = useChartSettingsStore()
+  const priceScaleSettings = useChartSettingsStore((s) => s.priceScale)
   const colorOverrides = useChartSettingsStore((s) => s.colors)
   const palette = useMemo(() => resolveChartPalette(theme, colorOverrides), [theme, colorOverrides])
   const setPrimaryChart = useUiLayoutStore((s) => s.setPrimaryChart)
@@ -215,6 +235,11 @@ export default function CandleChart({
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const watermarkRef = useRef<ITextWatermarkPluginApi<Time> | null>(null)
   const overlaySeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())
+  const levelLinesRef = useRef<{
+    previous?: IPriceLine
+    high?: IPriceLine
+    low?: IPriceLine
+  }>({})
   const onPriceScaleWidthChangeRef = useRef(onPriceScaleWidthChange)
   const onReachHistoryEdgeRef = useRef(onReachHistoryEdge)
   const edgeThresholdRef = useRef(edgeThreshold)
@@ -281,9 +306,11 @@ export default function CandleChart({
       requestAnimationFrame(() => {
         if (chartRef.current !== chart || seriesRef.current !== series) return
         // Re-enable autoscaling after symbol/price-range changes (e.g. BNB → XAU).
-        const autoScale = useChartSettingsStore.getState().priceScale.autoScale
-        series.priceScale().applyOptions({ autoScale })
-        chart.priceScale('right').applyOptions({ autoScale })
+        const ps = useChartSettingsStore.getState().priceScale
+        const autoScale = ps.lockToBarRatio ? false : ps.autoScale
+        const id = ps.scaleOnLeft ? 'left' : 'right'
+        series.applyOptions({ priceScaleId: id })
+        chart.priceScale(id).applyOptions({ autoScale })
         focusLatestCandle(chart, data.length)
       })
     }
@@ -338,6 +365,12 @@ export default function CandleChart({
     for (const overlay of list) {
       if (overlay.type !== 'line') continue
 
+      const ps = useChartSettingsStore.getState().priceScale
+      const priceScaleId = ps.scalePriceChartOnly
+        ? 'indicator'
+        : ps.scaleOnLeft
+          ? 'left'
+          : 'right'
       let series = map.get(overlay.id)
       if (!series) {
         series = chart.addSeries(LineSeries, {
@@ -346,11 +379,15 @@ export default function CandleChart({
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false,
+          priceScaleId,
           priceFormat: toChartPriceFormat(pricePrecisionRef.current)
         })
         map.set(overlay.id, series)
-      } else if (overlay.color) {
-        series.applyOptions({ color: overlay.color })
+      } else {
+        series.applyOptions({
+          color: overlay.color || undefined,
+          priceScaleId
+        })
       }
 
       series.setData((overlay.data ?? []) as never)
@@ -394,7 +431,11 @@ export default function CandleChart({
         timeVisible: settings.timeScale.timeVisible,
         secondsVisible: settings.timeScale.secondsVisible
       },
-      localization: chartLocalization(settings.timezone, settings.timeScale.secondsVisible)
+      localization: chartLocalization(
+        settings.timezone,
+        timeframe,
+        settings.timeScale.secondsVisible
+      )
     })
 
     const series = addSeries(chart, chartType, pricePrecisionRef.current, palette)
@@ -629,9 +670,11 @@ export default function CandleChart({
     if (data.length) {
       requestAnimationFrame(() => {
         if (chartRef.current !== chart || seriesRef.current !== series) return
-        const autoScale = useChartSettingsStore.getState().priceScale.autoScale
-        series.priceScale().applyOptions({ autoScale })
-        chart.priceScale('right').applyOptions({ autoScale })
+        const ps = useChartSettingsStore.getState().priceScale
+        const autoScale = ps.lockToBarRatio ? false : ps.autoScale
+        const id = ps.scaleOnLeft ? 'left' : 'right'
+        series.applyOptions({ priceScaleId: id })
+        chart.priceScale(id).applyOptions({ autoScale })
         focusLatestCandle(chart, data.length)
       })
     }
@@ -660,20 +703,42 @@ export default function CandleChart({
     const chart = chartRef.current
     if (!chart) return
     const settings = useChartSettingsStore.getState()
+    const ps = settings.priceScale
+    const scaleId = ps.scaleOnLeft ? 'left' : 'right'
+    const scaleOptions = {
+      borderColor: palette.scaleBorder,
+      mode: ps.mode,
+      invertScale: ps.invertScale,
+      autoScale: ps.lockToBarRatio ? false : ps.autoScale,
+      alignLabels: ps.noOverlappingLabels
+    }
+    chart.priceScale('left').applyOptions({ ...scaleOptions, visible: ps.scaleOnLeft })
+    chart.priceScale('right').applyOptions({ ...scaleOptions, visible: !ps.scaleOnLeft })
+    const mainSeries = seriesRef.current
+    mainSeries?.applyOptions({ priceScaleId: scaleId })
+    const studyId = ps.scalePriceChartOnly ? 'indicator' : scaleId
+    for (const study of overlaySeriesRef.current.values()) {
+      study.applyOptions({ priceScaleId: studyId })
+    }
+    if (ps.scalePriceChartOnly) {
+      chart.priceScale('indicator').applyOptions({
+        mode: PriceScaleMode.Normal,
+        invertScale: false,
+        alignLabels: true
+      })
+    }
     chart.applyOptions({
       ...chartThemeOptions(palette),
-      rightPriceScale: {
-        borderColor: palette.scaleBorder,
-        mode: settings.priceScale.mode,
-        invertScale: settings.priceScale.invertScale,
-        autoScale: settings.priceScale.autoScale
-      },
       timeScale: {
         borderColor: palette.scaleBorder,
         timeVisible: settings.timeScale.timeVisible,
         secondsVisible: settings.timeScale.secondsVisible
       },
-      localization: chartLocalization(settings.timezone, settings.timeScale.secondsVisible),
+      localization: chartLocalization(
+        settings.timezone,
+        timeframe,
+        settings.timeScale.secondsVisible
+      ),
       crosshair: {
         mode: settings.crosshair.mode,
         vertLine: {
@@ -692,7 +757,7 @@ export default function CandleChart({
         }
       }
     })
-  }, [theme, chartSettings, palette])
+  }, [theme, chartSettings, palette, timeframe])
 
   // Keep the main series colors in sync with the chart settings.
   useEffect(() => {
@@ -802,8 +867,150 @@ export default function CandleChart({
     time: number | null
     drawingId?: string | null
   } | null>(null)
+  const [scaleMenu, setScaleMenu] = useState<{
+    clientX: number
+    clientY: number
+    ratio: number | null
+  } | null>(null)
+  const [plusPoint, setPlusPoint] = useState<{ y: number; price: number } | null>(null)
+  const [countdownY, setCountdownY] = useState<number | null>(null)
+
+  useEffect(() => {
+    const chart = chartRef.current
+    const series = seriesRef.current
+    if (!chart || !series || !priceScaleSettings.lockToBarRatio) return undefined
+    const id = priceScaleSettings.scaleOnLeft ? 'left' : 'right'
+    const scale = chart.priceScale(id)
+    let ratio = priceScaleSettings.barRatio
+    if (ratio == null || !(ratio > 0)) {
+      const range = scale.getVisibleRange()
+      const logical = chart.timeScale().getVisibleLogicalRange()
+      const measured = range && logical ? pricePerBar(range, logical.to - logical.from) : null
+      if (measured) {
+        useChartSettingsStore.getState().setPriceScale({ barRatio: measured })
+        ratio = measured
+      }
+    }
+    if (ratio == null) return undefined
+    const locked = ratio
+    const apply = (): void => {
+      const logical = chart.timeScale().getVisibleLogicalRange()
+      const range = scale.getVisibleRange()
+      if (!logical || !range) return
+      const bars = Math.max(1, logical.to - logical.from)
+      const center = (range.from + range.to) / 2
+      const next = lockedPriceRange(center, locked, bars)
+      if (!next) return
+      const span = Math.abs(range.to - range.from)
+      const nextSpan = next.to - next.from
+      if (span > 0 && Math.abs(span - nextSpan) / span < 0.01) return
+      scale.setVisibleRange(next)
+    }
+    apply()
+    const timeScale = chart.timeScale()
+    timeScale.subscribeVisibleLogicalRangeChange(apply)
+    return () => timeScale.unsubscribeVisibleLogicalRangeChange(apply)
+  }, [
+    priceScaleSettings.lockToBarRatio,
+    priceScaleSettings.barRatio,
+    priceScaleSettings.scaleOnLeft,
+    chartReady
+  ])
+
+  useEffect(() => {
+    const series = seriesRef.current
+    const bucket = levelLinesRef.current
+    const detach = (line: IPriceLine | undefined): void => {
+      if (!series || !line) return
+      if (series.priceLines().includes(line)) series.removePriceLine(line)
+    }
+    if (!series) return undefined
+    const playhead = currentCandle?.time ?? seriesCandles[seriesCandles.length - 1]?.time
+    const levels =
+      playhead == null ? null : sessionScaleLevels(seriesCandles, playhead)
+    const sync = (
+      key: 'previous' | 'high' | 'low',
+      price: number | null,
+      color: string,
+      title: string
+    ): void => {
+      const show = price != null
+      const existing = bucket[key]
+      if (!show) {
+        detach(existing)
+        bucket[key] = undefined
+        return
+      }
+      if (existing && series.priceLines().includes(existing)) {
+        existing.applyOptions({ price, color, title })
+        return
+      }
+      bucket[key] = series.createPriceLine({
+        price,
+        color,
+        title,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true
+      })
+    }
+    sync(
+      'previous',
+      priceScaleSettings.previousDayClose ? (levels?.previousClose ?? null) : null,
+      '#f5c16c',
+      t('scale.pdc')
+    )
+    sync(
+      'high',
+      priceScaleSettings.highAndLow ? (levels?.high ?? null) : null,
+      palette.upColor,
+      t('scale.high')
+    )
+    sync(
+      'low',
+      priceScaleSettings.highAndLow ? (levels?.low ?? null) : null,
+      palette.downColor,
+      t('scale.low')
+    )
+    return undefined
+  }, [
+    priceScaleSettings.previousDayClose,
+    priceScaleSettings.highAndLow,
+    seriesCandles,
+    currentCandle,
+    palette.upColor,
+    palette.downColor,
+    chartReady,
+    locale
+  ])
+
+  useEffect(() => {
+    if (!priceScaleSettings.countdownToBarClose) {
+      setCountdownY(null)
+      return undefined
+    }
+    const chart = chartRef.current
+    const series = seriesRef.current
+    if (!chart || !series || currentCandle == null) {
+      setCountdownY(null)
+      return undefined
+    }
+    const place = (): void => {
+      const y = series.priceToCoordinate(currentCandle.close)
+      setCountdownY(y == null ? null : Number(y))
+    }
+    place()
+    const timeScale = chart.timeScale()
+    timeScale.subscribeVisibleLogicalRangeChange(place)
+    return () => timeScale.unsubscribeVisibleLogicalRangeChange(place)
+  }, [priceScaleSettings.countdownToBarClose, currentCandle, chartReady, priceScaleSettings.mode, priceScaleSettings.invertScale, priceScaleSettings.scaleOnLeft])
 
   const smcScene = smcOverlay?.type === 'smc' ? smcOverlay.scene : null
+  const barSeconds = TIMEFRAMES[timeframe]?.seconds ?? 60
+  const countdownText =
+    priceScaleSettings.countdownToBarClose && currentCandle
+      ? formatBarCountdown(barRemainingSeconds(currentCandle.time, currentCandle.time, barSeconds))
+      : null
 
   return (
     <div
@@ -817,6 +1024,23 @@ export default function CandleChart({
         if (!rect) return
         const localX = event.clientX - rect.left
         const localY = event.clientY - rect.top
+        const hit = priceScaleHit(
+          localX,
+          rect.width,
+          priceScaleWidth(chart, 'left'),
+          priceScaleWidth(chart, 'right')
+        )
+        if (hit) {
+          const range = chart.priceScale(hit).getVisibleRange()
+          const logical = chart.timeScale().getVisibleLogicalRange()
+          const ratio =
+            range && logical ? pricePerBar(range, logical.to - logical.from) : null
+          setContextMenu(null)
+          setPlusPoint(null)
+          setScaleMenu({ clientX: event.clientX, clientY: event.clientY, ratio })
+          return
+        }
+        setScaleMenu(null)
         const price = series.coordinateToPrice(localY)
         if (price == null) return
         const rawTime = chart.timeScale().coordinateToTime(localX)
@@ -849,6 +1073,40 @@ export default function CandleChart({
           drawingId
         })
       }}
+      onMouseMove={(event) => {
+        if (!priceScaleSettings.plusButton || scaleMenu) {
+          if (plusPoint) setPlusPoint(null)
+          return
+        }
+        const chart = chartRef.current
+        const series = seriesRef.current
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!chart || !series || !rect) return
+        const localX = event.clientX - rect.left
+        const localY = event.clientY - rect.top
+        const hit = priceScaleHit(
+          localX,
+          rect.width,
+          priceScaleWidth(chart, 'left'),
+          priceScaleWidth(chart, 'right')
+        )
+        if (!hit) {
+          if (plusPoint) setPlusPoint(null)
+          return
+        }
+        const price = series.coordinateToPrice(localY)
+        if (price == null) {
+          if (plusPoint) setPlusPoint(null)
+          return
+        }
+        const nextPrice = Number(price)
+        setPlusPoint((prev) =>
+          prev && Math.abs(prev.y - localY) < 1 && prev.price === nextPrice
+            ? prev
+            : { y: localY, price: nextPrice }
+        )
+      }}
+      onMouseLeave={() => setPlusPoint(null)}
       onDoubleClick={(event) => {
         if (!isPrimary) return
         const mgr = drawingManagerRef.current
@@ -905,11 +1163,37 @@ export default function CandleChart({
           {mode === 'replay' ? 'No candles in this replay window yet.' : 'No candles to display.'}
         </div>
       )}
+      {countdownText && countdownY != null ? (
+        <div
+          className={`pointer-events-none absolute z-[4] rounded bg-zinc-800/95 px-1 py-0.5 text-[10px] font-medium tabular-nums text-zinc-100 ${
+            priceScaleSettings.scaleOnLeft ? 'left-1' : 'right-1'
+          }`}
+          style={{ top: countdownY + 16 }}
+        >
+          {countdownText}
+        </div>
+      ) : null}
+      {plusPoint && priceScaleSettings.plusButton && !scaleMenu ? (
+        <PriceScalePlus
+          y={plusPoint.y}
+          price={plusPoint.price}
+          pricePrecision={pricePrecision}
+          onLeft={priceScaleSettings.scaleOnLeft}
+        />
+      ) : null}
       {contextMenu && (
         <ChartContextMenu
           point={contextMenu}
           pricePrecision={pricePrecision}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+      {scaleMenu && (
+        <PriceScaleMenu
+          clientX={scaleMenu.clientX}
+          clientY={scaleMenu.clientY}
+          ratio={scaleMenu.ratio}
+          onClose={() => setScaleMenu(null)}
         />
       )}
     </div>

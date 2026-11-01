@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronUp, Crosshair, Palette, SlidersHorizontal, Timer, Trash2, X } from 'lucide-react'
+import { ChevronUp, Trash2, X } from 'lucide-react'
 import {
   PRESET_NAME_MAX_LENGTH,
   resolveChartPalette,
@@ -8,46 +8,17 @@ import {
   type ColorOverrides
 } from '@/store/chartSettingsStore'
 import { useThemeStore } from '@/store/themeStore'
-import { useUiLayoutStore } from '@/store/uiLayoutStore'
-import { CrosshairMode, LineStyle, PriceScaleMode } from 'lightweight-charts'
+import { useT } from '@/i18n/useT'
+import { useUiLayoutStore, type ChartSettingsTab } from '@/store/uiLayoutStore'
+import { CrosshairMode, LineStyle, PriceScaleMode, type LineWidth } from 'lightweight-charts'
 
-const CROSSHAIR_MODES = [
-  { value: CrosshairMode.Normal, label: 'Normal' },
-  { value: CrosshairMode.Magnet, label: 'Magnet' },
-  { value: CrosshairMode.Hidden, label: 'Hidden' }
-]
+const SETTINGS_TABS: ChartSettingsTab[] = ['symbol', 'canvas', 'scales']
 
-const LINE_STYLES = [
-  { value: LineStyle.Solid, label: 'Solid' },
-  { value: LineStyle.Dotted, label: 'Dotted' },
-  { value: LineStyle.Dashed, label: 'Dashed' },
-  { value: LineStyle.LargeDashed, label: 'Large dashed' },
-  { value: LineStyle.SparseDotted, label: 'Sparse dotted' }
-]
-
-const PRICE_SCALE_MODES = [
-  { value: PriceScaleMode.Normal, label: 'Normal' },
-  { value: PriceScaleMode.Logarithmic, label: 'Logarithmic' },
-  { value: PriceScaleMode.Percentage, label: 'Percentage' },
-  { value: PriceScaleMode.IndexedTo100, label: 'Indexed to 100' }
-]
-
-function Section({
-  icon: Icon,
-  title,
-  children
-}: {
-  icon: typeof Palette
-  title: string
-  children: ReactNode
-}): ReactElement {
+function Group({ title, children }: { title: string; children: ReactNode }): ReactElement {
   return (
-    <section className="border-b border-zinc-800/80 px-4 py-3">
-      <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-        <Icon className="h-3.5 w-3.5" aria-hidden />
-        {title}
-      </h3>
-      <div className="mt-2.5">{children}</div>
+    <section className="mb-6 last:mb-0">
+      <h3 className="mb-1 text-xs font-medium text-zinc-500">{title}</h3>
+      <div className="divide-y divide-white/[0.06]">{children}</div>
     </section>
   )
 }
@@ -261,15 +232,15 @@ function SelectField<T extends string | number>({
   onChange: (value: T) => void
 }): ReactElement {
   return (
-    <label className="flex items-center justify-between gap-3">
-      <span className="text-xs text-zinc-300">{label}</span>
+    <label className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-sm text-zinc-200">{label}</span>
       <select
         value={String(value)}
         onChange={(event) => {
           const match = options.find((option) => String(option.value) === event.target.value)
           if (match) onChange(match.value)
         }}
-        className="h-7 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-200 focus:border-primary-500/50 focus:outline-none"
+        className="h-8 min-w-[8.5rem] rounded-lg border border-zinc-800 bg-zinc-900 px-2 text-sm text-zinc-100 focus:border-primary-500/50 focus:outline-none"
       >
         {options.map((option) => (
           <option key={String(option.value)} value={String(option.value)}>
@@ -291,8 +262,8 @@ function ToggleField({
   onChange: (checked: boolean) => void
 }): ReactElement {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3">
-      <span className="text-xs text-zinc-300">{label}</span>
+    <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5">
+      <span className="text-sm text-zinc-200">{label}</span>
       <button
         type="button"
         role="switch"
@@ -321,6 +292,7 @@ function SaveTemplateAsDialog({
   onClose: () => void
   onSave: (name: string) => boolean
 }): ReactElement | null {
+  const { t } = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
 
@@ -364,11 +336,11 @@ function SaveTemplateAsDialog({
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
           <h2 id="save-template-title" className="text-sm font-semibold text-zinc-100">
-            Save template as
+            {t('settings.saveTitle')}
           </h2>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t('settings.close')}
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
@@ -384,7 +356,7 @@ function SaveTemplateAsDialog({
           }}
         >
           <label htmlFor="template-name" className="block text-xs text-zinc-400">
-            Template name:
+            {t('settings.templateName')}
           </label>
           <input
             ref={inputRef}
@@ -401,14 +373,14 @@ function SaveTemplateAsDialog({
               onClick={onClose}
               className="inline-flex h-8 items-center rounded-xl border border-zinc-800 px-3 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
             >
-              Cancel
+              {t('settings.cancel')}
             </button>
             <button
               type="submit"
               disabled={!trimmed}
               className="inline-flex h-8 items-center rounded-xl border border-primary-500/40 bg-primary-500/15 px-3 text-xs font-medium text-primary-300 hover:border-primary-400/70 hover:bg-primary-500/25 hover:text-primary-200 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-600"
             >
-              Save
+              {t('settings.save')}
             </button>
           </div>
         </form>
@@ -419,7 +391,9 @@ function SaveTemplateAsDialog({
 }
 
 export default function ChartSettingsDialog(): ReactElement | null {
+  const { t } = useT()
   const open = useUiLayoutStore((s) => s.chartSettingsDialogOpen)
+  const tab = useUiLayoutStore((s) => s.chartSettingsTab)
   const setOpen = useUiLayoutStore((s) => s.setChartSettingsDialogOpen)
   const theme = useThemeStore((s) => s.theme)
   const colors = useChartSettingsStore((s) => s.colors)
@@ -494,6 +468,30 @@ export default function ChartSettingsDialog(): ReactElement | null {
     />
   )
 
+  const crosshairModes = [
+    { value: CrosshairMode.Normal, label: t('settings.crosshair.normal') },
+    { value: CrosshairMode.Magnet, label: t('settings.crosshair.magnet') },
+    { value: CrosshairMode.Hidden, label: t('settings.crosshair.hidden') }
+  ]
+  const lineStyles = [
+    { value: LineStyle.Solid, label: t('settings.style.solid') },
+    { value: LineStyle.Dotted, label: t('settings.style.dotted') },
+    { value: LineStyle.Dashed, label: t('settings.style.dashed') },
+    { value: LineStyle.LargeDashed, label: t('settings.style.largeDashed') },
+    { value: LineStyle.SparseDotted, label: t('settings.style.sparseDotted') }
+  ]
+  const lineWidths: { value: LineWidth; label: string }[] = [
+    { value: 1, label: '1' },
+    { value: 2, label: '2' },
+    { value: 3, label: '3' },
+    { value: 4, label: '4' }
+  ]
+  const tabLabel: Record<ChartSettingsTab, 'settings.tab.symbol' | 'settings.tab.canvas' | 'settings.tab.scales'> = {
+    symbol: 'settings.tab.symbol',
+    canvas: 'settings.tab.canvas',
+    scales: 'settings.tab.scales'
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-3 sm:p-6"
@@ -504,16 +502,16 @@ export default function ChartSettingsDialog(): ReactElement | null {
         role="dialog"
         aria-modal="true"
         aria-labelledby="chart-settings-title"
-        className="flex max-h-[calc(100vh-3rem)] w-full max-w-lg flex-col overflow-visible rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
+        className="flex h-[min(36rem,calc(100vh-4rem))] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
           <h2 id="chart-settings-title" className="text-sm font-semibold text-zinc-100">
-            Chart Settings
+            {t('settings.title')}
           </h2>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t('settings.close')}
             onClick={closeDialog}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100"
           >
@@ -521,108 +519,181 @@ export default function ChartSettingsDialog(): ReactElement | null {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <Section icon={Palette} title="Colors">
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  Up candle
-                </p>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-                  {colorField('upColor', 'Body')}
-                  {colorField('borderUpColor', 'Border')}
-                  {colorField('wickUpColor', 'Wick')}
-                </div>
-              </div>
-              <div>
-                <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  Down candle
-                </p>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-                  {colorField('downColor', 'Body')}
-                  {colorField('borderDownColor', 'Border')}
-                  {colorField('wickDownColor', 'Wick')}
-                </div>
-              </div>
-              <div>
-                <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  General
-                </p>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3">
-                  {colorField('lineColor', 'Line')}
-                  {colorField('crosshairColor', 'Crosshair')}
-                  {colorField('background', 'Background')}
-                  {colorField('text', 'Text')}
-                  {colorField('grid', 'Grid')}
-                  {colorField('scaleBorder', 'Scale border')}
-                  {colorField('watermark', 'Watermark')}
-                </div>
-              </div>
-            </div>
-          </Section>
+        <div className="flex min-h-0 flex-1">
+          <div
+            role="tablist"
+            aria-label={t('settings.title')}
+            className="flex w-36 shrink-0 flex-col gap-0.5 border-r border-white/[0.06] px-2 py-3"
+          >
+            {SETTINGS_TABS.map((id) => {
+              const active = tab === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => useUiLayoutStore.setState({ chartSettingsTab: id })}
+                  className={`rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    active
+                      ? 'bg-zinc-900 text-zinc-100'
+                      : 'text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-200'
+                  }`}
+                >
+                  {t(tabLabel[id])}
+                </button>
+              )
+            })}
+          </div>
 
-          <Section icon={Crosshair} title="Crosshair">
-            <div className="flex flex-col gap-2.5">
-              <SelectField
-                label="Mode"
-                value={crosshair.mode}
-                options={CROSSHAIR_MODES}
-                onChange={(mode) => setCrosshair({ mode })}
-              />
-              <SelectField
-                label="Line style"
-                value={crosshair.lineStyle}
-                options={LINE_STYLES}
-                onChange={(lineStyle) => setCrosshair({ lineStyle })}
-              />
-              <ToggleField
-                label="Show crosshair"
-                checked={crosshair.visible}
-                onChange={(visible) => setCrosshair({ visible })}
-              />
-              <ToggleField
-                label="Show labels"
-                checked={crosshair.labelVisible}
-                onChange={(labelVisible) => setCrosshair({ labelVisible })}
-              />
-            </div>
-          </Section>
+          <div role="tabpanel" className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4">
+            {tab === 'symbol' ? (
+              <>
+                <Group title={t('settings.upCandle')}>
+                  <div className="grid grid-cols-3 gap-2 py-2">
+                    {colorField('upColor', t('settings.body'))}
+                    {colorField('borderUpColor', t('settings.border'))}
+                    {colorField('wickUpColor', t('settings.wick'))}
+                  </div>
+                </Group>
+                <Group title={t('settings.downCandle')}>
+                  <div className="grid grid-cols-3 gap-2 py-2">
+                    {colorField('downColor', t('settings.body'))}
+                    {colorField('borderDownColor', t('settings.border'))}
+                    {colorField('wickDownColor', t('settings.wick'))}
+                  </div>
+                </Group>
+                <Group title={t('settings.line')}>
+                  <div className="max-w-xs py-2">{colorField('lineColor', t('settings.line'))}</div>
+                </Group>
+              </>
+            ) : null}
 
-          <Section icon={SlidersHorizontal} title="Price scale">
-            <div className="flex flex-col gap-2.5">
-              <SelectField
-                label="Mode"
-                value={priceScale.mode}
-                options={PRICE_SCALE_MODES}
-                onChange={(mode) => setPriceScale({ mode })}
-              />
-              <ToggleField
-                label="Invert scale"
-                checked={priceScale.invertScale}
-                onChange={(invertScale) => setPriceScale({ invertScale })}
-              />
-              <ToggleField
-                label="Auto scale"
-                checked={priceScale.autoScale}
-                onChange={(autoScale) => setPriceScale({ autoScale })}
-              />
-            </div>
-          </Section>
+            {tab === 'canvas' ? (
+              <>
+                <Group title={t('settings.tab.canvas')}>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 py-2 sm:grid-cols-3">
+                    {colorField('background', t('settings.background'))}
+                    {colorField('text', t('settings.text'))}
+                    {colorField('grid', t('settings.grid'))}
+                    {colorField('scaleBorder', t('settings.scaleBorder'))}
+                    {colorField('watermark', t('settings.watermark'))}
+                  </div>
+                </Group>
+                <Group title={t('settings.crosshair')}>
+                  {colorField('crosshairColor', t('settings.crosshair'))}
+                  <SelectField
+                    label={t('settings.crosshairMode')}
+                    value={crosshair.mode}
+                    options={crosshairModes}
+                    onChange={(mode) => setCrosshair({ mode })}
+                  />
+                  <SelectField
+                    label={t('settings.lineStyle')}
+                    value={crosshair.lineStyle}
+                    options={lineStyles}
+                    onChange={(lineStyle) => setCrosshair({ lineStyle })}
+                  />
+                  <SelectField
+                    label={t('settings.lineWidth')}
+                    value={crosshair.lineWidth}
+                    options={lineWidths}
+                    onChange={(lineWidth) => setCrosshair({ lineWidth })}
+                  />
+                  <ToggleField
+                    label={t('settings.showCrosshair')}
+                    checked={crosshair.visible}
+                    onChange={(visible) => setCrosshair({ visible })}
+                  />
+                  <ToggleField
+                    label={t('settings.showLabels')}
+                    checked={crosshair.labelVisible}
+                    onChange={(labelVisible) => setCrosshair({ labelVisible })}
+                  />
+                </Group>
+              </>
+            ) : null}
 
-          <Section icon={Timer} title="Time scale">
-            <div className="flex flex-col gap-2.5">
-              <ToggleField
-                label="Show time labels"
-                checked={timeScale.timeVisible}
-                onChange={(timeVisible) => setTimeScale({ timeVisible })}
-              />
-              <ToggleField
-                label="Show seconds"
-                checked={timeScale.secondsVisible}
-                onChange={(secondsVisible) => setTimeScale({ secondsVisible })}
-              />
-            </div>
-          </Section>
+            {tab === 'scales' ? (
+              <>
+                <Group title={t('settings.priceScale')}>
+                  <SelectField
+                    label={t('scale.mode')}
+                    value={priceScale.mode}
+                    options={[
+                      { value: PriceScaleMode.Normal, label: t('scale.regular') },
+                      { value: PriceScaleMode.Percentage, label: t('scale.percent') },
+                      { value: PriceScaleMode.IndexedTo100, label: t('scale.indexed') },
+                      { value: PriceScaleMode.Logarithmic, label: t('scale.log') }
+                    ]}
+                    onChange={(mode) => setPriceScale({ mode })}
+                  />
+                  <ToggleField
+                    label={t('scale.auto')}
+                    checked={priceScale.autoScale}
+                    onChange={(autoScale) => setPriceScale({ autoScale })}
+                  />
+                  <ToggleField
+                    label={t('scale.lockRatio')}
+                    checked={priceScale.lockToBarRatio}
+                    onChange={(lockToBarRatio) => setPriceScale({ lockToBarRatio })}
+                  />
+                  <ToggleField
+                    label={t('scale.invert')}
+                    checked={priceScale.invertScale}
+                    onChange={(invertScale) => setPriceScale({ invertScale })}
+                  />
+                  <ToggleField
+                    label={t('scale.scaleChartOnly')}
+                    checked={priceScale.scalePriceChartOnly}
+                    onChange={(scalePriceChartOnly) => setPriceScale({ scalePriceChartOnly })}
+                  />
+                  <ToggleField
+                    label={t('scale.moveLeft')}
+                    checked={priceScale.scaleOnLeft}
+                    onChange={(scaleOnLeft) => setPriceScale({ scaleOnLeft })}
+                  />
+                  <ToggleField
+                    label={t('scale.noOverlap')}
+                    checked={priceScale.noOverlappingLabels}
+                    onChange={(noOverlappingLabels) => setPriceScale({ noOverlappingLabels })}
+                  />
+                  <ToggleField
+                    label={t('scale.countdown')}
+                    checked={priceScale.countdownToBarClose}
+                    onChange={(countdownToBarClose) => setPriceScale({ countdownToBarClose })}
+                  />
+                  <ToggleField
+                    label={t('scale.prevClose')}
+                    checked={priceScale.previousDayClose}
+                    onChange={(previousDayClose) => setPriceScale({ previousDayClose })}
+                  />
+                  <ToggleField
+                    label={t('scale.highLow')}
+                    checked={priceScale.highAndLow}
+                    onChange={(highAndLow) => setPriceScale({ highAndLow })}
+                  />
+                  <ToggleField
+                    label={t('scale.plus')}
+                    checked={priceScale.plusButton}
+                    onChange={(plusButton) => setPriceScale({ plusButton })}
+                  />
+                </Group>
+                <Group title={t('settings.timeScale')}>
+                  <ToggleField
+                    label={t('settings.showTime')}
+                    checked={timeScale.timeVisible}
+                    onChange={(timeVisible) => setTimeScale({ timeVisible })}
+                  />
+                  <ToggleField
+                    label={t('settings.showSeconds')}
+                    checked={timeScale.secondsVisible}
+                    onChange={(secondsVisible) => setTimeScale({ secondsVisible })}
+                  />
+                </Group>
+              </>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-zinc-800 px-4 py-3">
@@ -638,7 +709,7 @@ export default function ChartSettingsDialog(): ReactElement | null {
                   : 'border-zinc-800 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
               }`}
             >
-              Template
+              {t('settings.template')}
               <ChevronUp className="h-3.5 w-3.5" aria-hidden />
             </button>
             {templateMenuOpen && (
@@ -666,7 +737,7 @@ export default function ChartSettingsDialog(): ReactElement | null {
                             </button>
                             <button
                               type="button"
-                              aria-label={`Delete ${preset.name}`}
+                              aria-label={t('settings.deleteTemplate', { name: preset.name })}
                               onClick={() => deletePreset(preset.id)}
                               className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-red-300"
                             >
@@ -687,7 +758,7 @@ export default function ChartSettingsDialog(): ReactElement | null {
                   }}
                   className="flex w-full items-center px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800/80 hover:text-zinc-100"
                 >
-                  Apply defaults
+                  {t('settings.applyDefaults')}
                 </button>
                 <button
                   type="button"
@@ -698,12 +769,12 @@ export default function ChartSettingsDialog(): ReactElement | null {
                   }}
                   className="flex w-full items-center px-3 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-800/80 hover:text-zinc-100"
                 >
-                  Save as...
+                  {t('settings.saveAs')}
                 </button>
               </div>
             )}
           </div>
-          <span className="text-[10px] text-zinc-600">Settings apply to both panes.</span>
+          <span className="text-[11px] text-zinc-500">{t('settings.bothPanes')}</span>
         </div>
       </div>
       <SaveTemplateAsDialog

@@ -37,6 +37,8 @@ export type DateCoveragePopoverProps = {
   className?: string
   /** Optional caption above the trigger (e.g. “Date coverage”). */
   caption?: string
+  /** Trigger accessible name. Defaults to the pick / coverage label. */
+  ariaLabel?: string
 }
 
 type PanelPos = { top: number; left: number; width: number }
@@ -55,7 +57,8 @@ export default function DateCoveragePopover({
   placeholder = 'Pick a day with data',
   disabled = false,
   className,
-  caption
+  caption,
+  ariaLabel
 }: DateCoveragePopoverProps): ReactNode {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<PanelPos | null>(null)
@@ -174,6 +177,7 @@ export default function DateCoveragePopover({
                 : { visibility: 'hidden', top: 0, left: 0, width: 296 }
             }
             onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
           >
             <DateCoverageCalendar
               coverageDays={coverageDays}
@@ -204,7 +208,7 @@ export default function DateCoveragePopover({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={mode === 'pick' ? 'Pick start date' : 'Show date coverage'}
+        aria-label={ariaLabel ?? (mode === 'pick' ? 'Pick start date' : 'Show date coverage')}
         onClick={() => {
           if (!disabled) setOpen((v) => !v)
         }}

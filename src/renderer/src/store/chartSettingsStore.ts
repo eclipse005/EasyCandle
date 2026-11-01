@@ -34,6 +34,21 @@ export type PriceScaleSettings = {
   mode: PriceScaleMode
   invertScale: boolean
   autoScale: boolean
+  /** Keep price span proportional to the number of visible bars. */
+  lockToBarRatio: boolean
+  /** Price units per visible bar, captured when the lock turns on. */
+  barRatio: number | null
+  /** Percent / log / indexed applies to the symbol; studies stay on their own scale. */
+  scalePriceChartOnly: boolean
+  /** Draw the price scale on the left. */
+  scaleOnLeft: boolean
+  /** `alignLabels` — keep scale labels from stacking on each other. */
+  noOverlappingLabels: boolean
+  countdownToBarClose: boolean
+  previousDayClose: boolean
+  highAndLow: boolean
+  /** Hover + on the price scale. */
+  plusButton: boolean
 }
 
 export type TimeScaleSettings = {
@@ -52,7 +67,16 @@ export const DEFAULT_CROSSHAIR: CrosshairSettings = {
 export const DEFAULT_PRICE_SCALE: PriceScaleSettings = {
   mode: PriceScaleMode.Normal,
   invertScale: false,
-  autoScale: true
+  autoScale: true,
+  lockToBarRatio: false,
+  barRatio: null,
+  scalePriceChartOnly: false,
+  scaleOnLeft: false,
+  noOverlappingLabels: true,
+  countdownToBarClose: false,
+  previousDayClose: false,
+  highAndLow: false,
+  plusButton: true
 }
 
 export const DEFAULT_TIME_SCALE: TimeScaleSettings = {
@@ -87,6 +111,7 @@ type ChartSettingsState = PersistedChartSettings & {
   setTimeScale: (patch: Partial<TimeScaleSettings>) => void
   setTimezone: (timezone: string) => void
   toggleInvertScale: () => void
+  resetPriceScale: () => void
   savePreset: (name: string) => boolean
   restorePreset: (id: string) => boolean
   deletePreset: (id: string) => void
@@ -172,7 +197,37 @@ function sanitizePriceScale(raw: unknown): PriceScaleSettings {
         ? source.invertScale
         : DEFAULT_PRICE_SCALE.invertScale,
     autoScale:
-      typeof source.autoScale === 'boolean' ? source.autoScale : DEFAULT_PRICE_SCALE.autoScale
+      typeof source.autoScale === 'boolean' ? source.autoScale : DEFAULT_PRICE_SCALE.autoScale,
+    lockToBarRatio:
+      typeof source.lockToBarRatio === 'boolean'
+        ? source.lockToBarRatio
+        : DEFAULT_PRICE_SCALE.lockToBarRatio,
+    barRatio:
+      typeof source.barRatio === 'number' && source.barRatio > 0 ? source.barRatio : null,
+    scalePriceChartOnly:
+      typeof source.scalePriceChartOnly === 'boolean'
+        ? source.scalePriceChartOnly
+        : DEFAULT_PRICE_SCALE.scalePriceChartOnly,
+    scaleOnLeft:
+      typeof source.scaleOnLeft === 'boolean'
+        ? source.scaleOnLeft
+        : DEFAULT_PRICE_SCALE.scaleOnLeft,
+    noOverlappingLabels:
+      typeof source.noOverlappingLabels === 'boolean'
+        ? source.noOverlappingLabels
+        : DEFAULT_PRICE_SCALE.noOverlappingLabels,
+    countdownToBarClose:
+      typeof source.countdownToBarClose === 'boolean'
+        ? source.countdownToBarClose
+        : DEFAULT_PRICE_SCALE.countdownToBarClose,
+    previousDayClose:
+      typeof source.previousDayClose === 'boolean'
+        ? source.previousDayClose
+        : DEFAULT_PRICE_SCALE.previousDayClose,
+    highAndLow:
+      typeof source.highAndLow === 'boolean' ? source.highAndLow : DEFAULT_PRICE_SCALE.highAndLow,
+    plusButton:
+      typeof source.plusButton === 'boolean' ? source.plusButton : DEFAULT_PRICE_SCALE.plusButton
   }
 }
 
@@ -304,7 +359,9 @@ export const useChartSettingsStore = create<ChartSettingsState>((set, get) => ({
   },
 
   setPriceScale: (patch) => {
-    const priceScale = { ...get().priceScale, ...patch }
+    let priceScale = { ...get().priceScale, ...patch }
+    if (patch.lockToBarRatio === true) priceScale = { ...priceScale, autoScale: false }
+    if (patch.autoScale === true) priceScale = { ...priceScale, lockToBarRatio: false }
     set({ priceScale })
     persistLive(get)
   },
@@ -324,6 +381,10 @@ export const useChartSettingsStore = create<ChartSettingsState>((set, get) => ({
 
   toggleInvertScale: () => {
     get().setPriceScale({ invertScale: !get().priceScale.invertScale })
+  },
+
+  resetPriceScale: () => {
+    get().setPriceScale({ ...DEFAULT_PRICE_SCALE })
   },
 
   savePreset: (name) => {

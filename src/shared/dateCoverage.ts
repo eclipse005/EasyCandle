@@ -129,3 +129,22 @@ export function coverageSpanLabel(days: Set<string> | ReadonlySet<string>): stri
 export function isDayCovered(days: Set<string> | ReadonlySet<string>, dayKey: string): boolean {
   return days.has(dayKey)
 }
+
+export type CoveragePeriodIndex = {
+  /** Calendar years that contain at least one covered day. */
+  years: Set<number>
+  /** `YYYY-MM` keys that contain at least one covered day. */
+  months: Set<string>
+}
+
+/** Years and months that contain at least one covered UTC day. */
+export function coveragePeriodIndex(days: ReadonlySet<string>): CoveragePeriodIndex {
+  const years = new Set<number>()
+  const months = new Set<string>()
+  for (const day of days) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue
+    years.add(Number(day.slice(0, 4)))
+    months.add(day.slice(0, 7))
+  }
+  return { years, months }
+}

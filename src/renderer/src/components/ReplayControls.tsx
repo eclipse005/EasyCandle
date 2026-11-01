@@ -10,7 +10,7 @@ import {
   Play,
   SkipForward
 } from 'lucide-react'
-import DateCoverageCalendar from '@/components/dashboard/DateCoverageCalendar'
+import DateCoveragePopover from '@/components/dashboard/DateCoveragePopover'
 import Dropdown from '@/components/Dropdown'
 import IconButton from '@/components/IconButton'
 import Tooltip from '@/components/Tooltip'
@@ -19,12 +19,14 @@ import {
   defaultSessionParts,
   parseSessionParts,
   sessionTimezoneTitle,
-  sessionUtcOffsetLabel,
   toSessionParts
 } from '@/lib/chartTimezone'
 import { REPLAY_SPEEDS, stepReplaySpeed } from '@/lib/replayEngine'
 import { coverageDaysFromMetas, isDayCovered } from '@shared/dateCoverage'
+import type { ForexGoToKind } from '@shared/forexSession'
 import { TIMEFRAMES } from '@shared/timeframes'
+import type { MessageKey } from '@/i18n/messages'
+import { jumpToForexGoTo } from '@/lib/forexGoTo'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
 import { useSessionStore } from '@/store/sessionStore'
@@ -40,22 +42,13 @@ function indexFromClientX(
   return Math.min(bufferLength - 1, Math.max(0, Math.round(ratio * (bufferLength - 1))))
 }
 
-function sortedCoverageDays(days: Set<string> | ReadonlySet<string>): string[] {
-  return [...days].sort()
-}
-
-function nextCoverageDay(
-  days: Set<string> | ReadonlySet<string>,
-  fromDay: string | null | undefined
-): string | null {
-  const sorted = sortedCoverageDays(days)
-  if (sorted.length === 0) return null
-  if (!fromDay) return sorted[0] ?? null
-  for (const day of sorted) {
-    if (day > fromDay) return day
-  }
-  return null
-}
+const GO_TO_ITEMS: { kind: ForexGoToKind; label: MessageKey; shortcut: string }[] = [
+  { kind: 'dayOpen', label: 'replay.goToNextDay', shortcut: 'Y' },
+  { kind: 'nextSession', label: 'replay.goToNextSession', shortcut: 'Z' },
+  { kind: 'newYork', label: 'replay.goToNewYork', shortcut: 'N' },
+  { kind: 'asian', label: 'replay.goToAsian', shortcut: 'I' },
+  { kind: 'london', label: 'replay.goToLondon', shortcut: 'L' }
+]
 
 export default function ReplayControls() {
   const { t } = useT()
@@ -87,7 +80,6 @@ export default function ReplayControls() {
   const pauseOnTpSl = useReplayStore((s) => s.pauseOnTpSl)
   const setPauseOnTpSl = useReplayStore((s) => s.setPauseOnTpSl)
   const timezone = useChartSettingsStore((s) => s.timezone)
-  const offsetLabel = sessionUtcOffsetLabel(timezone)
   const timezoneTitle = sessionTimezoneTitle(timezone)
   const importMeta = useReplayStore((s) => s.importMeta)
 
@@ -95,14 +87,6 @@ export default function ReplayControls() {
     () => (importMeta ? coverageDaysFromMetas([importMeta]) : new Set<string>()),
     [importMeta]
   )
-  const currentDay = currentCandle
-    ? toSessionParts(currentCandle.time, timezone).date
-    : null
-  const upcomingDays = useMemo(() => {
-    const sorted = sortedCoverageDays(coverageDays)
-    if (!currentDay) return sorted.slice(0, 8)
-    return sorted.filter((day) => day >= currentDay).slice(0, 8)
-  }, [coverageDays, currentDay])
 
   const seed = currentCandle
     ? toSessionParts(currentCandle.time, timezone)
@@ -193,51 +177,35 @@ export default function ReplayControls() {
     }
   }, [bufferLength, driverIndex, scrubIndex, seekToIndex, setChartScrubbing])
 
-  async function onJump(event: FormEvent): Promise<void> {
+  async function onJump(event: FormEvent, close: () => void): Promise<void> {
     event.preventDefault()
     setJumpError(null)
 
     if (!jumpDate || !jumpTime) {
-      setJumpError('Pick a covered day and time.')
+      setJumpError(t('replay.jumpPickDayTime'))
       return
     }
     if (coverageDays.size > 0 && !isDayCovered(coverageDays, jumpDate)) {
-      setJumpError('That day has no K-line data in this dataset.')
+      setJumpError(t('replay.jumpNoData'))
       return
     }
 
     const seconds = parseSessionParts(jumpDate, jumpTime, timezone)
     if (seconds == null) {
-      setJumpError('Enter a valid date and time.')
+      setJumpError(t('replay.jumpInvalid'))
       return
     }
 
-    await jumpToTime(seconds, { source: 'jump' })
+    const result = await jumpToTime(seconds, { source: 'jump' })
+    if (result === 'applied' || result === 'needs-confirm') close()
+    else if (result === 'noop') setJumpError(t('replay.jumpOutside'))
   }
 
-  async function goToDayOpen(day: string): Promise<void> {
+  async function goToSession(kind: ForexGoToKind, close: () => void): Promise<void> {
     setJumpError(null)
-    if (coverageDays.size > 0 && !isDayCovered(coverageDays, day)) {
-      setJumpError('That day has no K-line data in this dataset.')
-      return
-    }
-    const seconds = parseSessionParts(day, '00:00', timezone)
-    if (seconds == null) {
-      setJumpError('Enter a valid date.')
-      return
-    }
-    setJumpDate(day)
-    setJumpTime('00:00')
-    await jumpToTime(seconds, { source: 'jump' })
-  }
-
-  async function goToNextDayOpen(): Promise<void> {
-    const next = nextCoverageDay(coverageDays, currentDay)
-    if (!next) {
-      setJumpError(t('replay.noNextDay'))
-      return
-    }
-    await goToDayOpen(next)
+    const result = await jumpToForexGoTo(kind)
+    if (result === 'applied' || result === 'needs-confirm') close()
+    else setJumpError(t('replay.noNextSession'))
   }
 
   return (
@@ -412,11 +380,10 @@ export default function ReplayControls() {
       <Dropdown
         align="end"
         placement="top"
-        menuClassName="!overflow-visible"
         openSignal={jumpMenuRequestId}
         trigger={({ open, toggle }) => (
           <IconButton
-            tooltip={`Jump to ${offsetLabel} time`}
+            tooltip={open ? undefined : t('replay.jumpTooltip')}
             active={open}
             tooltipSide="top"
             disabled={busy}
@@ -429,97 +396,76 @@ export default function ReplayControls() {
           </IconButton>
         )}
       >
-        <form
-          onSubmit={onJump}
-          className="flex w-[min(18.5rem,calc(100vw-2rem))] flex-col gap-2 p-2"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <span className="px-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
-            Jump · {timezoneTitle}
-          </span>
-          {coverageDays.size > 0 ? (
-            <DateCoverageCalendar
-              coverageDays={coverageDays}
-              selectedDay={jumpDate}
-              initialMonth={jumpDate ? jumpDate.slice(0, 7) : undefined}
-              onSelectDay={(day) => {
-                setJumpError(null)
-                setJumpDate(day)
-              }}
-              className="rounded-xl border border-white/[0.06] bg-zinc-950/80 p-2"
-            />
-          ) : (
-            <p className="rounded-xl border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-500">
-              No coverage calendar for this session.
-            </p>
-          )}
-          <div className="flex items-center gap-1.5">
-            <input
-              type="time"
-              value={jumpTime}
-              disabled={busy}
-              aria-label={`Jump time ${timezoneTitle}`}
-              onChange={(e) => setJumpTime(e.target.value)}
-              className="h-8 min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
-            />
-            <IconButton type="submit" disabled={busy} tooltip={`Jump to ${timezoneTitle}`}>
-              <SkipForward className="h-4 w-4" />
-            </IconButton>
-          </div>
-          {jumpDate ? (
-            <span className="px-0.5 text-[10px] tabular-nums text-zinc-500">
-              Day {jumpDate}
-              {coverageDays.size > 0 && !isDayCovered(coverageDays, jumpDate)
-                ? ' · no data'
-                : ''}
+        {({ close }) => (
+          <div
+            className="flex w-[min(22rem,calc(100vw-2rem))] flex-col py-0.5"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="px-3 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+              {t('replay.goToMenu')}
             </span>
-          ) : null}
-          <div className="flex flex-col gap-1 border-t border-zinc-800 pt-2">
-            <button
-              type="button"
-              disabled={busy || nextCoverageDay(coverageDays, currentDay) == null}
-              onClick={() => void goToNextDayOpen()}
-              className="inline-flex h-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 transition-colors enabled:hover:border-primary-500/40 enabled:hover:text-primary-200 disabled:cursor-not-allowed disabled:opacity-40"
+            {GO_TO_ITEMS.map((item) => (
+              <button
+                key={item.kind}
+                type="button"
+                role="menuitem"
+                disabled={busy || currentCandle == null}
+                onClick={() => void goToSession(item.kind, close)}
+                className="flex w-full items-center gap-3 px-3 py-1.5 text-left text-xs text-zinc-200 transition-colors enabled:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <span className="flex-1">{t(item.label)}</span>
+                <span className="text-[10px] text-zinc-500">{item.shortcut}</span>
+              </button>
+            ))}
+            <div className="my-1 h-px bg-zinc-800" />
+            <form
+              onSubmit={(event) => void onJump(event, close)}
+              className="flex flex-col gap-1.5 px-2 pb-1"
             >
-              {t('replay.goToNextDay')}
-            </button>
-            {upcomingDays.length > 0 ? (
-              <div className="max-h-36 overflow-auto rounded-xl border border-zinc-800">
-                <table className="w-full text-left text-[11px] text-zinc-300">
-                  <thead className="sticky top-0 bg-zinc-950 text-[10px] uppercase tracking-[0.08em] text-zinc-500">
-                    <tr>
-                      <th className="px-2 py-1.5 font-medium">{t('replay.sessionDays')}</th>
-                      <th className="px-2 py-1.5 text-right font-medium">{t('replay.goToDayOpen')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {upcomingDays.map((day) => (
-                      <tr key={day} className="border-t border-zinc-900">
-                        <td className="px-2 py-1 tabular-nums">
-                          {day}
-                          {day === currentDay ? (
-                            <span className="ml-1 text-[10px] text-primary-400">now</span>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-1 text-right">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void goToDayOpen(day)}
-                            className="rounded-lg px-1.5 py-0.5 text-primary-300 hover:bg-zinc-800 disabled:opacity-40"
-                          >
-                            Open
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
+              <span className="px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+                {t('replay.goToCustom')} · {timezoneTitle}
+              </span>
+              {coverageDays.size > 0 ? (
+                <div className="flex items-center gap-1.5">
+                  <DateCoveragePopover
+                    mode="pick"
+                    coverageDays={coverageDays}
+                    selectedDay={jumpDate}
+                    initialMonth={jumpDate ? jumpDate.slice(0, 7) : undefined}
+                    placeholder={t('replay.jumpPickDate')}
+                    ariaLabel={t('replay.jumpPickDate')}
+                    disabled={busy}
+                    className="min-w-0 flex-1"
+                    onSelectDay={(day) => {
+                      setJumpError(null)
+                      setJumpDate(day)
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={jumpTime}
+                    disabled={busy}
+                    aria-label={t('replay.goToCustom')}
+                    onChange={(e) => setJumpTime(e.target.value)}
+                    className="h-9 w-[5.75rem] shrink-0 rounded-xl border border-zinc-800 bg-zinc-900 px-1.5 text-xs text-zinc-300 disabled:opacity-60"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl bg-primary-500 px-2.5 text-xs font-medium text-white transition-colors enabled:hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {t('replay.jumpAction')}
+                  </button>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-zinc-800 px-2 py-3 text-center text-[11px] text-zinc-500">
+                  {t('replay.jumpNoCoverage')}
+                </p>
+              )}
+              {jumpError && <span className="px-1 text-xs text-red-400">{jumpError}</span>}
+            </form>
           </div>
-          {jumpError && <span className="text-xs text-red-400">{jumpError}</span>}
-        </form>
+        )}
       </Dropdown>
 
       {bufferLength > 0 ? (
