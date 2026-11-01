@@ -57,7 +57,7 @@ function JournalPanel(): ReactElement {
       {closedTrades.length === 0 ? (
         <p className="py-10 text-center text-xs text-zinc-500">{t('rail.noJournal')}</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-white/[0.06]">
+        <ul className="flex flex-col divide-y divide-zinc-800">
           {[...closedTrades].reverse().map((trade) => {
             const pnl = accountClosedTradePnl(trade, symbol)
             return (
@@ -136,13 +136,13 @@ export default function RightDock(): ReactElement | null {
   }
 
   return (
-    <div className="flex h-full min-h-0 shrink-0 border-l border-white/10 bg-zinc-950">
+    <div className="flex h-full min-h-0 shrink-0 border-l border-zinc-700 bg-zinc-950">
       {activeDock ? (
         <section
           aria-label={title}
           className="flex h-full min-h-0 w-[272px] flex-col overflow-hidden"
         >
-          <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3.5">
+          <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 px-3.5">
             <h2 className="truncate text-[13px] font-medium text-zinc-100">{title}</h2>
             {activeDock === 'objects' ? (
               <span className="text-[11px] tabular-nums text-zinc-500">{drawingCount}</span>
@@ -158,7 +158,7 @@ export default function RightDock(): ReactElement | null {
       <nav
         aria-label={t('rail.order')}
         className={`flex w-14 shrink-0 flex-col items-center gap-1 py-2 ${
-          activeDock ? 'border-l border-white/10' : ''
+          activeDock ? 'border-l border-zinc-800' : ''
         }`}
       >
         {canOrder ? (

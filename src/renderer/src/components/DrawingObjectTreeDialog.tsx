@@ -29,7 +29,7 @@ export default function DrawingObjectTreeDialog(): ReactElement {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <ul className="flex flex-col divide-y divide-white/[0.06]">
+      <ul className="flex flex-col divide-y divide-zinc-800">
         {drawings.map((drawing) => {
           const selected = selectedIds.includes(drawing.id)
           const kind = kindLabel(drawing.kind, locale)

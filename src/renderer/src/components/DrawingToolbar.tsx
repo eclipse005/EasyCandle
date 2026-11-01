@@ -152,7 +152,7 @@ export default memo(function DrawingToolbar() {
       role="toolbar"
       aria-label="Drawing tools"
       data-tour="drawing-toolbar"
-      className="flex h-full w-11 shrink-0 flex-col items-center overflow-hidden border-r border-white/10 bg-zinc-950 py-1"
+      className="flex h-full w-11 shrink-0 flex-col items-center overflow-hidden border-r border-zinc-700 bg-zinc-950 py-1"
       onContextMenu={(event) => event.preventDefault()}
     >
       <IconButton
