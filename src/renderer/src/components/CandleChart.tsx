@@ -852,6 +852,15 @@ export default function CandleChart({
     }
     chart.applyOptions({
       ...chartThemeOptions(palette),
+      // Reserve room for the scale-side + without covering price labels.
+      leftPriceScale: {
+        minimumWidth: ps.plusButton ? 104 : 0,
+        visible: ps.scaleOnLeft
+      },
+      rightPriceScale: {
+        minimumWidth: ps.plusButton ? 104 : 0,
+        visible: !ps.scaleOnLeft
+      },
       timeScale: {
         borderColor: palette.scaleBorder,
         timeVisible: settings.timeScale.timeVisible,
@@ -1201,7 +1210,7 @@ export default function CandleChart({
         })
       }}
       onMouseMove={(event) => {
-        if (!priceScaleSettings.plusButton || scaleMenu) {
+        if (!priceScaleSettings.plusButton || scaleMenu || contextMenu) {
           if (plusPoint) setPlusPoint(null)
           return
         }
@@ -1209,15 +1218,23 @@ export default function CandleChart({
         const series = seriesRef.current
         const rect = containerRef.current?.getBoundingClientRect()
         if (!chart || !series || !rect) return
-        const localX = event.clientX - rect.left
+        const replay = useReplayStore.getState()
+        const drawingUi = useDrawingUiStore.getState()
+        if (
+          replay.pricePick ||
+          replay.rewindPick ||
+          replay.pendingTrend ||
+          replay.drawTool !== 'select' ||
+          drawingUi.stayInDrawingMode ||
+          drawingManagerRef.current?.hoveredId()
+        ) {
+          if (plusPoint) setPlusPoint(null)
+          return
+        }
         const localY = event.clientY - rect.top
-        const hit = priceScaleHit(
-          localX,
-          rect.width,
-          priceScaleWidth(chart, 'left'),
-          priceScaleWidth(chart, 'right')
-        )
-        if (!hit) {
+        // Ignore the time-scale strip at the bottom.
+        const timeAxisHeight = chart.timeScale().height()
+        if (localY >= rect.height - timeAxisHeight) {
           if (plusPoint) setPlusPoint(null)
           return
         }

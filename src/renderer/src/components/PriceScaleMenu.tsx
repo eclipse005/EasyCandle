@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowDownRight, ArrowUpRight, Minus, Plus } from 'lucide-react'
 import { PriceScaleMode } from 'lightweight-charts'
 import { formatTradeSizeForSymbol, pendingKindForEntry } from '@/lib/paperTrade'
 import { formatPriceBarRatio } from '@/lib/priceScale'
+import { roundPriceToPrecision } from '@shared/pricePrecision'
 import { useT } from '@/i18n/useT'
 import { useChartSettingsStore } from '@/store/chartSettingsStore'
 import { useReplayStore } from '@/store/replayStore'
@@ -225,7 +227,10 @@ type PriceScalePlusProps = {
   onLeft: boolean
 }
 
-/** TradingView + on the price scale. Click chooses buy or sell at that price. */
+/**
+ * FXR-style + on the price scale. It follows the crosshair and opens quick
+ * order actions plus a horizontal-line drawing at the hovered price.
+ */
 export function PriceScalePlus({
   y,
   price,
@@ -233,6 +238,7 @@ export function PriceScalePlus({
   onLeft
 }: PriceScalePlusProps): ReactNode {
   const { t } = useT()
+  const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const mode = useReplayStore((s) => s.mode)
   const tradeSize = useReplayStore((s) => s.tradeSize)
@@ -241,11 +247,31 @@ export function PriceScalePlus({
   const placeLimit = useReplayStore((s) => s.placeLimit)
   const paperBuy = useReplayStore((s) => s.paperBuy)
   const paperSell = useReplayStore((s) => s.paperSell)
-  const priceText = price.toFixed(pricePrecision)
+  const addHorizontalLine = useReplayStore((s) => s.addHorizontalLine)
+  const quotePrice = roundPriceToPrecision(price, pricePrecision)
+  const priceText = quotePrice.toFixed(pricePrecision)
   const sizeText = formatTradeSizeForSymbol(tradeSize, symbol)
   const mark = currentClose
   const atMarket =
-    mark != null && Number.isFinite(mark) && Math.abs(price - mark) < Math.pow(10, -(pricePrecision + 1))
+    mark != null &&
+    Number.isFinite(mark) &&
+    Math.abs(quotePrice - mark) < Math.pow(10, -(pricePrecision + 1))
+
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(event: PointerEvent): void {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
+    }
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
 
   function place(side: 'buy' | 'sell'): void {
     if (mode !== 'replay') return
@@ -256,56 +282,98 @@ export function PriceScalePlus({
       return
     }
     const marketSide = side === 'buy' ? 'long' : 'short'
-    const kind = pendingKindForEntry(marketSide, mark ?? price, price)
+    const kind = pendingKindForEntry(marketSide, mark ?? quotePrice, quotePrice)
     if (!kind) return
-    placeLimit(marketSide, price, kind)
+    placeLimit(marketSide, quotePrice, kind)
     setOpen(false)
   }
 
-  const above = mark != null && price > mark
+  const above = mark != null && quotePrice > mark
   function kindWord(side: 'buy' | 'sell'): string {
     if (atMarket) return t('context.orderKind.market')
     const stop = above ? side === 'buy' : side !== 'buy'
     return t(stop ? 'context.orderKind.stop' : 'context.orderKind.limit')
   }
 
+  // Sit in the gutter reserved at the outer edge of the price scale.
+  const inset = 2
+  const iconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400'
+  const itemClass =
+    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800'
+
   return (
     <div
+      ref={rootRef}
       className="absolute z-[6]"
-      style={{ top: y - 11, [onLeft ? 'left' : 'right']: 2 }}
+      style={{ top: y - 11, [onLeft ? 'left' : 'right']: inset }}
       onMouseDown={(event) => event.stopPropagation()}
+      onMouseMove={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.preventDefault()}
     >
       <button
         type="button"
         aria-label={t('scale.plus')}
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-[22px] w-[22px] items-center justify-center rounded-md border border-zinc-600 bg-zinc-900 text-sm leading-none text-zinc-100 shadow shadow-black/40 hover:border-primary-400 hover:text-primary-200"
+        className={`flex h-[22px] w-[22px] items-center justify-center rounded-md text-white shadow-md shadow-black/30 transition-colors ${
+          open ? 'bg-primary-400' : 'bg-primary-500 hover:bg-primary-400'
+        }`}
       >
-        +
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>
-      {open && mode === 'replay' ? (
+      {open ? (
         <div
           role="menu"
-          className={`absolute top-0 z-[7] w-max min-w-[12rem] rounded-xl border border-white/10 bg-zinc-950/95 py-1 shadow-xl shadow-black/40 ${
+          className={`absolute top-0 z-[7] w-max min-w-[13rem] rounded-xl border border-white/10 bg-zinc-950/95 py-1 shadow-xl shadow-black/40 ${
             onLeft ? 'left-7' : 'right-7'
           }`}
         >
+          {mode === 'replay' ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => place('buy')}
+                className={itemClass}
+              >
+                <ArrowUpRight className={iconClass} />
+                <span>
+                  {t('context.orderBuy', {
+                    size: sizeText,
+                    price: priceText,
+                    kind: kindWord('buy')
+                  })}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => place('sell')}
+                className={itemClass}
+              >
+                <ArrowDownRight className={iconClass} />
+                <span>
+                  {t('context.orderSell', {
+                    size: sizeText,
+                    price: priceText,
+                    kind: kindWord('sell')
+                  })}
+                </span>
+              </button>
+              <div className="my-1 h-px bg-white/10" />
+            </>
+          ) : null}
           <button
             type="button"
             role="menuitem"
-            onClick={() => place('buy')}
-            className="block w-full px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+            onClick={() => {
+              addHorizontalLine(quotePrice)
+              setOpen(false)
+            }}
+            className={itemClass}
           >
-            {t('context.orderBuy', { size: sizeText, price: priceText, kind: kindWord('buy') })}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => place('sell')}
-            className="block w-full px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
-          >
-            {t('context.orderSell', { size: sizeText, price: priceText, kind: kindWord('sell') })}
+            <Minus className={iconClass} />
+            <span>{t('scale.drawHorizontal')}</span>
           </button>
         </div>
       ) : null}
