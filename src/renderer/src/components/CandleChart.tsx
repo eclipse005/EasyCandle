@@ -851,15 +851,6 @@ export default function CandleChart({
     }
     chart.applyOptions({
       ...chartThemeOptions(palette),
-      // Reserve room for the scale-side + without covering price labels.
-      leftPriceScale: {
-        minimumWidth: ps.plusButton ? 104 : 0,
-        visible: ps.scaleOnLeft
-      },
-      rightPriceScale: {
-        minimumWidth: ps.plusButton ? 104 : 0,
-        visible: !ps.scaleOnLeft
-      },
       timeScale: {
         borderColor: palette.scaleBorder,
         timeVisible: settings.timeScale.timeVisible,
@@ -1007,7 +998,11 @@ export default function CandleChart({
     clientY: number
     ratio: number | null
   } | null>(null)
-  const [plusPoint, setPlusPoint] = useState<{ y: number; price: number } | null>(null)
+  const [plusPoint, setPlusPoint] = useState<{
+    y: number
+    price: number
+    axisWidth: number
+  } | null>(null)
   const [countdownY, setCountdownY] = useState<number | null>(null)
 
   useEffect(() => {
@@ -1243,10 +1238,17 @@ export default function CandleChart({
           return
         }
         const nextPrice = Number(price)
+        const axisWidth = priceScaleWidth(
+          chart,
+          priceScaleSettings.scaleOnLeft ? 'left' : 'right'
+        )
         setPlusPoint((prev) =>
-          prev && Math.abs(prev.y - localY) < 1 && prev.price === nextPrice
+          prev &&
+          Math.abs(prev.y - localY) < 1 &&
+          prev.price === nextPrice &&
+          prev.axisWidth === axisWidth
             ? prev
-            : { y: localY, price: nextPrice }
+            : { y: localY, price: nextPrice, axisWidth }
         )
       }}
       onMouseLeave={() => setPlusPoint(null)}
@@ -1332,6 +1334,7 @@ export default function CandleChart({
           price={plusPoint.price}
           pricePrecision={pricePrecision}
           onLeft={priceScaleSettings.scaleOnLeft}
+          axisWidth={plusPoint.axisWidth}
         />
       ) : null}
       {contextMenu && (

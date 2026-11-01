@@ -226,6 +226,8 @@ type PriceScalePlusProps = {
   price: number
   pricePrecision: number
   onLeft: boolean
+  /** Price-scale width; the plus sits immediately inside the plot beside it. */
+  axisWidth: number
 }
 
 /**
@@ -236,7 +238,8 @@ export function PriceScalePlus({
   y,
   price,
   pricePrecision,
-  onLeft
+  onLeft,
+  axisWidth
 }: PriceScalePlusProps): ReactNode {
   const { t } = useT()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -297,8 +300,8 @@ export function PriceScalePlus({
     return t(stop ? 'context.orderKind.stop' : 'context.orderKind.limit')
   }
 
-  // Sit in the gutter reserved at the outer edge of the price scale.
-  const inset = 2
+  // Sit inside the plot, immediately left/right of the price scale (FXR).
+  const inset = Math.max(4, axisWidth + 4)
   const iconClass = 'h-3.5 w-3.5 shrink-0 text-zinc-400'
   const itemClass =
     'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800'
