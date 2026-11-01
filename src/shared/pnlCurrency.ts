@@ -60,14 +60,25 @@ export function accountPnlFromQuote(
   return quotePnl * rate
 }
 
-/** `+ 12.50 USD` / `- 3,500.25 JPY` — the quote currency is always labeled. */
+/** `+$12.50` for the account currency; other quote currencies stay labeled (`- 3,500.25 JPY`). */
 export function formatPnlCcy(pnl: number | null | undefined, currency: string): string {
-  if (pnl == null || !Number.isFinite(pnl)) return `— ${currency}`
+  const isUsd = currency.toUpperCase() === ACCOUNT_CURRENCY
+  if (pnl == null || !Number.isFinite(pnl)) return isUsd ? '—' : `— ${currency}`
   const abs = Math.abs(pnl).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
+  if (isUsd) {
+    if (pnl > 0) return `+$${abs}`
+    if (pnl < 0) return `-$${abs}`
+    return `$${abs}`
+  }
   if (pnl > 0) return `+ ${abs} ${currency}`
   if (pnl < 0) return `- ${abs} ${currency}`
-  return `0.00 ${currency}`
+  return `${abs} ${currency}`
+}
+
+/** `$100,000` — an unsigned whole-dollar account balance. */
+export function formatUsdBalance(value: number): string {
+  return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 }

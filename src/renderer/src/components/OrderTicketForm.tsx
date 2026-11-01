@@ -17,7 +17,7 @@ import {
   type TicketOrderType
 } from '@/lib/paperTrade'
 import { usePricePrecision } from '@/hooks/usePricePrecision'
-import { ACCOUNT_CURRENCY, accountPnlFromQuote } from '@shared/pnlCurrency'
+import { accountPnlFromQuote, formatUsdBalance } from '@shared/pnlCurrency'
 import { accountPnlValue, formatAccountValue } from '@/lib/accountPnl'
 import { contractSizeForSymbol, formatAssetPrice, tradeSizeKindForSymbol } from '@shared/pricePrecision'
 import { useReplayStore, selectPriceFollowCandle } from '@/store/replayStore'
@@ -310,11 +310,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
           <span className="text-[10px] tabular-nums text-zinc-600">
             {t('ticket.riskPercentOf', {
               percent: riskPercent,
-              balance: balanceForRisk.toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }),
-              currency: ACCOUNT_CURRENCY
+              balance: formatUsdBalance(balanceForRisk)
             })}
           </span>
         </div>

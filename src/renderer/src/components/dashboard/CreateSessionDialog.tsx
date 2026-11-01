@@ -224,15 +224,20 @@ export default function CreateSessionDialog({
 
         <div className="grid grid-cols-2 gap-3">
           <SoftLabel caption={t('session.balance')}>
-            <SoftInput
-              type="number"
-              min="0"
-              value={balance}
-              disabled={busy}
-              aria-label={t('session.balance')}
-              className="tabular-nums"
-              onChange={(event) => setBalance(event.target.value)}
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">
+                $
+              </span>
+              <SoftInput
+                type="number"
+                min="0"
+                value={balance}
+                disabled={busy}
+                aria-label={t('session.balance')}
+                className="pl-7 tabular-nums"
+                onChange={(event) => setBalance(event.target.value)}
+              />
+            </div>
           </SoftLabel>
 
           <SoftLabel caption={t('session.strategy')}>

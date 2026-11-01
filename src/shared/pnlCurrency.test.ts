@@ -26,7 +26,7 @@ describe('#51 case 1 — EURUSD, USD account, 100,000 contract', () => {
     const quote = pnlForSide('long', 1.1, 1.09965, pnlScaleForSymbol('EURUSD', 1))
     expect(quote).toBeCloseTo(-35, 6)
     expect(accountPnlFromQuote(quote, 'EURUSD', 1.09965)).toBeCloseTo(-35, 6)
-    expect(formatPnlCcy(quote, 'USD')).toBe('- 35.00 USD')
+    expect(formatPnlCcy(quote, 'USD')).toBe('-$35.00')
   })
 })
 
@@ -39,7 +39,7 @@ describe('#51 case 2 — USDJPY converts via the exit price, not treated as doll
     expect(rate).toBeCloseTo(1 / 154.5, 10)
     const usd = accountPnlFromQuote(quote, 'USDJPY', 154.5)
     expect(usd).toBeCloseTo(-50_000 / 154.5, 6)
-    expect(formatPnlCcy(usd, 'USD')).toBe('- 323.62 USD')
+    expect(formatPnlCcy(usd, 'USD')).toBe('-$323.62')
   })
 })
 

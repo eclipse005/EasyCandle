@@ -1087,11 +1087,11 @@ describe('formatPnl', () => {
 })
 
 describe('formatPnlUsd', () => {
-  it('formats overlay labels with USD', () => {
-    expect(formatPnlUsd(1.2)).toBe('+ 1.20 USD')
-    expect(formatPnlUsd(-3)).toBe('- 3.00 USD')
-    expect(formatPnlUsd(0)).toBe('0.00 USD')
-    expect(formatPnlUsd(null)).toBe('— USD')
+  it('formats overlay labels with the dollar sign', () => {
+    expect(formatPnlUsd(1.2)).toBe('+$1.20')
+    expect(formatPnlUsd(-3)).toBe('-$3.00')
+    expect(formatPnlUsd(0)).toBe('$0.00')
+    expect(formatPnlUsd(null)).toBe('—')
   })
 })
 
