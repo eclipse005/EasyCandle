@@ -350,7 +350,7 @@ export default function OrderTicketForm({ compact: _compact = false }: OrderTick
 
       {/* 4. Est. loss / profit / R:R */}
       {showEst ? (
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/40 px-2.5 py-2 text-[11px]">
+        <div className="grid grid-cols-[minmax(0,4fr)_minmax(0,4fr)_minmax(0,2fr)] gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/40 px-2.5 py-2 text-[11px]">
           <div className="min-w-0">
             <div className="text-zinc-500">{t('ticket.estLoss')}</div>
             <div
