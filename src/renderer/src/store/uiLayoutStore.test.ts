@@ -22,7 +22,6 @@ function freshStore() {
     orderPanelPoppedOut: false,
     drawingWidgetPos: null,
     showMainToolbar: true,
-    showStatusBar: true,
     showDrawingToolbar: true,
     showReplayControls: true,
     showPaperTrade: true,

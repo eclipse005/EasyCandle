@@ -16,7 +16,6 @@ import ChartTypeSelect from '@/components/ChartTypeSelect'
 import IconButton from '@/components/IconButton'
 import IndicatorsDropdown from '@/components/IndicatorsDropdown'
 import SessionDropdown from '@/components/SessionDropdown'
-import StatusBar from '@/components/StatusBar'
 import SymbolSelect from '@/components/SymbolSelect'
 import TimeframeSelect from '@/components/TimeframeSelect'
 import { useT } from '@/i18n/useT'
@@ -31,7 +30,6 @@ export default memo(function MainToolbar() {
   const setChartSplit = useReplayStore((s) => s.setChartSplit)
   const chartFullscreen = useUiLayoutStore((s) => s.chartFullscreen)
   const toggleChartFullscreen = useUiLayoutStore((s) => s.toggleChartFullscreen)
-  const showStatusBar = useUiLayoutStore((s) => s.showStatusBar)
   const setChartSettingsDialogOpen = useUiLayoutStore((s) => s.setChartSettingsDialogOpen)
   const setShortcutsDialogOpen = useUiLayoutStore((s) => s.setShortcutsDialogOpen)
   const theme = useThemeStore((s) => s.theme)
@@ -62,9 +60,7 @@ export default memo(function MainToolbar() {
             </IconButton>
             <SessionDropdown />
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-2">
-            {showStatusBar && <StatusBar />}
-            <div className="flex items-center gap-1 border-l border-zinc-800 pl-2">
+          <div className="ml-auto flex items-center gap-1">
               <IconButton
                 tooltip={chartSplit ? t('toolbar.singleChart') : t('toolbar.splitChart')}
                 dataTour="split"
@@ -102,7 +98,6 @@ export default memo(function MainToolbar() {
                   <Maximize2 className="h-4 w-4" />
                 )}
               </IconButton>
-            </div>
           </div>
     </div>
   )

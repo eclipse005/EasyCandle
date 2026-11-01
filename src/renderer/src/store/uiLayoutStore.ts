@@ -27,7 +27,6 @@ type PersistedLayout = {
   orderPanelPoppedOut?: boolean
   drawingWidgetPos?: PanelPos
   showMainToolbar?: boolean
-  showStatusBar?: boolean
   showDrawingToolbar?: boolean
   showReplayControls?: boolean
   showPaperTrade?: boolean
@@ -47,7 +46,6 @@ type UiLayoutState = {
   /** Last dragged position of the drawing-style floating widget; null re-anchors to the drawing. */
   drawingWidgetPos: PanelPos | null
   showMainToolbar: boolean
-  showStatusBar: boolean
   showDrawingToolbar: boolean
   showReplayControls: boolean
   showPaperTrade: boolean
@@ -103,7 +101,6 @@ type UiLayoutState = {
   setOrderPanelPoppedOut: (value: boolean) => void
   setDrawingWidgetPos: (pos: PanelPos) => void
   toggleMainToolbar: () => void
-  toggleStatusBar: () => void
   toggleDrawingToolbar: () => void
   toggleReplayControls: () => void
   togglePaperTrade: () => void
@@ -177,7 +174,6 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   orderPanelPoppedOut: initial.orderPanelPoppedOut === true,
   drawingWidgetPos: isValidPos(initial.drawingWidgetPos) ? initial.drawingWidgetPos : null,
   showMainToolbar: initial.showMainToolbar !== false,
-  showStatusBar: initial.showStatusBar !== false,
   showDrawingToolbar: initial.showDrawingToolbar !== false,
   showReplayControls: initial.showReplayControls !== false,
   showPaperTrade: initial.showPaperTrade !== false,
@@ -252,12 +248,6 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     const value = !get().showMainToolbar
     set({ showMainToolbar: value })
     persist({ showMainToolbar: value })
-  },
-
-  toggleStatusBar: () => {
-    const value = !get().showStatusBar
-    set({ showStatusBar: value })
-    persist({ showStatusBar: value })
   },
 
   toggleDrawingToolbar: () => {

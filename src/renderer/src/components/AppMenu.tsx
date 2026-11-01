@@ -7,7 +7,6 @@ import {
   Info,
   Keyboard,
   Moon,
-  PanelBottom,
   PenLine,
   Play,
   TrendingUp,
@@ -111,11 +110,9 @@ export default function AppMenu() {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState<boolean>(false)
 
-  const showStatusBar = useUiLayoutStore((s) => s.showStatusBar)
   const showDrawingToolbar = useUiLayoutStore((s) => s.showDrawingToolbar)
   const showReplayControls = useUiLayoutStore((s) => s.showReplayControls)
   const showPaperTrade = useUiLayoutStore((s) => s.showPaperTrade)
-  const toggleStatusBar = useUiLayoutStore((s) => s.toggleStatusBar)
   const toggleDrawingToolbar = useUiLayoutStore((s) => s.toggleDrawingToolbar)
   const toggleReplayControls = useUiLayoutStore((s) => s.toggleReplayControls)
   const togglePaperTrade = useUiLayoutStore((s) => s.togglePaperTrade)
@@ -149,13 +146,6 @@ export default function AppMenu() {
       icon: TrendingUp,
       checked: showPaperTrade,
       onSelect: togglePaperTrade
-    },
-    {
-      type: 'item',
-      label: t('menu.statusBar'),
-      icon: PanelBottom,
-      checked: showStatusBar,
-      onSelect: toggleStatusBar
     },
     {
       type: 'item',
