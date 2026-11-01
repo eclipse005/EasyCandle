@@ -92,3 +92,48 @@ export function defaultSecondaryTimeframe(primaryTimeframe: string): string {
   if (TIMEFRAMES['1m']) return '1m'
   return DEFAULT_TIMEFRAME
 }
+
+/**
+ * Cover-end second after one shared Replay Timestep step from the current
+ * chart bar open. Forward completes the current step period if still inside
+ * it; otherwise advances one full step. Backward lands on the previous step's
+ * cover end. Used so every pane stays time-aligned to one Timestep (FXR).
+ */
+export function timestepStepCoverEnd(
+  currentOpenSeconds: number,
+  chartIntervalSeconds: number,
+  stepIntervalSeconds: number,
+  direction: 1 | -1 = 1
+): number {
+  const open = Math.floor(Number(currentOpenSeconds))
+  const chartSec = Math.max(1, Math.floor(Number(chartIntervalSeconds)) || 1)
+  const stepSec = Math.max(1, Math.floor(Number(stepIntervalSeconds)) || 1)
+  if (!Number.isFinite(open)) return 0
+
+  const stepOpen = alignTimeToInterval(open, stepSec)
+
+  if (direction === 1) {
+    const stepCover = playheadCoverEnd(stepOpen, stepSec)
+    const currentCover = playheadCoverEnd(open, chartSec)
+    if (currentCover < stepCover) return stepCover
+    return playheadCoverEnd(stepOpen + stepSec, stepSec)
+  }
+
+  const prevOpen = stepOpen - stepSec
+  return playheadCoverEnd(prevOpen, stepSec)
+}
+
+/** When Sync-with-chart is on, Timestep mirrors the chart TF; otherwise keep it. */
+export function resolveTimestepAfterChartTfChange(args: {
+  syncTimestepWithChart: boolean
+  chartTimeframe: string
+  replayTimestep: string
+}): string {
+  if (!args.syncTimestepWithChart) return args.replayTimestep
+  return TIMEFRAMES[args.chartTimeframe] ? args.chartTimeframe : args.replayTimestep
+}
+
+/** Turning Sync on snaps Timestep to the current chart timeframe (FXR). */
+export function resolveTimestepOnSyncEnable(chartTimeframe: string, fallback = DEFAULT_TIMEFRAME): string {
+  return TIMEFRAMES[chartTimeframe] ? chartTimeframe : fallback
+}

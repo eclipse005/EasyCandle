@@ -64,11 +64,6 @@ export default function ReplayControls() {
   const isPlaying = useReplayStore((s) => s.isPlaying)
   const speed = useReplayStore((s) => s.speed)
   const replayIndex = useReplayStore((s) => s.replayIndex)
-  const secondaryReplayIndex = useReplayStore((s) => s.secondaryReplayIndex)
-  const chartSplit = useReplayStore((s) => s.chartSplit)
-  const driverPane = useReplayStore((s) => s.driverPane)
-  const timeframe = useReplayStore((s) => s.timeframe)
-  const secondaryTimeframe = useReplayStore((s) => s.secondaryTimeframe)
   const replayLoading = useReplayStore((s) => s.replayLoading)
   const secondaryLoading = useReplayStore((s) => s.secondaryLoading)
   const currentCandle = useReplayStore((s) => s.currentCandle)
@@ -77,9 +72,10 @@ export default function ReplayControls() {
   const stepForward = useReplayStore((s) => s.stepForward)
   const stepBackward = useReplayStore((s) => s.stepBackward)
   const setSpeed = useReplayStore((s) => s.setSpeed)
-  const setDriverPane = useReplayStore((s) => s.setDriverPane)
-  const setChartSplit = useReplayStore((s) => s.setChartSplit)
-  const setTimeframe = useReplayStore((s) => s.setTimeframe)
+  const replayTimestep = useReplayStore((s) => s.replayTimestep)
+  const syncTimestepWithChart = useReplayStore((s) => s.syncTimestepWithChart)
+  const setReplayTimestep = useReplayStore((s) => s.setReplayTimestep)
+  const setSyncTimestepWithChart = useReplayStore((s) => s.setSyncTimestepWithChart)
   const jumpToTime = useReplayStore((s) => s.jumpToTime)
   const seekToIndex = useReplayStore((s) => s.seekToIndex)
   const confirmPendingSeek = useReplayStore((s) => s.confirmPendingSeek)
@@ -125,8 +121,9 @@ export default function ReplayControls() {
 
   const busy = replayLoading || secondaryLoading
   const ended = replayStatus === 'ended'
-  const driverIndex = chartSplit && driverPane === 'secondary' ? secondaryReplayIndex : replayIndex
+  const driverIndex = replayIndex
   const displayIndex = scrubIndex ?? driverIndex
+  const timestepLocked = syncTimestepWithChart || busy
   const progressPct =
     bufferLength > 0 ? Math.min(100, ((displayIndex + 1) / bufferLength) * 100) : 0
 
@@ -294,79 +291,52 @@ export default function ReplayControls() {
       </div>
 
       <div className="flex items-center gap-1">
-        {chartSplit ? (
-          <Tooltip text={t('replay.toggleNext')} kbds={['Tab']} side="top">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={(event) => {
-                setDriverPane(driverPane === 'primary' ? 'secondary' : 'primary')
+        <Tooltip text={t('replay.timestepSingleTip')} side="top">
+          <label
+            className={`inline-flex h-8 items-center gap-1.5 rounded-xl border bg-zinc-900/80 px-2 text-xs text-zinc-300 ${
+              timestepLocked ? 'border-zinc-800/80 opacity-80' : 'border-zinc-800'
+            }`}
+            title={t('replay.timestepTip')}
+          >
+            <span className="text-zinc-500">{t('replay.next')}</span>
+            <select
+              disabled={timestepLocked}
+              aria-label={t('replay.timestepTip')}
+              value={replayTimestep}
+              onChange={(event) => {
+                setReplayTimestep(event.target.value)
                 event.currentTarget.blur()
               }}
-              aria-label={t('replay.toggleNext')}
-              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300 transition-colors enabled:hover:border-zinc-500 enabled:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="max-w-[4.5rem] rounded bg-transparent font-medium text-primary-300 outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <span className="text-zinc-500">{t('replay.next')}</span>
-              <span className="font-medium text-primary-300">
-                {driverPane === 'secondary'
-                  ? `${TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe} · right`
-                  : `${TIMEFRAMES[timeframe]?.label ?? timeframe} · left`}
-              </span>
-            </button>
-          </Tooltip>
-        ) : (
-          <Tooltip text={t('replay.timestepSingleTip')} side="top">
-            <label
-              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-xs text-zinc-300"
-              title={t('replay.timestepTip')}
-            >
-              <span className="text-zinc-500">{t('replay.next')}</span>
-              <select
-                disabled={busy}
-                aria-label={t('replay.timestepTip')}
-                value={timeframe}
-                onChange={(event) => {
-                  setTimeframe(event.target.value)
-                  event.currentTarget.blur()
-                }}
-                className="max-w-[4.5rem] rounded bg-transparent font-medium text-primary-300 outline-none disabled:opacity-40"
-              >
-                {Object.keys(TIMEFRAMES).map((id) => (
-                  <option key={id} value={id} className="bg-zinc-900 text-zinc-100">
-                    {TIMEFRAMES[id]?.label ?? id}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </Tooltip>
-        )}
-        {chartSplit ? (
-          <Tooltip text={t('replay.syncTip')} side="top">
-            <span
-              className="inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-900/60 bg-emerald-950/40 px-2 text-[11px] font-medium text-emerald-300"
-              aria-label={t('replay.syncOn')}
-            >
-              <Link2 className="h-3.5 w-3.5" aria-hidden />
-              {t('replay.syncOn')}
-            </span>
-          </Tooltip>
-        ) : (
-          <Tooltip text={t('replay.syncOffTip')} side="top">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={(event) => {
-                setChartSplit(true)
-                event.currentTarget.blur()
-              }}
-              aria-label={t('replay.enableSplitSync')}
-              className="inline-flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2 text-[11px] font-medium text-zinc-400 transition-colors enabled:hover:border-emerald-800 enabled:hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Link2 className="h-3.5 w-3.5" aria-hidden />
-              {t('replay.sync')}
-            </button>
-          </Tooltip>
-        )}
+              {Object.keys(TIMEFRAMES).map((id) => (
+                <option key={id} value={id} className="bg-zinc-900 text-zinc-100">
+                  {TIMEFRAMES[id]?.label ?? id}
+                </option>
+              ))}
+            </select>
+          </label>
+        </Tooltip>
+        <Tooltip text={syncTimestepWithChart ? t('replay.syncTip') : t('replay.syncOffTip')} side="top">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={(event) => {
+              setSyncTimestepWithChart(!syncTimestepWithChart)
+              event.currentTarget.blur()
+            }}
+            aria-label={t('replay.syncWithChart')}
+            aria-pressed={syncTimestepWithChart}
+            className={`inline-flex h-8 items-center gap-1 rounded-xl border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              syncTimestepWithChart
+                ? 'border-emerald-900/60 bg-emerald-950/40 text-emerald-300'
+                : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 enabled:hover:border-emerald-800 enabled:hover:text-emerald-300'
+            }`}
+          >
+            <Link2 className="h-3.5 w-3.5" aria-hidden />
+            {syncTimestepWithChart ? t('replay.syncOn') : t('replay.sync')}
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex h-8 items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-1.5 text-xs text-zinc-400">

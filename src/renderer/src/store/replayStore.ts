@@ -42,7 +42,6 @@ import {
   pendingToPosition,
   placePendingLimit,
   pnlScaleForSymbol,
-  rewindTradesAfterStepBack,
   rewindTradesToTime,
   hasTradeActivityAfter,
   stopLossFromTakeProfit,
@@ -138,6 +137,9 @@ import {
   followerPlayheadCover,
   coarserTouchedCover,
   playheadCoverEnd,
+  resolveTimestepAfterChartTfChange,
+  resolveTimestepOnSyncEnable,
+  timestepStepCoverEnd,
   TIMEFRAMES
 } from '@shared/timeframes'
 
@@ -559,6 +561,10 @@ type ReplayStore = {
   chartSplit: boolean
   secondaryTimeframe: string
   driverPane: DriverPane
+  /** Shared Replay Timestep TF id — drives step/play for every pane (FXR). */
+  replayTimestep: string
+  /** When true, Timestep mirrors primary chart TF changes (default). */
+  syncTimestepWithChart: boolean
   secondaryCandles: Candle[]
   secondaryVisibleCandles: Candle[]
   secondaryCurrentCandle: Candle | null
@@ -622,6 +628,8 @@ type ReplayStore = {
   setChartSplit: (split: boolean) => void
   setSecondaryTimeframe: (timeframe: string) => void
   setDriverPane: (pane: DriverPane) => void
+  setReplayTimestep: (timeframe: string) => void
+  setSyncTimestepWithChart: (sync: boolean) => void
   loadCandles: () => Promise<void>
   activateImportedDataset: (candles: Candle[], meta: ImportedDatasetMeta) => void
   clearImportedDataset: () => void
@@ -805,24 +813,6 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       ),
       replayMessage: null
     })
-  }
-
-  function rewindTradesLeavingCandle(
-    leftCandle: Candle,
-    currentCandleTime: number,
-    intervalSec: number
-  ): void {
-    applyRewindResult(
-      rewindTradesAfterStepBack({
-        positions: get().positions,
-        pendingOrders: get().pendingOrders,
-        closedTrades: get().closedTrades,
-        orderHistory: get().orderHistory,
-        leftCandleTime: leftCandle.time,
-        leftCoverEnd: playheadCoverEnd(leftCandle.time, intervalSec),
-        currentCandleTime
-      })
-    )
   }
 
   function rewindPrimaryToIndex(target: number, opts: { rewindTrades?: boolean } = {}): void {
@@ -1415,11 +1405,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       return
     }
 
-    if (get().driverPane === 'secondary') {
-      secondaryEngine.seekToTime(startSec)
-      return
-    }
-
+    // Shared Timestep: secondary always covers the primary playhead time.
     secondaryEngine.seekToTime(
       followerPlayheadCover(
         startSec,
@@ -1554,120 +1540,112 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
   }
 
   function driverEnded(): boolean {
-    if (get().chartSplit && get().driverPane === 'secondary') {
-      return secondaryEngine.getState().status === 'ended'
-    }
+    // Shared Timestep always anchors on the primary playhead.
     return engine.getState().status === 'ended'
   }
 
+  function mirrorTimestepFromChart(chartTimeframe: string): void {
+    const next = resolveTimestepAfterChartTfChange({
+      syncTimestepWithChart: get().syncTimestepWithChart,
+      chartTimeframe,
+      replayTimestep: get().replayTimestep
+    })
+    if (next !== get().replayTimestep) {
+      set({ replayTimestep: next })
+    }
+  }
+
+  /**
+   * Advance every pane by one shared Replay Timestep (not focus/driver pane).
+   * Primary is the time anchor; secondary covers the same wall-clock range.
+   */
   function advanceDriverForward(): boolean {
     const split = get().chartSplit
-    const driver = get().driverPane
+    const candle = engine.getCurrentCandle()
+    if (!candle) return false
 
-    if (!split || driver === 'primary') {
-      const before = engine.getState().index
+    const candles = engine.getState().candles
+    if (!candles.length) return false
+
+    const before = engine.getState().index
+    if (before >= candles.length - 1) {
       engine.stepForward()
-      const after = engine.getState().index
-
-      if (after > before) {
-        publishReplay('append')
-        if (!split) {
-          maybeAutoCloseOnLevels()
-        } else if (priceFollowPane() === 'primary') {
-          const event = maybeAutoCloseOnLevels()
-          const candle = engine.getCurrentCandle()
-          if (event && candle) revealCoarserTouchedAt(candle.time)
-          else syncSecondaryToPrimaryCover()
-        } else {
-          const from = secondaryEngine.getState().index + 1
-          syncSecondaryToPrimaryCover()
-          scanFinerHits('secondary', from, secondaryEngine.getState().index)
-        }
-        void maybePrefetch()
-        void maybePrefetchSecondary()
-        return true
-      }
-
       publishReplay('replace', { fitContent: false })
       if (split) syncSecondaryToPrimaryCover()
       return false
     }
 
-    const before = secondaryEngine.getState().index
-    secondaryEngine.stepForward()
-    const after = secondaryEngine.getState().index
-
-    if (after > before) {
-      publishSecondary('append')
-      if (priceFollowPane() === 'secondary') {
-        const event = maybeAutoCloseOnLevels()
-        const candle = secondaryEngine.getCurrentCandle()
-        if (event && candle) revealCoarserTouchedAt(candle.time)
-        else syncPrimaryToSecondaryCover()
-      } else {
-        const from = engine.getState().index + 1
-        syncPrimaryToSecondaryCover()
-        scanFinerHits('primary', from, engine.getState().index)
-      }
-      void maybePrefetch()
-      void maybePrefetchSecondary()
-      return true
+    const chartSec = intervalSecondsFor(get().timeframe)
+    const stepSec = intervalSecondsFor(get().replayTimestep)
+    const targetCover = timestepStepCoverEnd(candle.time, chartSec, stepSec, 1)
+    let target = findIndexAtOrBefore(candles, targetCover)
+    if (target < 0) target = before
+    if (target <= before) {
+      // Equal/fine Timestep should still move at least one primary bar.
+      target = Math.min(candles.length - 1, before + 1)
     }
 
-    publishSecondary('replace', { fitContent: false })
-    return false
+    const follow = priceFollowPane()
+    const followEngine = follow === 'secondary' ? secondaryEngine : engine
+    const followBefore = followEngine.getState().index
+
+    engine.seekToIndex(target, coverSeekOpts())
+    const after = engine.getState().index
+    if (after <= before) {
+      publishReplay('replace', { fitContent: false })
+      if (split) syncSecondaryToPrimaryCover()
+      return false
+    }
+
+    publishReplay(after === before + 1 ? 'append' : 'replace', { fitContent: false })
+
+    if (!split) {
+      if (follow === 'primary') {
+        scanFinerHits('primary', before + 1, after)
+      } else {
+        maybeAutoCloseOnLevels()
+      }
+    } else if (follow === 'primary') {
+      const event = scanFinerHits('primary', before + 1, after)
+      const landed = engine.getCurrentCandle()
+      if (event && landed) revealCoarserTouchedAt(landed.time)
+      else syncSecondaryToPrimaryCover()
+    } else {
+      syncSecondaryToPrimaryCover()
+      scanFinerHits('secondary', followBefore + 1, secondaryEngine.getState().index)
+    }
+
+    void maybePrefetch()
+    void maybePrefetchSecondary()
+    return true
   }
 
   function retreatDriverBackward(): void {
     const split = get().chartSplit
-    const driver = get().driverPane
+    const leftCandle = engine.getCurrentCandle() || get().currentCandle
+    const candles = engine.getState().candles
+    if (!leftCandle || !candles.length) return
 
-    if (!split || driver === 'primary') {
-      const leftCandle = engine.getCurrentCandle() || get().currentCandle
-      const before = engine.getState().index
+    const before = engine.getState().index
+    if (before <= 0) {
       engine.stepBackward()
-      const after = engine.getState().index
-
       publishReplay('replace', { fitContent: false })
       if (split) syncSecondaryToPrimaryCover()
-
-      if (after < before && leftCandle) {
-        rewindTradesLeavingCandle(
-          leftCandle,
-          (engine.getCurrentCandle() || get().currentCandle)?.time ?? leftCandle.time,
-          intervalSecondsFor(get().timeframe)
-        )
-      }
       return
     }
 
-    const leftCandle = secondaryEngine.getCurrentCandle()
-    const before = secondaryEngine.getState().index
-    secondaryEngine.stepBackward()
-    const after = secondaryEngine.getState().index
-    publishSecondary('replace', { fitContent: false })
-
-    if (after < before && leftCandle) {
-      rewindTradesLeavingCandle(
-        leftCandle,
-        secondaryEngine.getCurrentCandle()?.time ?? leftCandle.time,
-        intervalSecondsFor(get().secondaryTimeframe)
-      )
+    const chartSec = intervalSecondsFor(get().timeframe)
+    const stepSec = intervalSecondsFor(get().replayTimestep)
+    const targetCover = timestepStepCoverEnd(leftCandle.time, chartSec, stepSec, -1)
+    let target = findIndexAtOrBefore(candles, targetCover)
+    if (target < 0) target = 0
+    if (target >= before) {
+      target = Math.max(0, before - 1)
     }
 
-    const candle = secondaryEngine.getCurrentCandle()
-    if (!candle || engine.getState().candles.length === 0) return
-
-    const coverUntil = followerPlayheadCover(
-      candle.time,
-      intervalSecondsFor(get().secondaryTimeframe),
-      intervalSecondsFor(get().timeframe)
-    )
-    const target = findIndexAtOrBefore(engine.getState().candles, coverUntil)
-    if (target < 0) return
-
-    rewindPrimaryToIndex(target, { rewindTrades: false })
+    rewindPrimaryToIndex(target, { rewindTrades: true })
     publishReplay('replace', { fitContent: false })
+    if (split) syncSecondaryToPrimaryCover()
   }
 
   function publishImportedPreview(
@@ -1907,9 +1885,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const advanced = advanceDriverForward()
       if (!advanced || driverEnded()) {
         stopClock()
-        // Reflect ended/paused status from primary engine snapshot used by UI.
-        if (get().chartSplit && get().driverPane === 'secondary' && driverEnded()) {
+        if (driverEnded()) {
           engine.pause()
+          secondaryEngine.pause()
           set({ isPlaying: false, replayStatus: 'ended' })
         }
       }
@@ -2717,6 +2695,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     chartSplit: false,
     secondaryTimeframe: defaultSecondaryTimeframe(DEFAULT_TIMEFRAME),
     driverPane: 'primary',
+    replayTimestep: DEFAULT_TIMEFRAME,
+    syncTimestepWithChart: true,
     secondaryCandles: [],
     secondaryVisibleCandles: [],
     secondaryCurrentCandle: null,
@@ -3186,7 +3166,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (!TIMEFRAMES[timeframe]) return
 
       if (get().mode === 'replay') {
-        void switchReplayTimeframe(timeframe)
+        void switchReplayTimeframe(timeframe).then(() => {
+          if (get().timeframe === timeframe) mirrorTimestepFromChart(timeframe)
+        })
         return
       }
 
@@ -3219,6 +3201,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
               revision: s.chartSync.revision + 1
             }
           }))
+          mirrorTimestepFromChart(timeframe)
           if (get().chartSplit) {
             void loadSecondaryLiveCandles()
           }
@@ -3262,6 +3245,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
               revision: s.chartSync.revision + 1
             }
           }))
+          mirrorTimestepFromChart(get().timeframe)
           if (get().chartSplit) {
             void loadSecondaryLiveCandles()
           }
@@ -3281,6 +3265,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         pendingTrend: remappedPending,
         pendingTrendEnd: remappedPendingEnd
       })
+      mirrorTimestepFromChart(timeframe)
       void get().loadCandles()
       if (get().chartSplit) {
         void loadSecondaryLiveCandles()
@@ -3338,22 +3323,14 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       set({ secondaryTimeframe: timeframe })
 
       if (get().mode === 'replay') {
-        const driverCandle =
-          get().driverPane === 'secondary'
-            ? secondaryEngine.getCurrentCandle() || get().secondaryCurrentCandle
-            : engine.getCurrentCandle() || get().currentCandle
-        const anchor = driverCandle?.time
+        const anchor = (engine.getCurrentCandle() || get().currentCandle)?.time
         if (anchor == null) {
           set({ secondaryError: 'Cannot change secondary timeframe without a playhead.' })
           return
         }
         void loadSecondaryReplayWindow(anchor).then((ok) => {
           if (!ok) return
-          if (get().driverPane === 'secondary') {
-            syncPrimaryToSecondaryCover({ fitContent: false })
-          } else {
-            syncSecondaryToPrimaryCover({ fitContent: false })
-          }
+          syncSecondaryToPrimaryCover({ fitContent: false })
         })
         return
       }
@@ -3383,6 +3360,26 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         publishSecondary('replace', { fitContent: false })
         publishStatus()
       }
+    },
+
+    setReplayTimestep(timeframe) {
+      if (!TIMEFRAMES[timeframe]) return
+      if (get().syncTimestepWithChart) return
+      if (timeframe === get().replayTimestep) return
+      set({ replayTimestep: timeframe })
+    },
+
+    setSyncTimestepWithChart(sync) {
+      const next = Boolean(sync)
+      if (next === get().syncTimestepWithChart) return
+      if (next) {
+        set({
+          syncTimestepWithChart: true,
+          replayTimestep: resolveTimestepOnSyncEnable(get().timeframe, get().replayTimestep)
+        })
+        return
+      }
+      set({ syncTimestepWithChart: false })
     },
 
     async loadCandles() {

@@ -14,12 +14,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /**
  * Replay keyboard shortcuts:
- * - Space → play/pause (toggles; steps are handled by arrow keys)
- * - ArrowRight → step forward one candle (hold to keep stepping)
- * - ArrowLeft → step backward one candle (hold to keep stepping)
+ * - Space → play/pause
+ * - ArrowRight → step forward by shared Timestep
+ * - ArrowLeft → step backward by shared Timestep
  * - + / = → faster playback
  * - - / _ → slower playback
- * - Tab (split only) → toggle next-candle pane (left ↔ right)
  */
 export function useReplayHotkeys(): void {
   const mode = useReplayStore((s) => s.mode)
@@ -28,7 +27,6 @@ export function useReplayHotkeys(): void {
   const stepForward = useReplayStore((s) => s.stepForward)
   const stepBackward = useReplayStore((s) => s.stepBackward)
   const setSpeed = useReplayStore((s) => s.setSpeed)
-  const setDriverPane = useReplayStore((s) => s.setDriverPane)
 
   useEffect(() => {
     if (mode !== 'replay') return undefined
@@ -56,20 +54,9 @@ export function useReplayHotkeys(): void {
       const state = useReplayStore.getState()
       if (state.mode !== 'replay') return
 
-      if (event.key === 'Tab' && state.chartSplit) {
-        if (event.repeat) return
-        event.preventDefault()
-        setDriverPane(state.driverPane === 'primary' ? 'secondary' : 'primary')
-        return
-      }
-
       if (event.key === 'ArrowLeft') {
         if (state.replayLoading || state.secondaryLoading) return
-        const driverIndex =
-          state.chartSplit && state.driverPane === 'secondary'
-            ? state.secondaryReplayIndex
-            : state.replayIndex
-        if (driverIndex <= 0) return
+        if (state.replayIndex <= 0) return
 
         event.preventDefault()
         scheduleStep(-1)
@@ -119,5 +106,5 @@ export function useReplayHotkeys(): void {
       window.removeEventListener('keydown', onKeyDown)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [mode, play, pause, stepForward, stepBackward, setSpeed, setDriverPane])
+  }, [mode, play, pause, stepForward, stepBackward, setSpeed])
 }

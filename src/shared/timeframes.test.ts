@@ -5,6 +5,9 @@ import {
   defaultSecondaryTimeframe,
   followerPlayheadCover,
   playheadCoverEnd,
+  resolveTimestepAfterChartTfChange,
+  resolveTimestepOnSyncEnable,
+  timestepStepCoverEnd,
   TIMEFRAMES
 } from './timeframes'
 
@@ -78,5 +81,82 @@ describe('defaultSecondaryTimeframe', () => {
   it('pairs 1m with 5m and other TFs with 1m', () => {
     expect(defaultSecondaryTimeframe('1m')).toBe('5m')
     expect(defaultSecondaryTimeframe('15m')).toBe('1m')
+  })
+})
+
+describe('timestepStepCoverEnd', () => {
+  it('advances one chart bar when Timestep matches chart TF', () => {
+    const open = alignTimeToInterval(1_700_000_000, TIMEFRAMES['15m'].seconds)
+    const next = timestepStepCoverEnd(
+      open,
+      TIMEFRAMES['15m'].seconds,
+      TIMEFRAMES['15m'].seconds,
+      1
+    )
+    expect(next).toBe(playheadCoverEnd(open + TIMEFRAMES['15m'].seconds, TIMEFRAMES['15m'].seconds))
+  })
+
+  it('jumps a 15m chart to the end of the current 1h Timestep', () => {
+    const hourOpen = alignTimeToInterval(1_700_000_000, TIMEFRAMES['1h'].seconds)
+    const mid = hourOpen + TIMEFRAMES['15m'].seconds
+    const cover = timestepStepCoverEnd(
+      mid,
+      TIMEFRAMES['15m'].seconds,
+      TIMEFRAMES['1h'].seconds,
+      1
+    )
+    expect(cover).toBe(playheadCoverEnd(hourOpen, TIMEFRAMES['1h'].seconds))
+  })
+
+  it('after completing a 1h Timestep on 15m, advances to the next hour', () => {
+    const hourOpen = alignTimeToInterval(1_700_000_000, TIMEFRAMES['1h'].seconds)
+    const lastFifteen = hourOpen + TIMEFRAMES['15m'].seconds * 3
+    const cover = timestepStepCoverEnd(
+      lastFifteen,
+      TIMEFRAMES['15m'].seconds,
+      TIMEFRAMES['1h'].seconds,
+      1
+    )
+    expect(cover).toBe(playheadCoverEnd(hourOpen + TIMEFRAMES['1h'].seconds, TIMEFRAMES['1h'].seconds))
+  })
+
+  it('steps backward one Timestep from an equal TF bar', () => {
+    const open = alignTimeToInterval(1_700_000_000, TIMEFRAMES['1h'].seconds)
+    const nextOpen = open + TIMEFRAMES['1h'].seconds
+    const back = timestepStepCoverEnd(
+      nextOpen,
+      TIMEFRAMES['1h'].seconds,
+      TIMEFRAMES['1h'].seconds,
+      -1
+    )
+    expect(back).toBe(playheadCoverEnd(open, TIMEFRAMES['1h'].seconds))
+  })
+})
+
+describe('resolveTimestepAfterChartTfChange', () => {
+  it('mirrors chart TF when Sync is on', () => {
+    expect(
+      resolveTimestepAfterChartTfChange({
+        syncTimestepWithChart: true,
+        chartTimeframe: '15m',
+        replayTimestep: '1h'
+      })
+    ).toBe('15m')
+  })
+
+  it('keeps Timestep when Sync is off', () => {
+    expect(
+      resolveTimestepAfterChartTfChange({
+        syncTimestepWithChart: false,
+        chartTimeframe: '15m',
+        replayTimestep: '1h'
+      })
+    ).toBe('1h')
+  })
+})
+
+describe('resolveTimestepOnSyncEnable', () => {
+  it('snaps Timestep to the chart TF', () => {
+    expect(resolveTimestepOnSyncEnable('4h')).toBe('4h')
   })
 })

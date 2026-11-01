@@ -9,18 +9,15 @@ import { useSessionStore } from '@/store/sessionStore'
 
 export default function App() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId)
-  const mode = useReplayStore((s) => s.mode)
   const timeframe = useReplayStore((s) => s.timeframe)
   const chartSplit = useReplayStore((s) => s.chartSplit)
   const secondaryTimeframe = useReplayStore((s) => s.secondaryTimeframe)
-  const driverPane = useReplayStore((s) => s.driverPane)
   const secondaryLoading = useReplayStore((s) => s.secondaryLoading)
   const secondaryError = useReplayStore((s) => s.secondaryError)
   const dataSource = useReplayStore((s) => s.dataSource)
   const replayLoading = useReplayStore((s) => s.replayLoading)
   const loadImportedHistory = useReplayStore((s) => s.loadImportedHistory)
   const setSecondaryTimeframe = useReplayStore((s) => s.setSecondaryTimeframe)
-  const setDriverPane = useReplayStore((s) => s.setDriverPane)
   const [primaryPriceScaleWidth, setPrimaryPriceScaleWidth] = useState(0)
   const [secondaryPriceScaleWidth, setSecondaryPriceScaleWidth] = useState(0)
 
@@ -45,7 +42,6 @@ export default function App() {
     return <Dashboard />
   }
 
-  const showDriver = mode === 'replay' && chartSplit
   const secondaryTfDisabled = secondaryLoading || replayLoading
   const priceScaleWidth = chartSplit ? secondaryPriceScaleWidth : primaryPriceScaleWidth
 
@@ -55,16 +51,7 @@ export default function App() {
         <div
           className={`relative min-h-0 min-w-0 ${chartSplit ? 'flex-1 border-r border-zinc-800' : 'h-full w-full'}`}
         >
-          {chartSplit && (
-            <PaneChrome
-              label="Left"
-              timeframe={timeframe}
-              showDriver={showDriver}
-              isDriver={driverPane === 'primary'}
-              onSelectDriver={() => setDriverPane('primary')}
-              driverDisabled={replayLoading || secondaryLoading}
-            />
-          )}
+          {chartSplit && <PaneChrome label="Left" timeframe={timeframe} />}
           <div className={chartSplit ? 'absolute inset-0 top-9' : 'absolute inset-0'}>
             <CandleChart
               isPrimary
@@ -86,10 +73,6 @@ export default function App() {
                   : undefined
               }
               onTimeframeChange={setSecondaryTimeframe}
-              showDriver={showDriver}
-              isDriver={driverPane === 'secondary'}
-              onSelectDriver={() => setDriverPane('secondary')}
-              driverDisabled={replayLoading || secondaryLoading}
             />
             <div className="absolute inset-0 top-9">
               <CandleChart

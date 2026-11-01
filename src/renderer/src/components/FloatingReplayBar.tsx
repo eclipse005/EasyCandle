@@ -7,22 +7,17 @@ import { useT } from '@/i18n/useT'
 
 export default function FloatingReplayBar() {
   const { t } = useT()
-  const chartSplit = useReplayStore((s) => s.chartSplit)
-  const driverPane = useReplayStore((s) => s.driverPane)
-  const timeframe = useReplayStore((s) => s.timeframe)
-  const secondaryTimeframe = useReplayStore((s) => s.secondaryTimeframe)
+  const replayTimestep = useReplayStore((s) => s.replayTimestep)
+  const syncTimestepWithChart = useReplayStore((s) => s.syncTimestepWithChart)
 
   const minimized = useUiLayoutStore((s) => s.replayControlsMinimized)
   const pos = useUiLayoutStore((s) => s.replayControlsPos)
   const setReplayControlsMinimized = useUiLayoutStore((s) => s.setReplayControlsMinimized)
   const setReplayControlsPos = useUiLayoutStore((s) => s.setReplayControlsPos)
 
-  const driverTf =
-    chartSplit && driverPane === 'secondary'
-      ? TIMEFRAMES[secondaryTimeframe]?.label ?? secondaryTimeframe
-      : TIMEFRAMES[timeframe]?.label ?? timeframe
-  const driverSide = chartSplit ? (driverPane === 'secondary' ? ' · R' : ' · L') : ''
-  const minimizedLabel = `${t('replay.next')} · ${driverTf}${driverSide}`
+  const stepLabel = TIMEFRAMES[replayTimestep]?.label ?? replayTimestep
+  const syncTag = syncTimestepWithChart ? '' : ' · custom'
+  const minimizedLabel = `${t('replay.next')} · ${stepLabel}${syncTag}`
 
   return (
     <FloatingPanel

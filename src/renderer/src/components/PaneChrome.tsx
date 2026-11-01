@@ -8,6 +8,7 @@ type PaneChromeProps = {
   timeframeDisabled?: boolean
   timeframeTitle?: string
   onTimeframeChange?: (timeframe: string) => void
+  /** @deprecated Shared Timestep replaced pane drivers; ignored. */
   showDriver?: boolean
   isDriver?: boolean
   onSelectDriver?: () => void
@@ -20,11 +21,7 @@ export default function PaneChrome({
   timeframeEditable = false,
   timeframeDisabled = false,
   timeframeTitle,
-  onTimeframeChange,
-  showDriver = false,
-  isDriver = false,
-  onSelectDriver,
-  driverDisabled = false
+  onTimeframeChange
 }: PaneChromeProps) {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 border-b border-b-zinc-800 z-[2] flex items-center justify-between gap-2 bg-gradient-to-b from-zinc-950/90 to-transparent px-2 py-1.5">
@@ -57,36 +54,6 @@ export default function PaneChrome({
           </span>
         )}
       </div>
-      {showDriver && onSelectDriver && (
-        <button
-          type="button"
-          disabled={driverDisabled}
-          onClick={() => {
-            onSelectDriver()
-            if (document.activeElement instanceof HTMLElement) {
-              document.activeElement.blur()
-            }
-          }}
-          title={
-            isDriver
-              ? `Step/play advances this ${TIMEFRAMES[timeframe]?.label ?? timeframe} pane`
-              : `Step/play on this ${TIMEFRAMES[timeframe]?.label ?? timeframe} pane`
-          }
-          aria-label={
-            isDriver
-              ? `Stepping ${TIMEFRAMES[timeframe]?.label ?? timeframe}`
-              : `Use ${TIMEFRAMES[timeframe]?.label ?? timeframe} for next candle`
-          }
-          aria-pressed={isDriver}
-          className={`pointer-events-auto inline-flex h-7 items-center rounded-xl border px-2 text-[10px] font-medium uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-            isDriver
-              ? 'border-primary-500/50 bg-primary-950/40 text-primary-300'
-              : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
-          }`}
-        >
-          {isDriver ? `Timestep · ${TIMEFRAMES[timeframe]?.label ?? timeframe}` : 'Set Timestep'}
-        </button>
-      )}
     </div>
   )
 }
