@@ -824,10 +824,6 @@ const en = {
   'ticket.tpBelow': 'TP is below entry — valid for Sell, not for Buy.',
   'ticket.tpAbove': 'TP is above entry — valid for Buy, not for Sell.',
 
-  'objects.name': 'Name',
-  'objects.kind': 'Type',
-  'objects.state': 'State',
-  'objects.actions': 'Actions',
   'objects.hidden': 'Hidden',
   'objects.locked': 'Locked',
   'objects.show': 'Show',
@@ -1756,10 +1752,6 @@ const zh: Record<MessageKey, string> = {
   'ticket.tpBelow': '止盈低于入场价 — 适用于卖出，不适用于买入。',
   'ticket.tpAbove': '止盈高于入场价 — 适用于买入，不适用于卖出。',
 
-  'objects.name': '名称',
-  'objects.kind': '类型',
-  'objects.state': '状态',
-  'objects.actions': '操作',
   'objects.hidden': '已隐藏',
   'objects.locked': '已锁定',
   'objects.show': '显示',

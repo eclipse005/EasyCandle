@@ -23,110 +23,87 @@ export default function DrawingObjectTreeDialog(): ReactElement {
   void revision
   const drawings = useMemo(() => listAllDrawings(), [revision])
 
-  return (
-      <aside
-        aria-label={t('rail.objects')}
-        className="flex h-full w-[272px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950"
-      >
-        <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
-          <p className="min-w-0 flex-1 text-sm font-medium text-zinc-100">{t('rail.objects')}</p>
-          <p className="text-xs tabular-nums text-zinc-500">{drawings.length}</p>
-        </header>
+  if (drawings.length === 0) {
+    return <p className="px-4 py-10 text-center text-xs text-zinc-500">{t('rail.noDrawings')}</p>
+  }
 
-        <div className="min-h-0 flex-1 overflow-auto">
-          {drawings.length === 0 ? (
-            <p className="px-4 py-8 text-center text-xs text-zinc-500">{t('rail.noDrawings')}</p>
-          ) : (
-            <table className="w-full text-left text-xs text-zinc-300">
-              <thead className="sticky top-0 bg-zinc-950 text-[10px] uppercase tracking-[0.08em] text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">{t('objects.name')}</th>
-                  <th className="px-3 py-2 font-medium">{t('objects.kind')}</th>
-                  <th className="px-3 py-2 font-medium">{t('objects.state')}</th>
-                  <th className="px-3 py-2 font-medium text-right">
-                    {t('objects.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {drawings.map((d) => {
-                  const selected = selectedIds.includes(d.id)
-                  return (
-                    <tr
-                      key={d.id}
-                      className={`border-t border-zinc-900 ${
-                        selected ? 'bg-primary-950/40' : 'hover:bg-zinc-900/70'
-                      }`}
-                    >
-                      <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          className="text-left hover:text-primary-300"
-                          onClick={() => {
-                            bridge.getPrimary()?.select([d.id])
-                            useDrawingUiStore.getState().setSelectedIds([d.id])
-                          }}
-                          onDoubleClick={() => {
-                            bridge.getPrimary()?.select([d.id])
-                            openObjectDialog(d.id)
-                          }}
-                        >
-                          {d.name || kindLabel(d.kind, locale)}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">
-                        {kindLabel(d.kind, locale)}
-                      </td>
-                      <td className="px-3 py-2 text-zinc-500">
-                        {d.hidden
-                          ? t('objects.hidden')
-                          : d.locked
-                            ? t('objects.locked')
-                            : '—'}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            aria-label={d.hidden ? t('objects.show') : t('objects.hide')}
-                            onClick={() => setDrawingHidden(d.id, !d.hidden)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                          >
-                            {d.hidden ? (
-                              <Eye className="h-3.5 w-3.5" />
-                            ) : (
-                              <EyeOff className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={d.locked ? t('objects.unlock') : t('objects.lock')}
-                            onClick={() => setDrawingLocked(d.id, !d.locked)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                          >
-                            {d.locked ? (
-                              <Lock className="h-3.5 w-3.5" />
-                            ) : (
-                              <LockOpen className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={t('common.delete')}
-                            onClick={() => removeDrawing(d.id)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-red-950/70 hover:text-red-300"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </aside>
+  return (
+    <div className="h-full min-h-0 overflow-y-auto">
+      <ul className="flex flex-col divide-y divide-white/[0.06]">
+        {drawings.map((drawing) => {
+          const selected = selectedIds.includes(drawing.id)
+          const kind = kindLabel(drawing.kind, locale)
+          const state = drawing.hidden
+            ? t('objects.hidden')
+            : drawing.locked
+              ? t('objects.locked')
+              : null
+          return (
+            <li
+              key={drawing.id}
+              className={`flex items-center gap-1 px-2.5 py-2.5 transition-colors ${
+                selected ? 'bg-primary-950/40' : 'hover:bg-white/[0.03]'
+              }`}
+            >
+              <button
+                type="button"
+                className="min-w-0 flex-1 px-1 text-left"
+                onClick={() => {
+                  bridge.getPrimary()?.select([drawing.id])
+                  useDrawingUiStore.getState().setSelectedIds([drawing.id])
+                }}
+                onDoubleClick={() => {
+                  bridge.getPrimary()?.select([drawing.id])
+                  openObjectDialog(drawing.id)
+                }}
+              >
+                <span className="block truncate text-xs text-zinc-200">
+                  {drawing.name || kind}
+                </span>
+                <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-zinc-500">
+                  {drawing.name ? <span className="truncate">{kind}</span> : null}
+                  {drawing.name && state ? <span className="text-zinc-700">·</span> : null}
+                  {state ? <span className="truncate">{state}</span> : null}
+                </span>
+              </button>
+              <div className="flex shrink-0 items-center">
+                <button
+                  type="button"
+                  aria-label={drawing.hidden ? t('objects.show') : t('objects.hide')}
+                  onClick={() => setDrawingHidden(drawing.id, !drawing.hidden)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                >
+                  {drawing.hidden ? (
+                    <Eye className="h-3.5 w-3.5" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  aria-label={drawing.locked ? t('objects.unlock') : t('objects.lock')}
+                  onClick={() => setDrawingLocked(drawing.id, !drawing.locked)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                >
+                  {drawing.locked ? (
+                    <Lock className="h-3.5 w-3.5" />
+                  ) : (
+                    <LockOpen className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('common.delete')}
+                  onClick={() => removeDrawing(drawing.id)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-red-950/60 hover:text-red-300"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
