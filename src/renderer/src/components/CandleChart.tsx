@@ -151,6 +151,27 @@ function focusLatestCandle(
   chart.timeScale().setVisibleLogicalRange({ from, to })
 }
 
+/**
+ * Future whitespace on the main series so the time scale keeps labelling the
+ * empty area to the right of the latest candle (TradingView/FXR behaviour).
+ */
+const FUTURE_AXIS_BARS = 1000
+
+function futureAxisWhitespace(
+  data: Candle[],
+  timeframe: string
+): { time: Time }[] {
+  if (data.length === 0) return []
+  const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
+  if (interval >= 24 * 60 * 60) return []
+  const last = data[data.length - 1]
+  const out: { time: Time }[] = []
+  for (let i = 1; i <= FUTURE_AXIS_BARS; i += 1) {
+    out.push({ time: (last.time + interval * i) as Time })
+  }
+  return out
+}
+
 function addSeries(
   chart: IChartApi,
   type: ChartType,
@@ -258,6 +279,8 @@ export default function CandleChart({
   const drawingManagerRef = useRef<import('lightweight-charts-drawing').DrawingManager | null>(null)
   const haLastRef = useRef<Candle | null>(null)
   const haPrevRef = useRef<Candle | null>(null)
+  const seriesLastTimeRef = useRef<number | null>(null)
+  const futureAxisEndRef = useRef<number | null>(null)
   const pricePrecision = useMemo(
     () => resolvePricePrecision(symbol, candles ?? visibleCandles),
     [symbol, candles, visibleCandles]
@@ -299,7 +322,11 @@ export default function CandleChart({
       haPrevRef.current = null
     }
 
-    series.setData(buildSeriesData(type, data) as never)
+    const whitespace = futureAxisWhitespace(data, timeframe)
+    series.setData([...buildSeriesData(type, data), ...whitespace] as never)
+    seriesLastTimeRef.current = data.length > 0 ? data[data.length - 1].time : null
+    futureAxisEndRef.current =
+      whitespace.length > 0 ? Number(whitespace[whitespace.length - 1].time) : null
     // A new series means a new history edge: allow one more edge callback.
     rangeCandlesRef.current = data
     reportedEdgeKeyRef.current = null
@@ -346,7 +373,19 @@ export default function CandleChart({
       }
     }
 
-    series.update(point as never)
+    series.update(point as never, true)
+
+    const previousLast = seriesLastTimeRef.current
+    if (previousLast == null || candle.time > previousLast) {
+      seriesLastTimeRef.current = candle.time
+      const interval = TIMEFRAMES[timeframe]?.seconds ?? 60
+      const end = futureAxisEndRef.current
+      if (end != null) {
+        const nextEnd = end + interval
+        series.update({ time: nextEnd as Time } as never)
+        futureAxisEndRef.current = nextEnd
+      }
+    }
   }
 
   function syncOverlays(nextOverlays: ChartOverlay[] | null | undefined): void {
@@ -656,7 +695,11 @@ export default function CandleChart({
       haPrevRef.current = null
     }
 
-    series.setData(buildSeriesData(chartType, data) as never)
+    const whitespace = futureAxisWhitespace(data, timeframe)
+    series.setData([...buildSeriesData(chartType, data), ...whitespace] as never)
+    seriesLastTimeRef.current = data.length > 0 ? data[data.length - 1].time : null
+    futureAxisEndRef.current =
+      whitespace.length > 0 ? Number(whitespace[whitespace.length - 1].time) : null
     rangeCandlesRef.current = data
     reportedEdgeKeyRef.current = null
 
