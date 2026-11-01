@@ -212,6 +212,20 @@ describe('formingHigherTfCandle', () => {
     expect(forming?.time).toBe(hour + 3600)
     expect(forming?.open).toBe(112)
   })
+
+  it('builds a 15m candle from 1m bars played so far', () => {
+    const start = utcSeconds(2026, 0, 5, 10, 0)
+    expect(start % 900).toBe(0)
+    const minutes = series(15, 60, start)
+    expect(formingHigherTfCandle(minutes.slice(0, 3), 900)).toMatchObject({
+      time: start,
+      open: 100,
+      high: 103,
+      low: 99,
+      close: 102.5,
+      volume: 6
+    })
+  })
 })
 
 describe('overlayFormingHigherTf', () => {

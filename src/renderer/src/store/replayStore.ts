@@ -306,6 +306,24 @@ function remapOrderHistoryToInterval(
 const engine = createReplayEngine()
 const secondaryEngine = createReplayEngine()
 
+/**
+ * Wall-clock cursor for the shared Timestep. It starts at the current chart
+ * bar open and accumulates step periods, so a 1m step on a 15m chart crosses
+ * into the next bar only after 15 ticks.
+ */
+let stepCursor: number | null = null
+let stepCursorIndex: number | null = null
+
+function resetStepCursor(): void {
+  stepCursor = null
+  stepCursorIndex = null
+}
+
+function loadPrimaryEngine(candles: Candle[]): void {
+  resetStepCursor()
+  engine.load(candles)
+}
+
 let clockTimer: ReturnType<typeof setInterval> | null = null
 let loadGeneration = 0
 let replayRequestId = 0
@@ -420,6 +438,41 @@ function emptySecondaryPaneState(): {
   }
 }
 
+/** Rebuild the primary pane's current bar from the 1m source while a finer
+ * Timestep is still inside that bar. */
+function overlayFormingPrimaryFromSource(
+  visible: Candle[],
+  current: Candle | null
+): { visible: Candle[]; current: Candle | null } {
+  const s = useReplayStore.getState()
+  const chartSec = intervalSecondsFor(s.timeframe)
+  const stepSec = intervalSecondsFor(s.replayTimestep)
+  if (stepSec >= chartSec) return { visible, current }
+  const source = s.importedSourceCandles
+  if (!source.length) return { visible, current }
+
+  const anchor = current?.time ?? visible[visible.length - 1]?.time
+  if (anchor == null) return { visible, current }
+  const cursor = Math.max(stepCursor ?? anchor, anchor)
+  const end = findIndexAtOrBefore(source, cursor)
+  if (end < 0) return { visible, current }
+
+  const lastSourceTime = source[end]?.time
+  const barCover = playheadCoverEnd(anchor, chartSec)
+  if (lastSourceTime == null || lastSourceTime < anchor || lastSourceTime > barCover) {
+    return { visible, current }
+  }
+
+  // Two coarser buckets are enough for the forming-bar helper.
+  const windowSize = Math.max(2, Math.ceil(chartSec / 60) * 2 + 2)
+  const start = Math.max(0, end - windowSize + 1)
+  const finer = source.slice(start, end + 1)
+  const sessionOffset =
+    s.dataSource === 'imported' ? importedForexSessionOffset(s.timeframe) : undefined
+  const next = overlayFormingHigherTf(visible, finer, chartSec, sessionOffset)
+  return { visible: next, current: next[next.length - 1] ?? current }
+}
+
 function engineSnapshot(): {
   replayStatus: ReplayStatus
   isPlaying: boolean
@@ -435,13 +488,14 @@ function engineSnapshot(): {
     engine.getVisibleCandles(),
     engine.getCurrentCandle()
   )
+  const formed = overlayFormingPrimaryFromSource(overlay.visible, overlay.current)
   return {
     replayStatus: state.status,
     isPlaying: state.isPlaying,
     speed: state.speed,
     replayIndex: state.index,
-    visibleCandles: overlay.visible,
-    currentCandle: overlay.current,
+    visibleCandles: formed.visible,
+    currentCandle: formed.current,
     bufferLength: state.candles.length
   }
 }
@@ -738,6 +792,37 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     })
   }
 
+  function syncSecondaryToCursor(coverUntil: number, opts: { fitContent?: boolean } = {}): void {
+    if (!get().chartSplit) return
+    if (get().mode !== 'replay') return
+    const driverSec = intervalSecondsFor(get().timeframe)
+    const followerSec = intervalSecondsFor(get().secondaryTimeframe)
+    if (followerSec >= driverSec) return
+    if (secondaryEngine.getState().candles.length === 0) return
+
+    const before = secondaryEngine.getState().index
+    secondaryEngine.seekToTime(coverUntil, coverSeekOpts())
+    const after = secondaryEngine.getState().index
+    if (after === before) return
+    publishSecondary(after === before + 1 ? 'append' : 'replace', {
+      fitContent: opts.fitContent ?? false
+    })
+  }
+
+  function syncSecondaryAfterStep(
+    targetCover: number,
+    opts: { fitContent?: boolean } = {}
+  ): void {
+    const stepSec = intervalSecondsFor(get().replayTimestep)
+    const driverSec = intervalSecondsFor(get().timeframe)
+    const followerSec = intervalSecondsFor(get().secondaryTimeframe)
+    if (stepSec < driverSec && followerSec < driverSec) {
+      syncSecondaryToCursor(targetCover, opts)
+      return
+    }
+    syncSecondaryToPrimaryCover(opts)
+  }
+
   function syncPrimaryToSecondaryCover(opts: { fitContent?: boolean } = {}): void {
     if (!get().chartSplit) return
     if (get().mode !== 'replay') return
@@ -881,6 +966,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     index: number,
     opts: { force?: boolean; preview?: boolean; fitContent?: boolean; source?: SeekConfirmSource } = {}
   ): SeekApplyResult {
+    resetStepCursor()
     if (get().mode !== 'replay') return 'noop'
     if (get().replayLoading || get().secondaryLoading) return 'noop'
 
@@ -931,7 +1017,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     if (priceFollowPane() === 'secondary') {
       return secondaryEngine.getCurrentCandle() || get().secondaryCurrentCandle
     }
-    return engine.getCurrentCandle() || get().currentCandle
+    return get().currentCandle || engine.getCurrentCandle()
   }
 
   type WaitingPriceEvent = 'fill' | 'tp' | 'sl'
@@ -1512,6 +1598,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       replayTimestep: get().replayTimestep
     })
     if (next !== get().replayTimestep) {
+      resetStepCursor()
       set({ replayTimestep: next })
     }
   }
@@ -1529,21 +1616,47 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     if (!candles.length) return false
 
     const before = engine.getState().index
-    if (before >= candles.length - 1) {
+    if (stepCursor == null || stepCursorIndex !== before) {
+      stepCursor = candle.time
+      stepCursorIndex = before
+    }
+
+    const chartSec = intervalSecondsFor(get().timeframe)
+    const stepSec = intervalSecondsFor(get().replayTimestep)
+    const targetCover = timestepStepCoverEnd(stepCursor, chartSec, stepSec, 1)
+    stepCursor = targetCover
+
+    const last = candles[candles.length - 1]
+    const lastCover = playheadCoverEnd(last.time, chartSec)
+    if (before >= candles.length - 1 && targetCover > lastCover) {
       engine.stepForward()
       publishReplay('replace', { fitContent: false })
       if (split) syncSecondaryToPrimaryCover()
       return false
     }
 
-    const chartSec = intervalSecondsFor(get().timeframe)
-    const stepSec = intervalSecondsFor(get().replayTimestep)
-    const targetCover = timestepStepCoverEnd(candle.time, chartSec, stepSec, 1)
     let target = findIndexAtOrBefore(candles, targetCover)
     if (target < 0) target = before
     if (target <= before) {
-      // Equal/fine Timestep should still move at least one primary bar.
-      target = Math.min(candles.length - 1, before + 1)
+      // Fine Timestep: time advanced inside the current chart bar.
+      stepCursorIndex = before
+      if (split) {
+        const follow = priceFollowPane()
+        if (follow === 'secondary') {
+          const followBefore = secondaryEngine.getState().index
+          syncSecondaryToCursor(targetCover)
+          const followAfter = secondaryEngine.getState().index
+          if (followAfter !== followBefore) {
+            scanFinerHits('secondary', followBefore + 1, followAfter)
+          }
+        } else {
+          syncSecondaryToCursor(targetCover)
+        }
+      }
+      if (stepSec < chartSec && get().importedSourceCandles.length > 0) {
+        publishReplay('append', { fitContent: false })
+      }
+      return true
     }
 
     const follow = priceFollowPane()
@@ -1554,9 +1667,10 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     const after = engine.getState().index
     if (after <= before) {
       publishReplay('replace', { fitContent: false })
-      if (split) syncSecondaryToPrimaryCover()
+      if (split) syncSecondaryAfterStep(targetCover)
       return false
     }
+    stepCursorIndex = after
 
     publishReplay(after === before + 1 ? 'append' : 'replace', { fitContent: false })
 
@@ -1570,9 +1684,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const event = scanFinerHits('primary', before + 1, after)
       const landed = engine.getCurrentCandle()
       if (event && landed) revealCoarserTouchedAt(landed.time)
-      else syncSecondaryToPrimaryCover()
+      else syncSecondaryAfterStep(targetCover)
     } else {
-      syncSecondaryToPrimaryCover()
+      syncSecondaryAfterStep(targetCover)
       scanFinerHits('secondary', followBefore + 1, secondaryEngine.getState().index)
     }
 
@@ -1588,25 +1702,35 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     if (!leftCandle || !candles.length) return
 
     const before = engine.getState().index
-    if (before <= 0) {
-      engine.stepBackward()
-      publishReplay('replace', { fitContent: false })
-      if (split) syncSecondaryToPrimaryCover()
-      return
+    if (stepCursor == null || stepCursorIndex !== before) {
+      stepCursor = leftCandle.time
+      stepCursorIndex = before
     }
 
     const chartSec = intervalSecondsFor(get().timeframe)
     const stepSec = intervalSecondsFor(get().replayTimestep)
-    const targetCover = timestepStepCoverEnd(leftCandle.time, chartSec, stepSec, -1)
+    const targetCover = Math.max(
+      candles[0].time,
+      timestepStepCoverEnd(stepCursor, chartSec, stepSec, -1)
+    )
+    stepCursor = targetCover
     let target = findIndexAtOrBefore(candles, targetCover)
     if (target < 0) target = 0
     if (target >= before) {
-      target = Math.max(0, before - 1)
+      stepCursorIndex = before
+      // Reset an ended engine so Play works again after stepping inside the last bar.
+      engine.seekToIndex(before, { pause: true })
+      if (split) syncSecondaryToCursor(targetCover)
+      if (stepSec < chartSec && get().importedSourceCandles.length > 0) {
+        publishReplay('append', { fitContent: false })
+      }
+      return
     }
 
     rewindPrimaryToIndex(target, { rewindTrades: true })
+    stepCursorIndex = target
     publishReplay('replace', { fitContent: false })
-    if (split) syncSecondaryToPrimaryCover()
+    if (split) syncSecondaryAfterStep(targetCover)
   }
 
   function publishImportedPreview(
@@ -1617,7 +1741,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     stopClock()
     prefetchInFlight = false
     replayRequestId += 1
-    engine.load([])
+    loadPrimaryEngine([])
     set((s) => ({
       dataSource: 'imported',
       importMeta: meta,
@@ -1673,7 +1797,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     stopClock()
     const keptSpeed = engine.getState().speed
-    engine.load(candles)
+    loadPrimaryEngine(candles)
     engine.setSpeed(keptSpeed)
 
     const idx = Math.min(
@@ -1802,7 +1926,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     }
 
     const keptSpeed = engine.getState().speed
-    engine.load(loaded.candles)
+    loadPrimaryEngine(loaded.candles)
     engine.setSpeed(keptSpeed)
     engine.seekToTime(target)
 
@@ -1861,7 +1985,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
     stopClock()
     prefetchInFlight = false
     replayRequestId += 1
-    engine.load([])
+    loadPrimaryEngine([])
     secondaryEngine.load([])
     set((s) => ({
       mode: 'live',
@@ -2333,7 +2457,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       }
 
       const keptSpeed = engine.getState().speed
-      engine.load(candles)
+      loadPrimaryEngine(candles)
       engine.setSpeed(keptSpeed)
 
       let message = opts.message ?? null
@@ -2399,7 +2523,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
         // Prepending shifts every index, so re-seek by time to keep the playhead.
         const anchor = engine.getCurrentCandle()?.time ?? null
         const keptSpeed = engine.getState().speed
-        engine.load(merged)
+        loadPrimaryEngine(merged)
         engine.setSpeed(keptSpeed)
         if (anchor != null) engine.seekToTime(anchor)
         if (Object.keys(extra).length) set(extra)
@@ -2529,7 +2653,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       const remappedOrderHistory = remapOrderHistoryToInterval(get().orderHistory, nextIntervalSec)
 
       const keptSpeed = engine.getState().speed
-      engine.load(loaded.candles)
+      loadPrimaryEngine(loaded.candles)
       engine.setSpeed(keptSpeed)
       engine.seekToTime(seekTime)
 
@@ -3343,17 +3467,21 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       if (!TIMEFRAMES[timeframe]) return
       if (get().syncTimestepWithChart) return
       if (timeframe === get().replayTimestep) return
+      resetStepCursor()
       set({ replayTimestep: timeframe })
+      if (get().mode === 'replay') publishReplay('append', { fitContent: false })
     },
 
     setSyncTimestepWithChart(sync) {
       const next = Boolean(sync)
       if (next === get().syncTimestepWithChart) return
+      resetStepCursor()
       if (next) {
         set({
           syncTimestepWithChart: true,
           replayTimestep: resolveTimestepOnSyncEnable(get().timeframe, get().replayTimestep)
         })
+        if (get().mode === 'replay') publishReplay('append', { fitContent: false })
         return
       }
       set({ syncTimestepWithChart: false })
@@ -3435,14 +3563,14 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
       }
       // Freshly imported series are already in memory — treat as fully loaded.
       publishImportedPreview(normalized, meta)
-      if (isMetatraderImport(meta)) {
-        if (meta.timeframe === '1m') {
-          set({ importedSourceCandles: normalized })
-        } else {
-          void window.api.loadImport(meta.id, '1m').then((source) => {
-            if (source.ok) set({ importedSourceCandles: dedupeCandlesByTime(source.candles) })
-          })
-        }
+      if (meta.timeframe === '1m') {
+        set({ importedSourceCandles: normalized })
+      } else if (importHasTimeframe(meta, '1m')) {
+        void window.api.loadImport(meta.id, '1m').then((source) => {
+          if (!source.ok) return
+          set({ importedSourceCandles: dedupeCandlesByTime(source.candles) })
+          if (get().mode === 'replay') publishReplay('append', { fitContent: false })
+        })
       }
       void get().refreshImportedList()
       if (get().chartSplit) {
@@ -3510,6 +3638,11 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
               replayMessage: importedLoadMessage(loaded.meta, loadedWindow, 'MetaTrader')
             })
           }
+        }
+      } else if (importHasTimeframe(loaded.meta, '1m')) {
+        const source = await window.api.loadImport(id, '1m')
+        if (source.ok) {
+          set({ importedSourceCandles: dedupeCandlesByTime(source.candles) })
         }
       }
       if (get().chartSplit) {
@@ -3653,7 +3786,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
           // Prepending shifts every index, so re-seek by time to keep the playhead.
           const anchor = engine.getCurrentCandle()?.time ?? null
           const keptSpeed = engine.getState().speed
-          engine.load(merged)
+          loadPrimaryEngine(merged)
           engine.setSpeed(keptSpeed)
           if (anchor != null) engine.seekToTime(anchor)
           set({ importWindow: nextWindow })
@@ -3732,6 +3865,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => {
 
     async jumpToTime(timeSeconds, opts = {}) {
       if (get().mode !== 'replay') return 'noop'
+      resetStepCursor()
 
       const target = Math.floor(Number(timeSeconds))
       if (!Number.isFinite(target)) {

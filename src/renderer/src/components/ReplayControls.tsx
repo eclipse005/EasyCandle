@@ -423,7 +423,7 @@ export default function ReplayControls() {
             tooltipSide="top"
             shortcut={['Space']}
           >
-            <Play className="h-4 w-4 fill-current" />
+            <Play className="h-4 w-4" />
           </IconButton>
         ) : (
           <IconButton
@@ -433,7 +433,7 @@ export default function ReplayControls() {
             onClick={pause}
             tooltipSide="top"
           >
-            <Pause className="h-4 w-4 fill-current" />
+            <Pause className="h-4 w-4" />
           </IconButton>
         )}
 

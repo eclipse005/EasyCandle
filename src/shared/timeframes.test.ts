@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { findIndexAtOrBefore } from './candleUtils'
 import {
   alignTimeToInterval,
   coarserTouchedCover,
@@ -130,6 +131,57 @@ describe('timestepStepCoverEnd', () => {
       -1
     )
     expect(back).toBe(playheadCoverEnd(open, TIMEFRAMES['1h'].seconds))
+  })
+
+  it('spends 15 one-minute steps inside one 15m bar', () => {
+    const open = alignTimeToInterval(1_700_000_000, TIMEFRAMES['15m'].seconds)
+    const barCover = playheadCoverEnd(open, TIMEFRAMES['15m'].seconds)
+    let cursor = open
+    for (let step = 0; step < 14; step += 1) {
+      cursor = timestepStepCoverEnd(
+        cursor,
+        TIMEFRAMES['15m'].seconds,
+        TIMEFRAMES['1m'].seconds,
+        1
+      )
+      expect(cursor).toBeLessThanOrEqual(barCover)
+    }
+    cursor = timestepStepCoverEnd(
+      cursor,
+      TIMEFRAMES['15m'].seconds,
+      TIMEFRAMES['1m'].seconds,
+      1
+    )
+    expect(cursor).toBeGreaterThan(barCover)
+  })
+
+  it('keeps the 15m index for 14 one-minute steps, then advances on the 15th', () => {
+    const open = alignTimeToInterval(1_700_000_000, TIMEFRAMES['15m'].seconds)
+    const bars = Array.from({ length: 3 }, (_, index) => ({
+      time: open + index * TIMEFRAMES['15m'].seconds,
+      open: 1,
+      high: 1,
+      low: 1,
+      close: 1,
+      volume: 0
+    }))
+    let cursor = open
+    for (let step = 1; step <= 14; step += 1) {
+      cursor = timestepStepCoverEnd(
+        cursor,
+        TIMEFRAMES['15m'].seconds,
+        TIMEFRAMES['1m'].seconds,
+        1
+      )
+      expect(findIndexAtOrBefore(bars, cursor)).toBe(0)
+    }
+    cursor = timestepStepCoverEnd(
+      cursor,
+      TIMEFRAMES['15m'].seconds,
+      TIMEFRAMES['1m'].seconds,
+      1
+    )
+    expect(findIndexAtOrBefore(bars, cursor)).toBe(1)
   })
 })
 
