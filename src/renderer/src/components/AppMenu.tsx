@@ -111,7 +111,6 @@ export default function AppMenu() {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState<boolean>(false)
 
-  const chartFullscreen = useUiLayoutStore((s) => s.chartFullscreen)
   const showStatusBar = useUiLayoutStore((s) => s.showStatusBar)
   const showDrawingToolbar = useUiLayoutStore((s) => s.showDrawingToolbar)
   const showReplayControls = useUiLayoutStore((s) => s.showReplayControls)
@@ -241,7 +240,7 @@ export default function AppMenu() {
         <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
-      {open && !chartFullscreen && (
+      {open && (
         <div
           role="menu"
           className="absolute left-0 top-full z-50 mt-1.5 min-w-[13rem] rounded-2xl border border-white/10 bg-zinc-950/95 py-1.5 shadow-xl shadow-black/40 backdrop-blur-sm"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import Dashboard from '@/components/dashboard/Dashboard'
 import AppShell from '@/components/AppShell'
 import CandleChart from '@/components/CandleChart'
@@ -20,8 +20,6 @@ export default function App() {
   const replayLoading = useReplayStore((s) => s.replayLoading)
   const loadImportedHistory = useReplayStore((s) => s.loadImportedHistory)
   const setSecondaryTimeframe = useReplayStore((s) => s.setSecondaryTimeframe)
-  const [primaryPriceScaleWidth, setPrimaryPriceScaleWidth] = useState(0)
-  const [secondaryPriceScaleWidth, setSecondaryPriceScaleWidth] = useState(0)
 
   /**
    * Range-based loading hook. Fires once per loaded series when the viewport
@@ -45,21 +43,16 @@ export default function App() {
   }
 
   const secondaryTfDisabled = secondaryLoading || replayLoading
-  const priceScaleWidth = chartSplit ? secondaryPriceScaleWidth : primaryPriceScaleWidth
 
   return (
-    <AppShell priceScaleWidth={priceScaleWidth}>
+    <AppShell>
       <div className={`flex h-full w-full ${chartSplit ? 'flex-row' : ''}`}>
         <div
           className={`relative min-h-0 min-w-0 ${chartSplit ? 'flex-1 border-r border-zinc-800' : 'h-full w-full'}`}
         >
           {chartSplit && <PaneChrome label={t('pane.left')} timeframe={timeframe} />}
           <div className={chartSplit ? 'absolute inset-0 top-9' : 'absolute inset-0'}>
-            <CandleChart
-              isPrimary
-              onPriceScaleWidthChange={setPrimaryPriceScaleWidth}
-              onReachHistoryEdge={handleReachHistoryEdge}
-            />
+            <CandleChart isPrimary onReachHistoryEdge={handleReachHistoryEdge} />
           </div>
         </div>
         {chartSplit && (
@@ -75,10 +68,7 @@ export default function App() {
               onTimeframeChange={setSecondaryTimeframe}
             />
             <div className="absolute inset-0 top-9">
-              <CandleChart
-                isPrimary={false}
-                onPriceScaleWidthChange={setSecondaryPriceScaleWidth}
-              />
+              <CandleChart isPrimary={false} />
             </div>
             {(secondaryLoading || secondaryError) && (
               <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-zinc-950/50 px-3 text-center text-xs text-zinc-400">

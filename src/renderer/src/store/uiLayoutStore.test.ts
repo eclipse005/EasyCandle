@@ -18,7 +18,8 @@ function freshStore() {
   useUiLayoutStore.setState({
     chartFullscreen: false,
     replayControlsPos: null,
-    tradePanelPos: null,
+    orderPanelPos: null,
+    orderPanelPoppedOut: false,
     drawingWidgetPos: null,
     showMainToolbar: true,
     showStatusBar: true,

@@ -34,7 +34,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
  */
 export function useUiHotkeys(): void {
   const toggleChartFullscreen = useUiLayoutStore((s) => s.toggleChartFullscreen)
-  const setChartFullscreen = useUiLayoutStore((s) => s.setChartFullscreen)
   const toggleInvertScale = useChartSettingsStore((s) => s.toggleInvertScale)
   const setPriceScale = useChartSettingsStore((s) => s.setPriceScale)
   const resetPriceScale = useChartSettingsStore((s) => s.resetPriceScale)
@@ -152,9 +151,9 @@ export function useUiHotkeys(): void {
           return
         }
 
-        // Last: leave chart-only fullscreen chrome (still inside the session).
+        // Last: leave browser fullscreen (still inside the session).
         if (useUiLayoutStore.getState().chartFullscreen) {
-          setChartFullscreen(false)
+          toggleChartFullscreen()
         }
         return
       }
@@ -184,5 +183,5 @@ export function useUiHotkeys(): void {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [toggleChartFullscreen, setChartFullscreen, toggleInvertScale, setPriceScale, resetPriceScale, setDrawTool, deleteDrawing])
+  }, [toggleChartFullscreen, toggleInvertScale, setPriceScale, resetPriceScale, setDrawTool, deleteDrawing])
 }

@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Keyboard,
   Maximize2,
+  Minimize2,
   Moon,
   Settings2,
   SquareSplitVertical,
@@ -38,9 +39,7 @@ export default memo(function MainToolbar() {
   const closeActiveSession = useSessionStore((s) => s.closeActiveSession)
 
   return (
-    <>
-      {!chartFullscreen && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-800/90 bg-zinc-950/90 px-2 py-2 sm:px-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-800/90 bg-zinc-950/90 px-2 py-2 sm:px-2">
           <IconButton
             tooltip={t('toolbar.closeSession')}
             onClick={() => void closeActiveSession()}
@@ -89,18 +88,22 @@ export default memo(function MainToolbar() {
               </IconButton>
               <ChartSnapshotDropdown />
               <IconButton
-                tooltip={t('toolbar.fullscreen')}
+                tooltip={
+                  chartFullscreen ? t('toolbar.exitFullscreen') : t('toolbar.fullscreen')
+                }
                 dataTour="fullscreen"
                 shortcut={['F']}
-                active={false}
+                active={chartFullscreen}
                 onClick={toggleChartFullscreen}
               >
-                <Maximize2 className="h-4 w-4" />
+                {chartFullscreen ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
               </IconButton>
             </div>
           </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 })

@@ -23,7 +23,8 @@ export type RightDock = 'order' | 'objects' | 'journal' | null
 
 type PersistedLayout = {
   replayControlsPos?: PanelPos | null
-  tradePanelPos?: PanelPos
+  orderPanelPos?: PanelPos
+  orderPanelPoppedOut?: boolean
   drawingWidgetPos?: PanelPos
   showMainToolbar?: boolean
   showStatusBar?: boolean
@@ -39,7 +40,10 @@ type UiLayoutState = {
   chartFullscreen: boolean
   /** null means use default placement (bottom-center) on first layout */
   replayControlsPos: PanelPos | null
-  tradePanelPos: PanelPos | null
+  /** Position of the popped-out order ticket; null re-anchors top-right. */
+  orderPanelPos: PanelPos | null
+  /** Order ticket detached from the right dock and floating over the chart. */
+  orderPanelPoppedOut: boolean
   /** Last dragged position of the drawing-style floating widget; null re-anchors to the drawing. */
   drawingWidgetPos: PanelPos | null
   showMainToolbar: boolean
@@ -95,7 +99,8 @@ type UiLayoutState = {
   toggleChartFullscreen: () => void
   setChartFullscreen: (value: boolean) => void
   setReplayControlsPos: (pos: PanelPos) => void
-  setTradePanelPos: (pos: PanelPos) => void
+  setOrderPanelPos: (pos: PanelPos) => void
+  setOrderPanelPoppedOut: (value: boolean) => void
   setDrawingWidgetPos: (pos: PanelPos) => void
   toggleMainToolbar: () => void
   toggleStatusBar: () => void
@@ -168,7 +173,8 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   // Always launch in normal chrome; fullscreen is session-only.
   chartFullscreen: false,
   replayControlsPos: isValidPos(initial.replayControlsPos) ? initial.replayControlsPos : null,
-  tradePanelPos: isValidPos(initial.tradePanelPos) ? initial.tradePanelPos : null,
+  orderPanelPos: isValidPos(initial.orderPanelPos) ? initial.orderPanelPos : null,
+  orderPanelPoppedOut: initial.orderPanelPoppedOut === true,
   drawingWidgetPos: isValidPos(initial.drawingWidgetPos) ? initial.drawingWidgetPos : null,
   showMainToolbar: initial.showMainToolbar !== false,
   showStatusBar: initial.showStatusBar !== false,
@@ -201,7 +207,13 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
   previewSessionReport: null,
 
   toggleChartFullscreen: () => {
-    set({ chartFullscreen: !get().chartFullscreen })
+    if (typeof document === 'undefined') return
+    // Browser fullscreen (F11 semantics): the workbench layout stays intact.
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+      return
+    }
+    void document.documentElement.requestFullscreen().catch(() => {})
   },
 
   setChartFullscreen: (value) => {
@@ -216,11 +228,17 @@ export const useUiLayoutStore = create<UiLayoutState>((set, get) => ({
     persist({ replayControlsPos: pos })
   },
 
-  setTradePanelPos: (pos) => {
-    const current = get().tradePanelPos
+  setOrderPanelPos: (pos) => {
+    const current = get().orderPanelPos
     if (current && current.x === pos.x && current.y === pos.y) return
-    set({ tradePanelPos: pos })
-    persist({ tradePanelPos: pos })
+    set({ orderPanelPos: pos })
+    persist({ orderPanelPos: pos })
+  },
+
+  setOrderPanelPoppedOut: (value) => {
+    if (value === get().orderPanelPoppedOut) return
+    set({ orderPanelPoppedOut: value })
+    persist({ orderPanelPoppedOut: value })
   },
 
   setDrawingWidgetPos: (pos) => {

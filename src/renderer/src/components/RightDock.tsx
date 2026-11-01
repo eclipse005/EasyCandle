@@ -1,4 +1,4 @@
-import { Boxes, ChartCandlestick, NotebookPen } from 'lucide-react'
+import { Boxes, ChartCandlestick, NotebookPen, SquareArrowOutUpRight } from 'lucide-react'
 import { useMemo, type ReactElement, type ReactNode } from 'react'
 import DrawingObjectTreeDialog from '@/components/DrawingObjectTreeDialog'
 import OrderTicket from '@/components/OrderTicket'
@@ -105,14 +105,13 @@ export default function RightDock(): ReactElement | null {
   const { t } = useT()
   const rightDock = useUiLayoutStore((s) => s.rightDock)
   const setRightDock = useUiLayoutStore((s) => s.setRightDock)
-  const chartFullscreen = useUiLayoutStore((s) => s.chartFullscreen)
+  const orderPoppedOut = useUiLayoutStore((s) => s.orderPanelPoppedOut)
+  const setOrderPoppedOut = useUiLayoutStore((s) => s.setOrderPanelPoppedOut)
   const showPaperTrade = useUiLayoutStore((s) => s.showPaperTrade)
   const preview = useUiLayoutStore((s) => s.tourPaperTradePreview)
   const mode = useReplayStore((s) => s.mode)
   const revision = useDrawingUiStore((s) => s.revision)
   const drawingCount = useMemo(() => listAllDrawings().length, [revision])
-
-  if (chartFullscreen) return null
 
   const canOrder = showPaperTrade && (mode === 'replay' || preview)
   const activeDock =
@@ -132,6 +131,11 @@ export default function RightDock(): ReactElement | null {
 
   function toggle(id: Exclude<RightDockId, null>): void {
     if ((id === 'order' || id === 'journal') && !canOrder) return
+    if (id === 'order' && orderPoppedOut) {
+      setOrderPoppedOut(false)
+      setRightDock('order')
+      return
+    }
     setRightDock(rightDock === id ? null : id)
   }
 
@@ -146,6 +150,20 @@ export default function RightDock(): ReactElement | null {
             <h2 className="truncate text-[13px] font-medium text-zinc-100">{title}</h2>
             {activeDock === 'objects' ? (
               <span className="text-[11px] tabular-nums text-zinc-500">{drawingCount}</span>
+            ) : null}
+            {activeDock === 'order' ? (
+              <button
+                type="button"
+                aria-label={t('rail.popOut')}
+                title={t('rail.popOut')}
+                onClick={() => {
+                  setOrderPoppedOut(true)
+                  setRightDock(null)
+                }}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+              >
+                <SquareArrowOutUpRight className="h-3.5 w-3.5" />
+              </button>
             ) : null}
           </header>
           <div className="min-h-0 flex-1 overflow-hidden">
@@ -164,7 +182,7 @@ export default function RightDock(): ReactElement | null {
         {canOrder ? (
           <RailButton
             label={t('rail.order')}
-            active={rightDock === 'order'}
+            active={rightDock === 'order' || orderPoppedOut}
             onClick={() => toggle('order')}
           >
             <ChartCandlestick className="h-4 w-4" />
